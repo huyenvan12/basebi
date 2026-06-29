@@ -88,6 +88,15 @@ textarea.code-area{font-family:'JetBrains Mono',monospace;font-size:11px;min-hei
 .chip-x{background:none;border:none;cursor:pointer;color:inherit;opacity:.6;font-size:12px;padding:0;line-height:1}
 .chip-x:hover{opacity:1}
 
+/* SAS syntax colors (used in code preview) */
+.sas{color:#60a5fa;font-weight:500}
+.mac{color:#f472b6;font-weight:500}
+.kw{color:#818cf8;font-weight:500}
+.fn{color:#c4b5fd}
+.str{color:#86efac}
+.num{color:#fca5a5}
+.cm{color:#9ca3af;font-style:italic}
+
 /* LEFT FOOTER */
 .left-footer{display:flex;align-items:center;gap:8px;padding:10px 20px;border-top:1px solid var(--border);flex-shrink:0;background:var(--surface)}
 .kbd{display:inline-block;background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:1px 5px;font-size:9px;color:var(--text-dim);font-family:'JetBrains Mono',monospace}
@@ -286,8 +295,15 @@ textarea.code-area{font-family:'JetBrains Mono',monospace;font-size:11px;min-hei
       <!-- CODE content -->
       <div id="codeSection" style="display:none">
         <div class="field-row" style="margin-bottom:10px">
-          <label class="field-label">Code</label>
-          <textarea class="form-input code-area" id="f-code" placeholder="Paste your SQL or code here…"></textarea>
+          <label class="field-label">Code <span style="font-size:9px;color:var(--text-dim);font-weight:400;text-transform:none;letter-spacing:0">— SAS & SQL highlighting</span></label>
+          <textarea class="form-input code-area" id="f-code" placeholder="Paste your SAS or SQL code here…" oninput="updateCodePreview()"></textarea>
+          <div id="codePreview" style="display:none;margin-top:6px;background:#1a1d2e;border:1px solid #2a3047;border-radius:6px;overflow:hidden">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 10px;background:#1f2535;border-bottom:1px solid #2a3047">
+              <span style="font-size:9px;font-weight:600;color:#f59e0b;text-transform:uppercase;letter-spacing:.5px">Preview</span>
+              <button onclick="document.getElementById('codePreview').style.display='none'" style="background:none;border:none;color:#4a556b;cursor:pointer;font-size:11px;padding:0">×</button>
+            </div>
+            <pre id="codePreviewBody" style="padding:10px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.65;color:#e2e8f0;overflow-x:auto;margin:0;white-space:pre"></pre>
+          </div>
         </div>
         <div class="field-row">
           <label class="field-label">Description (optional)</label>
@@ -354,6 +370,19 @@ let currentType = 'plain';
 let fileLoaded = false;
 
 function emptySlot(){ return {id: Date.now()+Math.random(), title:'', folder:'Business', type:'plain', tags:[], links:[], body:'', code:'', desc:'', saved:false}; }
+function updateCodePreview(){
+  const code=document.getElementById('f-code').value;
+  const preview=document.getElementById('codePreview');
+  const body=document.getElementById('codePreviewBody');
+  if(!code.trim()){preview.style.display='none';return;}
+  preview.style.display='';
+  body.innerHTML=sasHL(code);
+}
+
+function applyCodeDefaults(slot){
+  if(existingFolders.includes('Techie')) slot.folder='Techie';
+  if(!slot.tags.includes('SASEG')) slot.tags=['SASEG'];
+}
 
 // ══════════════════════════════════════════════════
 // FILE LOAD
@@ -559,7 +588,8 @@ function saveAndNext(){
   const next = cursor+1;
   if(next >= queue.length){
     const slot = emptySlot();
-    slot.type = currentType; // inherit last used type
+    slot.type = currentType;
+    if(currentType==='code') applyCodeDefaults(slot);
     queue.push(slot);
   }
   renderQueue();
@@ -577,7 +607,8 @@ function navNote(dir){
 function addSlot(){
   saveCurrentToSlot();
   const slot = emptySlot();
-  slot.type = currentType; // inherit last used type
+  slot.type = currentType;
+  if(currentType==='code') applyCodeDefaults(slot);
   queue.push(slot);
   renderQueue();
   updateProgress();
@@ -764,6 +795,46 @@ function closeInlineLinkDd(){
   const dd=document.getElementById('inlineLinkDd');
   if(dd)dd.classList.remove('open');
   inlineLinkResults=[]; inlineLinkCursor=-1;
+}
+
+
+// ══════════════════════════════════════════════════
+// SAS/SQL SYNTAX HIGHLIGHTER (preview in code area)
+// ══════════════════════════════════════════════════
+function sasHL(code){
+  function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  // Pass 1: protect strings and comments
+  const tokens=[];
+  let remaining=code, out='';
+  // block comments, line comments, string literals
+  const safe=/\/\*[\s\S]*?\*\/|\*[^;\n]*;|--[^\n]*|'[^']*'|"[^"]*"/g;
+  let last=0, m;
+  safe.lastIndex=0;
+  while((m=safe.exec(code))!==null){
+    if(m.index>last) tokens.push({t:'code',v:code.slice(last,m.index)});
+    const v=m[0];
+    if(v.startsWith('/*')||v.startsWith('*')||v.startsWith('--')) tokens.push({t:'cm',v});
+    else tokens.push({t:'str',v});
+    last=m.index+v.length;
+  }
+  if(last<code.length) tokens.push({t:'code',v:code.slice(last)});
+
+  const sqlKw=/\b(SELECT|FROM|WHERE|AND|OR|NOT|IN|ON|JOIN|LEFT|RIGHT|INNER|OUTER|FULL|GROUP BY|ORDER BY|HAVING|AS|DISTINCT|CASE|WHEN|THEN|ELSE|END|INSERT|INTO|VALUES|UPDATE|SET|DELETE|CREATE|TABLE|DROP|ALTER|WITH|UNION|ALL|BETWEEN|LIKE|IS|NULL|LIMIT|TOP|OFFSET|BY|ASC|DESC|CALCULATED|MISSING|NODUP|NODUPKEY)\b/gi;
+  const sasKw=/\b(PROC|DATA|RUN|QUIT|OUTPUT|KEEP|DROP|RETAIN|LENGTH|FORMAT|INFORMAT|LABEL|MERGE|IF|THEN|DO|ELSE|ARRAY|CARDS|DATALINES|CLASS|VAR|TABLES|MODEL|MEANS|FREQ|SORT|PRINT|REPORT|TABULATE|SQL|APPEND|CONTENTS|DATASETS|COPY|RENAME|FIRST|LAST)\b/gi;
+  const macroKw=/%(?:LET|IF|THEN|DO|END|ELSE|MACRO|MEND|PUT|INCLUDE|GLOBAL|LOCAL|EVAL|STR|NRSTR|QUOTE|SYSFUNC|LEFT|TRIM|UPCASE|LOWCASE)|&\w+\.?/g;
+  const sasFn=/\b(COALESCE|INPUT|PUT|CATS|CATX|CAT|CATT|COMPRESS|STRIP|TRIM|LEFT|RIGHT|SUBSTR|INDEX|SCAN|TRANWRD|UPCASE|LOWCASE|PROPCASE|INT|ROUND|CEIL|FLOOR|ABS|MOD|MAX|MIN|SUM|MEAN|NMISS|MONOTONIC|DATEPART|TIMEPART|MDY|TODAY|DATE|TIME|YEAR|MONTH|DAY|QTR|WEEK|INTNX|INTCK|DATDIF|YRDIF|COUNT|AVG|DATEDIFF|GETDATE|COALESCE|ISNULL|NULLIF|CAST|CONVERT|LEN|SUBSTRING|DATEADD)\b/gi;
+  const numRe=/\b\d+(\.\d+)?\b/g;
+
+  return tokens.map(tok=>{
+    if(tok.t==='cm') return '<span class="cm">'+esc(tok.v)+'</span>';
+    if(tok.t==='str') return '<span class="str">'+esc(tok.v)+'</span>';
+    return esc(tok.v)
+      .replace(macroKw,function(m){return '<span class="mac">'+m+'</span>';})
+      .replace(sasKw, function(m){return '<span class="sas">'+m+'</span>';})
+      .replace(sqlKw, function(m){return '<span class="kw">'+m+'</span>';})
+      .replace(sasFn, function(m){return '<span class="fn">'+m+'</span>';})
+      .replace(numRe, function(m){return '<span class="num">'+m+'</span>';});
+  }).join('');
 }
 
 // ══════════════════════════════════════════════════
