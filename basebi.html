@@ -37,7 +37,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 .main{display:flex;flex:1;overflow:hidden;position:relative}
 
 /* SIDEBAR */
-.sidebar{width:215px;min-width:140px;max-width:340px;flex-shrink:0;background:var(--surface);display:flex;flex-direction:column;overflow:hidden}
+.sidebar{width:215px;min-width:140px;max-width:340px;flex-shrink:0;flex:none;background:var(--surface);display:flex;flex-direction:column;overflow:hidden}
 .sidebar-section{padding:12px 12px 6px}
 .sidebar-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text-dim);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between}
 .sidebar-label button{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;line-height:1;padding:0 2px}.sidebar-label button:hover{color:var(--accent)}
@@ -59,7 +59,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 .tag-act-btn:hover{color:var(--accent)}.tag-act-btn.del:hover{color:var(--danger)}
 
 /* NOTE LIST */
-.note-list{width:260px;min-width:160px;max-width:420px;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden}
+.note-list{width:260px;min-width:160px;max-width:420px;flex-shrink:0;flex:none;display:flex;flex-direction:column;overflow:hidden}
 .note-list-header{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .note-list-title{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px}
 .note-count{font-size:10px;color:var(--text-dim)}
@@ -78,7 +78,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 .note-empty{padding:24px;text-align:center;color:var(--text-dim);font-size:12px}
 
 /* NOTE DETAIL */
-.note-detail{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.note-detail{flex:1;min-width:280px;display:flex;flex-direction:column;overflow:hidden}
 .note-detail-header{padding:14px 20px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
 .note-detail-title{font-size:18px;font-weight:600;color:var(--text);margin-bottom:8px}
 .note-detail-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -95,7 +95,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 .code-copy:hover{background:var(--surface);color:var(--text)}
 .code-copy.copied{color:var(--success);border-color:var(--success)}
 pre.code-body{padding:12px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.6;color:#e2e8f0;margin:0;white-space:pre}
-.kw{color:#93c5fd;font-weight:500}.fn{color:#c4b5fd}.str{color:#86efac}.num{color:#fca5a5}.cm{color:#6b7280;font-style:italic}
+.kw{color:#93c5fd;font-weight:500}.fn{color:#c4b5fd}.str{color:#86efac}.num{color:#fca5a5}.cm{color:#6b7280;font-style:italic}.sas{color:#60a5fa;font-weight:500}.mac{color:#f472b6;font-weight:500}
 .note-desc{margin-top:10px;color:var(--text-muted);font-size:12px;line-height:1.7}
 .linked-section{padding:10px 20px 14px;border-top:1px solid var(--border);flex-shrink:0}
 .linked-label{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--text-dim);font-weight:600;margin-bottom:6px}
@@ -159,8 +159,8 @@ mark{background:var(--highlight);color:var(--text);border-radius:2px;padding:0 1
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 
 /* RESIZABLE PANES */
-.resizer{width:4px;flex-shrink:0;background:transparent;cursor:col-resize;position:relative;z-index:10;transition:background .15s}
-.resizer:hover,.resizer.dragging{background:var(--accent)}
+.resizer{width:5px;flex-shrink:0;background:var(--border);cursor:col-resize;position:relative;z-index:10;transition:background .15s}
+.resizer:hover,.resizer.dragging{background:var(--accent);}
 .resizer::after{content:'';position:absolute;inset:0 -3px;background:transparent}
 
 /* PIN */
@@ -550,14 +550,37 @@ function hl(text,q){
   return s.replace(new RegExp('('+tokens.map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')','gi'),'<mark>$1</mark>');
 }
 function sqlHL(code){
-  const kws=/\b(SELECT|FROM|WHERE|AND|OR|NOT|IN|ON|JOIN|LEFT|RIGHT|INNER|OUTER|FULL|GROUP\s+BY|ORDER\s+BY|HAVING|AS|DISTINCT|CASE|WHEN|THEN|ELSE|END|INSERT|INTO|VALUES|UPDATE|SET|DELETE|CREATE|TABLE|DROP|ALTER|WITH|UNION|ALL|BETWEEN|LIKE|IS|NULL|LIMIT|TOP|OFFSET|BY|ASC|DESC)\b/gi;
-  const fns=/\b(COUNT|SUM|AVG|MAX|MIN|DATEDIFF|GETDATE|COALESCE|ISNULL|NULLIF|CAST|CONVERT|TRIM|UPPER|LOWER|LEN|SUBSTRING|DATEADD|YEAR|MONTH|DAY|NOW|NVL|TO_DATE|DECODE)\b/gi;
-  return esc(code)
-    .replace(/--[^\n]*/g,m=>`<span class="cm">${m}</span>`)
-    .replace(/'[^']*'/g,m=>`<span class="str">${m}</span>`)
-    .replace(kws,m=>`<span class="kw">${m}</span>`)
-    .replace(fns,m=>`<span class="fn">${m}</span>`)
-    .replace(/\b\d+(\.\d+)?\b/g,m=>`<span class="num">${m}</span>`);
+  function escI(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  // tokenize: protect strings and comments first
+  const tokens=[];
+  const safe=/\/\*[\s\S]*?\*\/|\*[^;\n]*;|--[^\n]*|'[^']*'|"[^"]*"/g;
+  let last=0, m;
+  safe.lastIndex=0;
+  while((m=safe.exec(code))!==null){
+    if(m.index>last) tokens.push({t:'code',v:code.slice(last,m.index)});
+    const v=m[0];
+    if(v.startsWith('/*')||v.startsWith('*')||v.startsWith('--')) tokens.push({t:'cm',v});
+    else tokens.push({t:'str',v});
+    last=m.index+v.length;
+  }
+  if(last<code.length) tokens.push({t:'code',v:code.slice(last)});
+
+  const sqlKw=/\b(SELECT|FROM|WHERE|AND|OR|NOT|IN|ON|JOIN|LEFT|RIGHT|INNER|OUTER|FULL|GROUP BY|ORDER BY|HAVING|AS|DISTINCT|CASE|WHEN|THEN|ELSE|END|INSERT|INTO|VALUES|UPDATE|SET|DELETE|CREATE|TABLE|DROP|ALTER|WITH|UNION|ALL|BETWEEN|LIKE|IS|NULL|LIMIT|TOP|OFFSET|BY|ASC|DESC|CALCULATED|MISSING|NODUP|NODUPKEY)\b/gi;
+  const sasKw=/\b(PROC|DATA|RUN|QUIT|OUTPUT|KEEP|DROP|RETAIN|LENGTH|FORMAT|INFORMAT|LABEL|MERGE|IF|THEN|DO|ELSE|ARRAY|CARDS|DATALINES|CLASS|VAR|TABLES|MODEL|MEANS|FREQ|SORT|PRINT|REPORT|TABULATE|SQL|APPEND|CONTENTS|DATASETS|COPY|RENAME|FIRST|LAST)\b/gi;
+  const macroKw=/%(?:LET|IF|THEN|DO|END|ELSE|MACRO|MEND|PUT|INCLUDE|GLOBAL|LOCAL|EVAL|STR|NRSTR|QUOTE|SYSFUNC|LEFT|TRIM|UPCASE|LOWCASE)|&\w+\.?/g;
+  const fnKw=/\b(COALESCE|INPUT|PUT|CATS|CATX|CAT|CATT|COMPRESS|STRIP|TRIM|LEFT|RIGHT|SUBSTR|INDEX|SCAN|TRANWRD|UPCASE|LOWCASE|PROPCASE|INT|ROUND|CEIL|FLOOR|ABS|MOD|MAX|MIN|SUM|MEAN|NMISS|MONOTONIC|DATEPART|TIMEPART|MDY|TODAY|DATE|TIME|YEAR|MONTH|DAY|QTR|WEEK|INTNX|INTCK|DATDIF|YRDIF|COUNT|AVG|DATEDIFF|GETDATE|ISNULL|NULLIF|CAST|CONVERT|LEN|SUBSTRING|DATEADD|NVL|TO_DATE|DECODE)\b/gi;
+  const numRe=/\b\d+(\.\d+)?\b/g;
+
+  return tokens.map(tok=>{
+    if(tok.t==='cm') return '<span class="cm">'+escI(tok.v)+'</span>';
+    if(tok.t==='str') return '<span class="str">'+escI(tok.v)+'</span>';
+    return escI(tok.v)
+      .replace(macroKw,function(m){return '<span class="mac">'+m+'</span>';})
+      .replace(sasKw, function(m){return '<span class="sas">'+m+'</span>';})
+      .replace(sqlKw, function(m){return '<span class="kw">'+m+'</span>';})
+      .replace(fnKw,  function(m){return '<span class="fn">'+m+'</span>';})
+      .replace(numRe, function(m){return '<span class="num">'+m+'</span>';});
+  }).join('');
 }
 function today(){return new Date().toISOString().slice(0,10);}
 function fmtDate(d){return d?d.slice(0,10):'';}
@@ -1061,9 +1084,10 @@ document.addEventListener('click',e=>{
 // ══════════════════════════════════════════════════
 // RESIZABLE PANES
 // ══════════════════════════════════════════════════
-let resizing=null,resizeStart=0,resizeStartW=0;
+let resizing=null,resizeStartX=0,resizeStartW=0;
 function startResize(e,which){
-  resizing=which; resizeStart=e.clientX;
+  resizing=which; resizeStartX=e.clientX;
+  // A resizes sidebar, B resizes noteListPane
   const pane=which==='A'?document.getElementById('sidebar'):document.getElementById('noteListPane');
   resizeStartW=pane.offsetWidth;
   document.getElementById('resizer'+which).classList.add('dragging');
@@ -1073,10 +1097,12 @@ function startResize(e,which){
 }
 document.addEventListener('mousemove',e=>{
   if(!resizing)return;
-  const delta=e.clientX-resizeStart;
+  const delta=e.clientX-resizeStartX;
   const pane=resizing==='A'?document.getElementById('sidebar'):document.getElementById('noteListPane');
   const mn=resizing==='A'?140:160, mx=resizing==='A'?340:420;
-  pane.style.width=Math.min(mx,Math.max(mn,resizeStartW+delta))+'px';
+  const newW=Math.min(mx,Math.max(mn,resizeStartW+delta));
+  pane.style.width=newW+'px';
+  pane.style.flex='none'; // prevent flex from overriding
 });
 document.addEventListener('mouseup',()=>{
   if(!resizing)return;
@@ -1152,7 +1178,8 @@ function closeInlineLinkDd(){
 
 function renderBodyWithLinks(text,q){
   return hl(text,q).replace(/\[\[([^\]]+)\]\]/g,(match,title)=>{
-    return '<span class="inline-link" onclick="jumpToLink(''+esc(title)+'')">&#8599; '+esc(title)+'</span>';
+    const safeTitle=esc(title);
+    return `<span class="inline-link" onclick="jumpToLink(this.dataset.title)" data-title="${safeTitle}">&#8599; ${safeTitle}</span>`;
   });
 }
 
