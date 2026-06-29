@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported": "2026-06-29T17:29:42.325Z",
+  "exported": "2026-06-29T17:51:30.618Z",
   "folders": [
     "Business",
     "Techie",
@@ -240,6 +240,144 @@
       "links": [],
       "body": "Check log GMA Banner",
       "code": "proc sql;\n    create table check_log_all as\n    select \n        t0.CUID,t0.CORRELATION_ID,t1.CORRELATION_ID as BN_CORRELATION_ID,\n         t1.RTDM_LOG_EVENT_ID, \n        t0.CREATED_DTTM,\n        t0.TEMPLATE_ID,\n        t0.TEMPLATE_PRIORITY,\n        t0.LIMIT_AMOUNT,\n        t0.CUSTOM_FIELD_1 as CF1_CODE_PRODUCT,\n        t0.CUSTOM_FIELD_2 as CF2_OFFER_TYPE,\n        t0.CUSTOM_FIELD_3 as CF3_OFFER_TYPE_CODE,\n        t0.CUSTOM_INFO7 as CF7_latestSegment,\n        t0.CUSTOM_INFO8 as CF8_JSP,\n        t0.CUSTOM_INFO9 as CF9_IDTRIGGER,\n        t0.CUSTOM_INFO10 as CF10_Customer_Type,\n        t0.CUSTOM_FIELD_5 as CF5_minDownPayment,\n        t0.CUSTOM_INFO6,\n        t0.OFFER_ID AS LOG_OFFER_ID,\n\t  t0.CUSTOM_FIELD_3 as LG_OFFER_TYPE_CODE,\n        t1.TRIGGER_ID,\n        t1.JOURNEY_START_POINT,\n        t1.RESPONSE_STATUS,\n        t1.RESPONSE_STATUS_DESC,\n        t1.CORRELATION_ID\n    from MONITOR.RTDM_LOG_GMA_MESSAGES t0\n    inner join MONITOR.RTDM_LOG_GMA_BANNER t1\n        on t0.rtdm_log_gma_banner_id = t1.rtdm_log_event_id\n    where 1=1\n      and t0.CREATED_DTTM >= dhms(today()-1, 22, 45, 0)\n\tand BN_CORRELATION_ID not like 'Test Case%'\n    order by t0.CREATED_DTTM asc\n    ;\nquit;",
+      "created": "2026-06-29",
+      "modified": "2026-06-29"
+    },
+    {
+      "id": 1782755490617.4158,
+      "title": "Get active card contract",
+      "folder": "Techie",
+      "type": "code",
+      "tags": [
+        "SASEG",
+        "card",
+        "contract"
+      ],
+      "links": [],
+      "body": "Clients have ACTIVE credit card contract - active card - card segment filter",
+      "code": "PROC SQL;\n/*Clients have ACTIVE credit card contract*/\ncreate table get_client_contract_active as\nselect  t1.ID_CUID, t1.SKP_CLIENT\n\t, t1.SKP_CREDIT_CASE\n\t, t1.CODE_CREDIT_TYPE\n\t, t1.CODE_CREDIT_STATUS\t\n\t, t1.CODE_PRODUCT\n/*\t, t1.TEXT_CONTRACT_NUMBER*/\nfrom SDM.FT_CONTRACT t1\nwhere CODE_CREDIT_TYPE ='REV' /*credit card contract*/\nand CODE_CREDIT_STATUS='A'  /*active contract*/\nand CODE_PRODUCT not in ('ATM_MC_45','ATM_U_INST','BHX_CCW_01','REVMC0_49')  \nand CODE_PRODUCT not like '%BNPL%'\nand CODE_PRODUCT not like '%CC_CD%'\nand CODE_PRODUCT not like '%CCCD%'\nand CODE_PRODUCT in ('BEE_CCW_01', 'CCX_01', 'CCX_U_INST', 'CCX_U_MC', 'CCX_VOC_PI_INST', 'CCXMC_01', \n\t'MAX_AC_NSA', 'MAX_MC_29', 'MAX_MC_38', 'MAX_MC_49', 'MAX_XS_01', 'MAX_XS_29', 'MAX_XS_38', 'MAX_XS_49', \n\t'TOP_U_INST', 'TOP_U_MC', 'XSTU_49', 'XSTU_MC_49', 'CCW_U_INST', 'CCW_U_MC', \n\t'SCW_00_45', 'SCW_00_49', 'SCW_N12_49', 'SCX_00_45')\n;QUIT;\n\n\nPROC SQL;\n/* Clients 1 active card status\n\t& credit card available limit >= 3.000.000VND*/\ncreate table get_client_active_card as\nselect t0.ID_CUID, t1.SKP_CLIENT, t0.TEXT_CONTRACT_NUMBER,\n\tt0.SKP_CREDIT_CASE, t0.CODE_CREDIT_STATUS,\n\tt0.CODE_PRODUCT, t1.CODE_CARD_STATUS,\n\tt1.AMT_DISPOSABLE\nfrom get_client_contract_active t0\ninner join SDM.FT_CREDIT_CARD t1\non t0.SKP_CREDIT_CASE = t1.SKP_CREDIT_CASE\nwhere 1=1\nand t1.AMT_DISPOSABLE >= 3000000\nand t1.CODE_CARD_STATUS = 'A'\ngroup by t0.ID_CUID, t0.SKP_CREDIT_CASE, t0.CODE_PRODUCT, t1.AMT_DISPOSABLE \n;QUIT;\n\n\nPROC SQL;\n/* Clients are in the 'INACTIVE' segment*/\ncreate table get_client_inactive_seg as\nselect  t0.*,\n\t  t1.TEXT_CON_SEGMENTATION\nfrom get_client_active_card t0\nleft join SDM.FT_CARD_SEGMENT_PARAM_PM t1\n  on (t0.SKP_CREDIT_CASE=t1.SKP_CREDIT_CASE)\nwhere t1.TEXT_CON_SEGMENTATION = '2-Inactive'\n;QUIT;",
+      "created": "2026-06-29",
+      "modified": "2026-06-29"
+    },
+    {
+      "id": 1782755490618.994,
+      "title": "Call Policy",
+      "folder": "Techie",
+      "type": "code",
+      "tags": [
+        "SASEG"
+      ],
+      "links": [
+        "Communication Policies"
+      ],
+      "body": "",
+      "code": "proc sql;\t\t\t\t\t\t\t\t\t\t\t\t\ncreate table work.call_policy as\t\t\t\t\t\t\t\t\t\t\t\nselect distinct a.id_cuid\t\t\t\t\t\t\t\t\t\t\nfrom sdm.ft_client_part_static a\t\t\t\t\t\t\t\t\t\ninner join sdm.ft_client_contact b\t\t\t\t\t\t\t\t\non a.id_cuid = b.id_cuid\t\t\t\t\t\t\t\nwhere\t\t\t\t\t\t\t\t\nflag_call_refused = 'N'\t\t\t\t\t\t\t\nand flag_valid_document = 'Y'\t\t\t\t\t\t\t\nand flag_pdp_consent = 'Y'\t\t\t\t\t\t\t\nand name_phone_mobile_prim_status = 'Valid'\nand a.id_cuid not in (\n\tselect distinct id_cuid\t\t\t\t\t\t\t\n\tfrom int.cm_blacklist \t\t\t\t\t\t\t\n\twhere blacklist_status = 'ACTIVE' \n\tand blacklist_channel = 'TLS'\n\t)\t\t\t\t\t\t\nand a.id_cuid not in (\t\t\t\t\t\t\n\tSELECT distinct id_cuid\t\t\t\t\t\t\n\tFROM INT.CM_BLACKLIST_CLIENT \t\t\t\t\t\t\n\tWHERE BLACKLIST_STATUS = 'ACTIVE'\t\t\t\t\t\t\n\tAND BLACKLIST_SOURCE = 'AIS'\t\t\t\t\t\n\tAND (CREATED_DTTM >= today() - 1 \n\tor\tUPDATED_DTTM >= today() - 1\n\t)\t\t\t\t\n)\t\t\t\t\t\t\t\t\t\t\t\t\n;quit;",
+      "created": "2026-06-29",
+      "modified": "2026-06-29"
+    },
+    {
+      "id": 1782755490618.6533,
+      "title": "Get client no DPD",
+      "folder": "Techie",
+      "type": "code",
+      "tags": [
+        "SASEG"
+      ],
+      "links": [
+        "Day Past Due"
+      ],
+      "body": "",
+      "code": "PROC SQL;\ncreate table get_client_no_DPD as\nselect distinct t0.ID_CUID, \n\t\tt0.SKP_CREDIT_CASE, \n\t\tt0.TEXT_CONTRACT_NUMBER,\n\t\tt0.CODE_PRODUCT,\n\t\tt0.segment_cal,\n\t\tt2.CNT_DAYS_PAST_DUE_TOLERANCE\nfrom get_client_valid_segments t0\ninner join SDM.FT_CLIENT_PART_STATIC t2\n  on (t0.ID_CUID = t2.ID_CUID)\nwhere (  t2.CNT_DAYS_PAST_DUE_TOLERANCE = 0 \n\tor t2.CNT_DAYS_PAST_DUE_TOLERANCE is null\n\t)\n;QUIT;",
+      "created": "2026-06-29",
+      "modified": "2026-06-29"
+    },
+    {
+      "id": 1782755490618.6052,
+      "title": "Import to IL_IMPORT - Not Exists",
+      "folder": "Techie",
+      "type": "code",
+      "tags": [
+        "SASEG",
+        "IL_IMPORT"
+      ],
+      "links": [
+        "Import into IL_IMPORT"
+      ],
+      "body": "",
+      "code": "proc sql;\ninsert\n\tinto int.il_import\n\t\t(\n\t\t\tid_cuid,\n\t\t\timport_name,\n\t\t\timport_date,\n\t\t\tnum_param1,\n\t\t\tnum_param2,\n\t\t\tnum_param3,\n\t\t\tnum_param4,\n\t\t\tchar_param1,\n\t\t\tchar_param2,\n\t\t\tchar_param3,\n\t\t\tchar_param4,\n\t\t\tdate_param1,\n\t\t\tdate_param2\n\n\t\t)\nselect  id_cuid,\n\t\t'EPP_CARD_T2_RECOVER' as import_name,\n\t\tdatetime() format=datetime20. as import_date,\n\t\tskp_credit_case as num_param1,\n\t\tskf_card_transaction_ad as num_param2,\n\t\tamt_transaction as num_param3,\n\t\ttenor as num_param4,\n\t\ttext_contract_number as char_param1,\n\t\tsegment_cal as char_param2,\n\t\tcode_product as char_param3,\n\t\tcode_transaction_type as char_param4,\n\t\tdate_presentment as date_param1,\n\t\tdate_transaction as date_param2\n\tfrom work.highest_elgi_trx_t2 new\nwhere not exists \n\t( \n\t\tSELECT CUR.ID_CUID\n\t\tFROM INT.IL_IMPORT CUR\n\t\tWHERE CUR.IMPORT_NAME = 'EPP_CARD_T2_RECOVER'\n\t\tAND CUR.ID_CUID = NEW.ID_CUID\n\t\tAND CUR.num_param1 = NEW.skp_credit_case\n\t\tAND IMPORT_DATE>=today()\n\t);\nquit;",
+      "created": "2026-06-29",
+      "modified": "2026-06-29"
+    },
+    {
+      "id": 1782755490618.7517,
+      "title": "Proc Sort Data",
+      "folder": "Techie",
+      "type": "code",
+      "tags": [
+        "SASEG",
+        "Sort"
+      ],
+      "links": [],
+      "body": "",
+      "code": "proc sort data=epp_trx_t2;\n  by SKP_CREDIT_CASE\n     descending amt_transaction\n     descending SKF_CARD_TRANSACTION_AD;\nrun;\n\ndata rank_trx;\nset epp_trx_t2;\nby SKP_CREDIT_CASE;\nif first.SKP_CREDIT_CASE then row_number=1;\nelse row_number+1;\nrun;\n\nproc sql;\ncreate table work.highest_elgi_trx_t2 as\nselect * \nfrom rank_trx\nwhere row_number=1;\nquit;",
+      "created": "2026-06-29",
+      "modified": "2026-06-29"
+    },
+    {
+      "id": 1782755490618.869,
+      "title": "GMA Flag",
+      "folder": "Techie",
+      "type": "code",
+      "tags": [
+        "SASEG"
+      ],
+      "links": [],
+      "body": "",
+      "code": "PROC SQL; \ncreate table checkGMA as\nselect ID_CUID, FLAG_GLOBAL_MOBILE_APP\nfrom SDM.FT_CLIENT_PART_DYNAMIC \nwhere ID_CUID=\n;QUIT;",
+      "created": "2026-06-29",
+      "modified": "2026-06-29"
+    },
+    {
+      "id": 1782755490618.3093,
+      "title": "Extract RanUni",
+      "folder": "Techie",
+      "type": "code",
+      "tags": [
+        "SASEG",
+        "RandUni"
+      ],
+      "links": [],
+      "body": "",
+      "code": "input(substr(t1.TEXT_RAND_SKP_CLIENT,7,2), 2.) as RANUNI_SKP_CLIENT_7_8\ninput(substr(t1.TEXT_RAND_EXT1000_SKP_CLIENT,1,2), 2.) as RANUNI_TEXT_RAND_EXT1000_1_2",
+      "created": "2026-06-29",
+      "modified": "2026-06-29"
+    },
+    {
+      "id": 1782755490618.3115,
+      "title": "Convert CUID to Num",
+      "folder": "Techie",
+      "type": "code",
+      "tags": [
+        "SASEG"
+      ],
+      "links": [],
+      "body": "",
+      "code": "input(t0.PARTY_ID, 12.) as ID_CUID",
+      "created": "2026-06-29",
+      "modified": "2026-06-29"
+    },
+    {
+      "id": 1782755490618.6582,
+      "title": "Check limit",
+      "folder": "Techie",
+      "type": "code",
+      "tags": [
+        "SASEG",
+        "limit"
+      ],
+      "links": [],
+      "body": "",
+      "code": "proc sql;\ncreate table check_scr_limit_RG4_RG5 as\nselect input(a.PARTY_ID, 12.) as ID_CUID, limit_status, \n\tlimit_type_code, limit_sub_type_code, code_risk_grade,\n\tdatepart(creation_timestamp) format date09. as created_date\nfrom ofs.limits a\nwhere a.limit_status = 'ACTIVE'\nand a.limit_type_code like 'CLX%'\nand a.limit_sub_type_code='SCORING'\nand a.code_risk_grade in ('RBP 04', 'RBP 05')\n;QUIT;",
       "created": "2026-06-29",
       "modified": "2026-06-29"
     }
