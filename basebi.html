@@ -37,7 +37,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 .main{display:flex;flex:1;overflow:hidden;position:relative}
 
 /* SIDEBAR */
-.sidebar{width:215px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.sidebar{width:215px;min-width:140px;max-width:340px;flex-shrink:0;background:var(--surface);display:flex;flex-direction:column;overflow:hidden}
 .sidebar-section{padding:12px 12px 6px}
 .sidebar-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text-dim);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between}
 .sidebar-label button{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;line-height:1;padding:0 2px}.sidebar-label button:hover{color:var(--accent)}
@@ -59,7 +59,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 .tag-act-btn:hover{color:var(--accent)}.tag-act-btn.del:hover{color:var(--danger)}
 
 /* NOTE LIST */
-.note-list{width:260px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.note-list{width:260px;min-width:160px;max-width:420px;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden}
 .note-list-header{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .note-list-title{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px}
 .note-count{font-size:10px;color:var(--text-dim)}
@@ -158,6 +158,28 @@ textarea.code-input{font-family:'JetBrains Mono',monospace;font-size:12px;min-he
 mark{background:var(--highlight);color:var(--text);border-radius:2px;padding:0 1px}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 
+/* RESIZABLE PANES */
+.resizer{width:4px;flex-shrink:0;background:transparent;cursor:col-resize;position:relative;z-index:10;transition:background .15s}
+.resizer:hover,.resizer.dragging{background:var(--accent)}
+.resizer::after{content:'';position:absolute;inset:0 -3px;background:transparent}
+
+/* PIN */
+.pin-btn{background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;color:var(--text-dim);transition:all .15s;line-height:1}
+.pin-btn:hover{color:var(--sql)}.pin-btn.pinned{color:var(--sql)}
+.note-item-pin{font-size:10px;color:var(--sql);opacity:.8}
+
+/* INLINE LINK DROPDOWN */
+.inline-link-dd{position:absolute;background:var(--surface2);border:1px solid var(--border);border-radius:6px;z-index:300;max-height:180px;overflow-y:auto;display:none;min-width:240px;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.inline-link-dd.open{display:block}
+.inline-link-dd-item{padding:7px 12px;font-size:12px;cursor:pointer;color:var(--text-muted);transition:background .1s;display:flex;align-items:center;gap:8px}
+.inline-link-dd-item:hover,.inline-link-dd-item.focused{background:var(--folder-active);color:var(--text)}
+.dd-folder{font-size:9px;color:var(--text-dim);margin-left:auto}
+.inline-link-dd-empty{padding:8px 12px;font-size:11px;color:var(--text-dim)}
+
+/* INLINE LINK CHIP rendered in note */
+.inline-link{display:inline-flex;align-items:center;gap:3px;color:var(--accent);background:var(--accent-dim);border-radius:3px;padding:1px 6px;font-size:11px;cursor:pointer;border:1px solid transparent;transition:border-color .1s;vertical-align:middle}
+.inline-link:hover{border-color:var(--accent)}
+
 /* ══════════════════════════════════════
    FLOATING ACTION BUTTON
 ══════════════════════════════════════ */
@@ -183,7 +205,7 @@ mark{background:var(--highlight);color:var(--text);border-radius:2px;padding:0 1
 .srt-plain{background:#dde8ff;color:#3b6fe0}
 .srt-code{background:#fef3dc;color:#c47d0e}
 .search-screen-empty{font-size:13px;color:#9099b5;margin-top:20px}
-.search-screen-hint{position:fixed;bottom:20px;font-size:11px;color:#b0b6cc;letter-spacing:.2px}
+
 .search-screen mark{background:#dde8ff;color:#3b6fe0;border-radius:2px;padding:0 1px}
 
 /* ══════════════════════════════════════
@@ -263,7 +285,7 @@ pre.popup-code-body{padding:12px;font-family:'JetBrains Mono',monospace;font-siz
 
 <!-- MAIN -->
 <div class="main">
-  <div class="sidebar">
+  <div class="sidebar" id="sidebar">
     <div class="sidebar-section">
       <div class="sidebar-label">Folders<button onclick="openFolderModal()" title="Add folder">＋</button></div>
       <div id="folderList"></div>
@@ -271,13 +293,15 @@ pre.popup-code-body{padding:12px;font-family:'JetBrains Mono',monospace;font-siz
     <div class="sidebar-section"><div class="sidebar-label">Tags</div></div>
     <div class="sidebar-tags" id="tagCloud"></div>
   </div>
-  <div class="note-list">
+  <div class="resizer" id="resizerA" onmousedown="startResize(event,'A')"></div>
+  <div class="note-list" id="noteListPane">
     <div class="note-list-header">
       <span class="note-list-title" id="listTitle">All Notes</span>
       <span class="note-count" id="noteCount">0 notes</span>
     </div>
     <div class="note-items" id="noteItems"></div>
   </div>
+  <div class="resizer" id="resizerB" onmousedown="startResize(event,'B')"></div>
   <div class="note-detail" id="noteDetail">
     <div class="empty-state">
       <div class="icon">📋</div>
@@ -299,7 +323,7 @@ pre.popup-code-body{padding:12px;font-family:'JetBrains Mono',monospace;font-siz
       placeholder="Search notes…" oninput="handleSearchScreen()" onkeydown="searchScreenKey(event)">
   </div>
   <div class="search-screen-results" id="searchScreenResults"></div>
-  <div class="search-screen-hint">Press Esc to return to base·bi</div>
+
 </div>
 
 <!-- NOTE POPUP (inside search screen) -->
@@ -348,9 +372,10 @@ pre.popup-code-body{padding:12px;font-family:'JetBrains Mono',monospace;font-siz
         <div class="chips-selected" id="tagChips"></div>
       </div>
     </div>
-    <div class="form-row" id="bodyRow">
-      <label class="form-label">Content</label>
-      <textarea class="form-input" id="f-body" placeholder="Write your note here…"></textarea>
+    <div class="form-row" id="bodyRow" style="position:relative">
+      <label class="form-label">Content <span style="font-size:9px;color:var(--text-dim);font-weight:400">— type [[ to link a note</span></label>
+      <textarea class="form-input" id="f-body" placeholder="Write your note here…" oninput="bodyInput(event)" onkeydown="bodyKeydown(event)"></textarea>
+      <div class="inline-link-dd" id="inlineLinkDd"></div>
     </div>
     <div class="form-row" id="codeRow" style="display:none">
       <label class="form-label">Code</label>
@@ -510,7 +535,7 @@ function getFiltered(){
   let f=notes.filter(n=>ids.includes(n.id));
   if(activeFolder!=='all')f=f.filter(n=>n.folder===activeFolder);
   if(activeTag)f=f.filter(n=>(n.tags||[]).includes(activeTag));
-  f.sort((a,b)=>new Date(b.modified||b.created||0)-new Date(a.modified||a.created||0));
+  f.sort((a,b)=>{ if(a.pinned&&!b.pinned)return -1; if(!a.pinned&&b.pinned)return 1; return new Date(b.modified||b.created||0)-new Date(a.modified||a.created||0); });
   return f;
 }
 
@@ -543,6 +568,11 @@ function copyBtn(btn,text){
     btn.textContent='✓ Copied';btn.classList.add('copied');
     setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('copied');},1500);
   }).catch(()=>{});
+}
+function copyNoteCode(btn){
+  const id=parseInt(btn.getAttribute('data-noteid'));
+  const note=notes.find(n=>n.id===id);
+  if(note&&note.code) copyBtn(btn,note.code);
 }
 
 // ══════════════════════════════════════════════════
@@ -588,7 +618,7 @@ function renderNoteList(){
     :filtered.map(n=>{
       const excerpt=(n.body||n.code||'').slice(0,55).replace(/\n/g,' ');
       return`<div class="note-item ${n.id===activeNoteId?'active':''}" onclick="selectNote(${n.id})">
-        <div class="note-item-title">${hl(n.title,searchQuery)}</div>
+        <div class="note-item-title">${n.pinned?'<span class="note-item-pin">📌</span> ':''} ${hl(n.title,searchQuery)}</div>
         <div class="note-item-meta">
           <span class="note-type-badge ${n.type==='code'?'type-code':'type-plain'}">${n.type==='code'?'Code':'Plain'}</span>
           <span class="note-item-folder">${esc(n.folder)}</span>
@@ -611,11 +641,11 @@ function renderDetail(note){
   if(note.type==='code'||note.type==='sql'){
     body=`<div class="code-block">
       <div class="code-header"><span class="code-lang">Code</span>
-        <button class="code-copy" onclick="copyBtn(this,'${esc(note.code||'').replace(/'/g,"\\'")}')">Copy</button>
+        <button class="code-copy" data-noteid="${note.id}" onclick="copyNoteCode(this)">Copy</button>
       </div>
       <pre class="code-body">${sqlHL(note.code||'')}</pre></div>`;
     if(note.body)body+=`<div class="note-desc">${hl(note.body,searchQuery)}</div>`;
-  }else{body=`<div class="note-body">${hl(note.body||'',searchQuery)}</div>`;}
+  }else{body=`<div class="note-body">${renderBodyWithLinks(note.body||'',searchQuery)}</div>`;}
   const linkedSection=links.length?`<div class="linked-section">
     <div class="linked-label">Linked Notes</div>
     <div class="linked-chips">${links.map(l=>`<span class="linked-chip" onclick="jumpToLink('${esc(l)}')">↗ ${esc(l)}</span>`).join('')}</div>
@@ -632,6 +662,7 @@ function renderDetail(note){
     <div class="detail-actions">
       <button class="btn btn-ghost" style="font-size:11px" onclick="openNoteModal(${note.id})">✎ Edit</button>
       <button class="btn btn-danger" style="font-size:11px" onclick="confirmDeleteNote(${note.id})">✕ Delete</button>
+      <button class="pin-btn ${note.pinned?'pinned':''}" onclick="togglePin(${note.id})" title="${note.pinned?'Unpin note':'Pin note'}">${note.pinned?'📌':'📍'}</button>
     </div>
     <div class="note-detail-content">${body}</div>
     ${linkedSection}`;
@@ -743,11 +774,10 @@ function renderPopupContent(note,q){
   const links=(note.links||[]).filter(Boolean);
   let bodyHtml='';
   if(isCode){
-    const codeEsc=esc(note.code||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     bodyHtml=`<div class="popup-code-block">
       <div class="popup-code-header">
         <span class="popup-code-lang">Code</span>
-        <button class="popup-code-copy" onclick="copyBtn(this,'${codeEsc}')">Copy</button>
+        <button class="popup-code-copy" data-noteid="${note.id}" onclick="copyNoteCode(this)">Copy</button>
       </div>
       <pre class="popup-code-body">${sqlHL(note.code||'')}</pre>
     </div>`;
@@ -904,7 +934,7 @@ function openNoteModal(id){
   document.getElementById('noteModalOverlay').classList.add('open');
   setTimeout(()=>document.getElementById('f-title').focus(),50);
 }
-function closeNoteModal(){document.getElementById('noteModalOverlay').classList.remove('open');editingNoteId=null;selectedTags=[];selectedLinks=[];}
+function closeNoteModal(){document.getElementById('noteModalOverlay').classList.remove('open');editingNoteId=null;selectedTags=[];selectedLinks=[];closeInlineLinkDd();}
 function toggleCodeField(){
   const t=document.getElementById('f-type').value;
   document.getElementById('bodyRow').style.display=t==='code'?'none':'';
@@ -1016,7 +1046,7 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     if(document.getElementById('notePopupOverlay').classList.contains('open')){closeNotePopup();return;}
     if(searchScreenOpen){closeSearchScreen();return;}
-    closeNoteModal();closeFolderModal();closeTagModal();closeExportModal();
+    closeNoteModal();closeFolderModal();closeTagModal();closeExportModal();closeInlineLinkDd();
     document.getElementById('tagDropdown').classList.remove('open');
     document.getElementById('linkDropdown').classList.remove('open');
   }
@@ -1026,6 +1056,105 @@ document.addEventListener('click',e=>{
   if(!document.getElementById('tagSelectorWrap').contains(e.target))document.getElementById('tagDropdown').classList.remove('open');
   if(!document.getElementById('linkSelectorWrap').contains(e.target))document.getElementById('linkDropdown').classList.remove('open');
 });
+
+
+// ══════════════════════════════════════════════════
+// RESIZABLE PANES
+// ══════════════════════════════════════════════════
+let resizing=null,resizeStart=0,resizeStartW=0;
+function startResize(e,which){
+  resizing=which; resizeStart=e.clientX;
+  const pane=which==='A'?document.getElementById('sidebar'):document.getElementById('noteListPane');
+  resizeStartW=pane.offsetWidth;
+  document.getElementById('resizer'+which).classList.add('dragging');
+  document.body.style.cursor='col-resize';
+  document.body.style.userSelect='none';
+  e.preventDefault();
+}
+document.addEventListener('mousemove',e=>{
+  if(!resizing)return;
+  const delta=e.clientX-resizeStart;
+  const pane=resizing==='A'?document.getElementById('sidebar'):document.getElementById('noteListPane');
+  const mn=resizing==='A'?140:160, mx=resizing==='A'?340:420;
+  pane.style.width=Math.min(mx,Math.max(mn,resizeStartW+delta))+'px';
+});
+document.addEventListener('mouseup',()=>{
+  if(!resizing)return;
+  document.getElementById('resizer'+resizing).classList.remove('dragging');
+  document.body.style.cursor=''; document.body.style.userSelect=''; resizing=null;
+});
+
+// ══════════════════════════════════════════════════
+// PIN NOTE
+// ══════════════════════════════════════════════════
+function togglePin(id){
+  const note=notes.find(n=>n.id===id); if(!note)return;
+  note.pinned=!note.pinned;
+  saveNotes(notes); renderAll(); renderDetail(note);
+}
+
+// ══════════════════════════════════════════════════
+// INLINE [[ LINK SYNTAX
+// ══════════════════════════════════════════════════
+let inlineLinkQuery='',inlineLinkCursor=-1,inlineLinkResults=[],inlineLinkStart=-1;
+
+function bodyInput(e){
+  const ta=document.getElementById('f-body');
+  const val=ta.value, pos=ta.selectionStart;
+  const before=val.slice(0,pos);
+  const ddOpen=before.lastIndexOf('[[');
+  if(ddOpen===-1||before.slice(ddOpen).includes(']]')){closeInlineLinkDd();return;}
+  const query=before.slice(ddOpen+2);
+  inlineLinkQuery=query; inlineLinkStart=ddOpen; inlineLinkCursor=-1;
+  const q=query.toLowerCase();
+  inlineLinkResults=notes.filter(n=>n.id!==editingNoteId&&(!q||n.title.toLowerCase().includes(q))).slice(0,8);
+  renderInlineLinkDd(ta);
+}
+
+function renderInlineLinkDd(ta){
+  const dd=document.getElementById('inlineLinkDd');
+  dd.innerHTML=inlineLinkResults.length
+    ?inlineLinkResults.map((n,i)=>`<div class="inline-link-dd-item ${i===inlineLinkCursor?'focused':''}" onclick="insertInlineLink('${esc(n.title)}')">${esc(n.title)}<span class="dd-folder">${esc(n.folder)}</span></div>`).join('')
+    :'<div class="inline-link-dd-empty">No notes found</div>';
+  const rect=ta.getBoundingClientRect();
+  const wrapRect=document.getElementById('bodyRow').getBoundingClientRect();
+  dd.style.top=(rect.bottom-wrapRect.top+4)+'px';
+  dd.style.left='0px';
+  dd.classList.add('open');
+}
+
+function bodyKeydown(e){
+  const dd=document.getElementById('inlineLinkDd');
+  if(!dd.classList.contains('open'))return;
+  if(e.key==='ArrowDown'){e.preventDefault();inlineLinkCursor=Math.min(inlineLinkResults.length-1,inlineLinkCursor+1);renderInlineLinkDd(document.getElementById('f-body'));}
+  else if(e.key==='ArrowUp'){e.preventDefault();inlineLinkCursor=Math.max(-1,inlineLinkCursor-1);renderInlineLinkDd(document.getElementById('f-body'));}
+  else if(e.key==='Enter'&&inlineLinkCursor>=0){e.preventDefault();insertInlineLink(inlineLinkResults[inlineLinkCursor].title);}
+  else if(e.key==='Escape'){e.stopPropagation();closeInlineLinkDd();}
+}
+
+function insertInlineLink(title){
+  const ta=document.getElementById('f-body');
+  const val=ta.value, pos=ta.selectionStart;
+  const before=val.slice(0,inlineLinkStart), after=val.slice(pos);
+  const inserted='[['+title+']]';
+  ta.value=before+inserted+after;
+  const newPos=before.length+inserted.length;
+  ta.selectionStart=ta.selectionEnd=newPos;
+  ta.focus(); closeInlineLinkDd();
+  if(!selectedLinks.includes(title)){selectedLinks.push(title);renderLinkChips();}
+}
+
+function closeInlineLinkDd(){
+  const dd=document.getElementById('inlineLinkDd');
+  if(dd)dd.classList.remove('open');
+  inlineLinkResults=[]; inlineLinkCursor=-1;
+}
+
+function renderBodyWithLinks(text,q){
+  return hl(text,q).replace(/\[\[([^\]]+)\]\]/g,(match,title)=>{
+    return '<span class="inline-link" onclick="jumpToLink(''+esc(title)+'')">&#8599; '+esc(title)+'</span>';
+  });
+}
 
 // ══════════════════════════════════════════════════
 // INIT
