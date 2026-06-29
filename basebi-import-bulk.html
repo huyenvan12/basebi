@@ -42,10 +42,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 
 /* LAYOUT */
 .body-wrap{flex:1;display:flex;overflow:hidden}
-.left-pane{flex:1;display:flex;flex-direction:column;overflow:hidden;transition:background .2s}
+.left-pane{width:calc(100% - 300px);min-width:320px;flex:none;display:flex;flex-direction:column;overflow:hidden;transition:background .2s}
 .left-pane.plain-mode{border-right:none}
 .left-pane.code-mode{border-right:none}
-.right-pane{width:300px;min-width:200px;max-width:500px;flex-shrink:0;background:var(--surface);display:flex;flex-direction:column;overflow:hidden}
+.right-pane{width:300px;min-width:200px;max-width:500px;flex:none;background:var(--surface);display:flex;flex-direction:column;overflow:hidden}
 
 /* LEFT HEADER */
 .left-header{display:flex;align-items:center;justify-content:space-between;padding:11px 20px;flex-shrink:0;border-bottom:1px solid var(--border)}
@@ -159,7 +159,7 @@ textarea.code-area{font-family:'JetBrains Mono',monospace;font-size:11px;min-hei
 ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 
 /* RESIZER */
-.resizer{width:4px;flex-shrink:0;background:transparent;cursor:col-resize;position:relative;z-index:10;transition:background .15s;border-left:1px solid var(--border)}
+.resizer{width:5px;flex-shrink:0;background:var(--border);cursor:col-resize;position:relative;z-index:10;transition:background .15s}
 .resizer:hover,.resizer.dragging{background:var(--accent)}
 .resizer::after{content:'';position:absolute;inset:0 -3px;background:transparent}
 
@@ -656,10 +656,11 @@ function doExport(){
 // ══════════════════════════════════════════════════
 // RESIZABLE PANES
 // ══════════════════════════════════════════════════
-let resizing=false,resizeStartX=0,resizeStartW=0;
+let resizing=false,resizeStartX=0,resizeStartWLeft=0,resizeStartWRight=0;
 function startResize(e){
   resizing=true; resizeStartX=e.clientX;
-  resizeStartW=document.getElementById('rightPane').offsetWidth;
+  resizeStartWLeft=document.getElementById('leftPane').offsetWidth;
+  resizeStartWRight=document.getElementById('rightPane').offsetWidth;
   document.getElementById('mainResizer').classList.add('dragging');
   document.body.style.cursor='col-resize';
   document.body.style.userSelect='none';
@@ -667,9 +668,11 @@ function startResize(e){
 }
 document.addEventListener('mousemove',e=>{
   if(!resizing)return;
-  const delta=resizeStartX-e.clientX; // dragging left = wider right pane
-  const newW=Math.min(500,Math.max(200,resizeStartW+delta));
-  document.getElementById('rightPane').style.width=newW+'px';
+  const delta=e.clientX-resizeStartX;
+  const newLeft=Math.max(320,resizeStartWLeft+delta);
+  const newRight=Math.max(200,resizeStartWRight-delta);
+  document.getElementById('leftPane').style.width=newLeft+'px';
+  document.getElementById('rightPane').style.width=newRight+'px';
 });
 document.addEventListener('mouseup',()=>{
   if(!resizing)return;
