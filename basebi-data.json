@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported": "2026-06-29T17:59:57.448Z",
+  "exported": "2026-06-29T18:12:52.914Z",
   "folders": [
     "Business",
     "Techie",
@@ -9,6 +9,20 @@
     "Personal"
   ],
   "notes": [
+    {
+      "id": 1782756673205,
+      "title": "Tim Bang",
+      "folder": "Techie",
+      "type": "code",
+      "tags": [
+        "OracleSQL"
+      ],
+      "links": [],
+      "body": "",
+      "code": "SELECT OWNER, TABLE_NAME, COLUMN_NAME\nFROM ALL_TAB_COLS\nWHERE 1=1\nAND OWNER != 'APPDEPLOY' AND OWNER != 'MA_TEMP'\nAND TABLE_NAME LIKE '%TB_CRM_INAPP_MONITOR%' \nAND COLUMN_NAME LIKE '%%';SELECT OWNER, TABLE_NAME, COLUMN_NAME\nFROM ALL_TAB_COLS\nWHERE 1=1\nAND OWNER != 'APPDEPLOY' AND OWNER != 'MA_TEMP'\nAND TABLE_NAME LIKE '%TB_CRM_INAPP_MONITOR%' \nAND COLUMN_NAME LIKE '%%';",
+      "created": "2026-06-29",
+      "modified": "2026-06-29"
+    },
     {
       "id": 1782750347452.2166,
       "title": "Card Status",
