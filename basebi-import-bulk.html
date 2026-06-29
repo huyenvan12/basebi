@@ -557,7 +557,11 @@ function loadSlot(i){
 function saveAndNext(){
   saveCurrentToSlot();
   const next = cursor+1;
-  if(next >= queue.length){ queue.push(emptySlot()); }
+  if(next >= queue.length){
+    const slot = emptySlot();
+    slot.type = currentType; // inherit last used type
+    queue.push(slot);
+  }
   renderQueue();
   updateProgress();
   loadSlot(next);
@@ -572,7 +576,9 @@ function navNote(dir){
 
 function addSlot(){
   saveCurrentToSlot();
-  queue.push(emptySlot());
+  const slot = emptySlot();
+  slot.type = currentType; // inherit last used type
+  queue.push(slot);
   renderQueue();
   updateProgress();
   loadSlot(queue.length-1);
