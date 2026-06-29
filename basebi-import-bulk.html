@@ -42,10 +42,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 
 /* LAYOUT */
 .body-wrap{flex:1;display:flex;overflow:hidden}
-.left-pane{flex:2;display:flex;flex-direction:column;overflow:hidden;transition:background .2s,border-color .2s}
-.left-pane.plain-mode{border-right:2px solid var(--accent)}
-.left-pane.code-mode{border-right:2px solid var(--sql)}
-.right-pane{width:280px;flex-shrink:0;background:var(--surface);display:flex;flex-direction:column;overflow:hidden}
+.left-pane{flex:1;display:flex;flex-direction:column;overflow:hidden;transition:background .2s}
+.left-pane.plain-mode{border-right:none}
+.left-pane.code-mode{border-right:none}
+.right-pane{width:300px;min-width:200px;max-width:500px;flex-shrink:0;background:var(--surface);display:flex;flex-direction:column;overflow:hidden}
 
 /* LEFT HEADER */
 .left-header{display:flex;align-items:center;justify-content:space-between;padding:11px 20px;flex-shrink:0;border-bottom:1px solid var(--border)}
@@ -157,6 +157,33 @@ textarea.code-area{font-family:'JetBrains Mono',monospace;font-size:11px;min-hei
 .confirm-btns{display:flex;gap:6px;margin-top:6px;justify-content:flex-end}
 
 ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* RESIZER */
+.resizer{width:4px;flex-shrink:0;background:transparent;cursor:col-resize;position:relative;z-index:10;transition:background .15s;border-left:1px solid var(--border)}
+.resizer:hover,.resizer.dragging{background:var(--accent)}
+.resizer::after{content:'';position:absolute;inset:0 -3px;background:transparent}
+
+/* LEFT PANE MODE INDICATOR (top border instead of side border) */
+.left-pane.plain-mode .left-header{border-top:2px solid var(--accent)}
+.left-pane.code-mode .left-header{border-top:2px solid var(--sql)}
+
+/* INLINE CREATE FOLDER */
+.folder-row{display:flex;gap:6px;align-items:center}
+.folder-row select.form-input{flex:1}
+.add-folder-btn{padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);cursor:pointer;font-family:inherit;font-size:11px;white-space:nowrap;transition:all .15s;flex-shrink:0}
+.add-folder-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+.new-folder-row{display:flex;gap:6px;align-items:center;margin-top:4px}
+.new-folder-row input{flex:1}
+.new-folder-row .confirm-btn{padding:7px 10px;border-radius:6px;border:1px solid rgba(22,163,74,.4);background:var(--success-dim);color:var(--success);cursor:pointer;font-family:inherit;font-size:11px;flex-shrink:0}
+.new-folder-row .cancel-btn{padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);cursor:pointer;font-family:inherit;font-size:11px;flex-shrink:0}
+
+/* [[ INLINE LINK DROPDOWN */
+.inline-link-dd{position:absolute;background:var(--surface);border:1px solid var(--border);border-radius:6px;z-index:300;max-height:180px;overflow-y:auto;display:none;min-width:240px;box-shadow:0 4px 12px rgba(0,0,0,.1)}
+.inline-link-dd.open{display:block}
+.inline-link-dd-item{padding:7px 12px;font-size:12px;cursor:pointer;color:var(--text-muted);transition:background .1s;display:flex;align-items:center;gap:8px}
+.inline-link-dd-item:hover,.inline-link-dd-item.focused{background:var(--accent-dim);color:var(--accent)}
+.inline-link-dd-item .dd-folder{font-size:9px;color:var(--text-dim);margin-left:auto}
+.inline-link-dd-empty{padding:8px 12px;font-size:11px;color:var(--text-dim)}
 </style>
 </head>
 <body>
@@ -226,7 +253,15 @@ textarea.code-area{font-family:'JetBrains Mono',monospace;font-size:11px;min-hei
       <div class="two-col">
         <div class="field-row">
           <label class="field-label">Folder</label>
-          <select class="form-input" id="f-folder"></select>
+          <div class="folder-row">
+            <select class="form-input" id="f-folder"></select>
+            <button class="add-folder-btn" onclick="showNewFolderRow()" id="addFolderBtn" title="Create new folder">＋ New</button>
+          </div>
+          <div class="new-folder-row" id="newFolderRow" style="display:none">
+            <input class="form-input" id="newFolderInput" placeholder="Folder name…" onkeydown="newFolderKey(event)">
+            <button class="confirm-btn" onclick="confirmNewFolder()">Add</button>
+            <button class="cancel-btn" onclick="hideNewFolderRow()">Cancel</button>
+          </div>
         </div>
         <div class="field-row">
           <label class="field-label">Tags</label>
@@ -241,9 +276,10 @@ textarea.code-area{font-family:'JetBrains Mono',monospace;font-size:11px;min-hei
 
       <!-- PLAIN content -->
       <div id="plainSection">
-        <div class="field-row">
-          <label class="field-label">Content</label>
-          <textarea class="form-input" id="f-body" placeholder="Write your note here…"></textarea>
+        <div class="field-row" style="position:relative">
+          <label class="field-label">Content <span style="font-size:9px;color:var(--text-dim);font-weight:400;text-transform:none;letter-spacing:0">— type [[ to link a note</span></label>
+          <textarea class="form-input" id="f-body" placeholder="Write your note here…" oninput="bodyInput(event)" onkeydown="bodyKeydown(event)"></textarea>
+          <div class="inline-link-dd" id="inlineLinkDd"></div>
         </div>
       </div>
 
@@ -277,6 +313,8 @@ textarea.code-area{font-family:'JetBrains Mono',monospace;font-size:11px;min-hei
       <button class="btn" id="saveNextBtn" onclick="saveAndNext()">Save → next</button>
     </div>
   </div>
+
+  <div class="resizer" id="mainResizer" onmousedown="startResize(event)"></div>
 
   <!-- RIGHT PANE -->
   <div class="right-pane hidden" id="rightPane">
@@ -614,6 +652,111 @@ function doExport(){
   setStepUI(3);
 }
 
+
+// ══════════════════════════════════════════════════
+// RESIZABLE PANES
+// ══════════════════════════════════════════════════
+let resizing=false,resizeStartX=0,resizeStartW=0;
+function startResize(e){
+  resizing=true; resizeStartX=e.clientX;
+  resizeStartW=document.getElementById('rightPane').offsetWidth;
+  document.getElementById('mainResizer').classList.add('dragging');
+  document.body.style.cursor='col-resize';
+  document.body.style.userSelect='none';
+  e.preventDefault();
+}
+document.addEventListener('mousemove',e=>{
+  if(!resizing)return;
+  const delta=resizeStartX-e.clientX; // dragging left = wider right pane
+  const newW=Math.min(500,Math.max(200,resizeStartW+delta));
+  document.getElementById('rightPane').style.width=newW+'px';
+});
+document.addEventListener('mouseup',()=>{
+  if(!resizing)return;
+  document.getElementById('mainResizer').classList.remove('dragging');
+  document.body.style.cursor=''; document.body.style.userSelect=''; resizing=false;
+});
+
+// ══════════════════════════════════════════════════
+// INLINE CREATE FOLDER
+// ══════════════════════════════════════════════════
+function showNewFolderRow(){
+  document.getElementById('newFolderRow').style.display='flex';
+  document.getElementById('addFolderBtn').style.display='none';
+  document.getElementById('newFolderInput').value='';
+  setTimeout(()=>document.getElementById('newFolderInput').focus(),50);
+}
+function hideNewFolderRow(){
+  document.getElementById('newFolderRow').style.display='none';
+  document.getElementById('addFolderBtn').style.display='';
+}
+function confirmNewFolder(){
+  const name=document.getElementById('newFolderInput').value.trim();
+  if(!name)return;
+  if(existingFolders.includes(name)){alert('Folder already exists.');return;}
+  existingFolders.push(name);
+  populateFolderSelect();
+  document.getElementById('f-folder').value=name;
+  hideNewFolderRow();
+}
+function newFolderKey(e){
+  if(e.key==='Enter'){e.preventDefault();confirmNewFolder();}
+  if(e.key==='Escape'){e.preventDefault();hideNewFolderRow();}
+}
+
+// ══════════════════════════════════════════════════
+// INLINE [[ LINK SYNTAX
+// ══════════════════════════════════════════════════
+let inlineLinkQuery='',inlineLinkCursor=-1,inlineLinkResults=[],inlineLinkStart=-1;
+
+function bodyInput(e){
+  const ta=document.getElementById('f-body');
+  const val=ta.value, pos=ta.selectionStart;
+  const before=val.slice(0,pos);
+  const ddOpen=before.lastIndexOf('[[');
+  if(ddOpen===-1||before.slice(ddOpen).includes(']]')){closeInlineLinkDd();return;}
+  const query=before.slice(ddOpen+2);
+  inlineLinkQuery=query; inlineLinkStart=ddOpen; inlineLinkCursor=-1;
+  const q=query.toLowerCase();
+  inlineLinkResults=allNoteTitles().filter(n=>!q||n.title.toLowerCase().includes(q)).slice(0,8);
+  renderInlineLinkDd(ta);
+}
+function renderInlineLinkDd(ta){
+  const dd=document.getElementById('inlineLinkDd');
+  dd.innerHTML=inlineLinkResults.length
+    ?inlineLinkResults.map((n,i)=>`<div class="inline-link-dd-item ${i===inlineLinkCursor?'focused':''}" onclick="insertInlineLink('${esc(n.title)}')">${esc(n.title)}<span class="dd-folder">${esc(n.folder)}</span></div>`).join('')
+    :'<div class="inline-link-dd-empty">No notes found</div>';
+  const rect=ta.getBoundingClientRect();
+  const wrapRect=ta.parentElement.getBoundingClientRect();
+  dd.style.top=(rect.bottom-wrapRect.top+4)+'px';
+  dd.style.left='0px';
+  dd.classList.add('open');
+}
+function bodyKeydown(e){
+  const dd=document.getElementById('inlineLinkDd');
+  if(!dd.classList.contains('open'))return;
+  if(e.key==='ArrowDown'){e.preventDefault();inlineLinkCursor=Math.min(inlineLinkResults.length-1,inlineLinkCursor+1);renderInlineLinkDd(document.getElementById('f-body'));}
+  else if(e.key==='ArrowUp'){e.preventDefault();inlineLinkCursor=Math.max(-1,inlineLinkCursor-1);renderInlineLinkDd(document.getElementById('f-body'));}
+  else if(e.key==='Enter'&&inlineLinkCursor>=0){e.preventDefault();insertInlineLink(inlineLinkResults[inlineLinkCursor].title);}
+  else if(e.key==='Escape'){e.stopPropagation();closeInlineLinkDd();}
+}
+function insertInlineLink(title){
+  const ta=document.getElementById('f-body');
+  const val=ta.value, pos=ta.selectionStart;
+  const before=val.slice(0,inlineLinkStart), after=val.slice(pos);
+  const inserted='[['+title+']]';
+  ta.value=before+inserted+after;
+  const newPos=before.length+inserted.length;
+  ta.selectionStart=ta.selectionEnd=newPos;
+  ta.focus(); closeInlineLinkDd();
+  if(!selLinks.includes(title)){selLinks.push(title);renderLinkChips();}
+}
+function closeInlineLinkDd(){
+  const dd=document.getElementById('inlineLinkDd');
+  if(dd)dd.classList.remove('open');
+  inlineLinkResults=[]; inlineLinkCursor=-1;
+}
+
 // ══════════════════════════════════════════════════
 // KEYBOARD
 // ══════════════════════════════════════════════════
@@ -622,6 +765,7 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     document.getElementById('tagDD').classList.remove('open');
     document.getElementById('linkDD').classList.remove('open');
+    closeInlineLinkDd();
   }
 });
 document.addEventListener('click',e=>{
