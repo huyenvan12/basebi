@@ -1,10 +1,12 @@
 {
   "version": 1,
-  "exported": "2026-06-29T16:25:47.452Z",
+  "exported": "2026-06-29T17:29:42.325Z",
   "folders": [
     "Business",
     "Techie",
-    "Lesson"
+    "Lesson",
+    "Playbook",
+    "Personal"
   ],
   "notes": [
     {
@@ -109,6 +111,135 @@
       "links": [],
       "body": "CODE_CARD_STATUS\tNAME_CARD_STATUS\nA\tACTIVE\nB\tBLOCKED\nC\tCREATED\nD\tDETAIN\nI\tINACTIVE\nL\tLOST\nN\tRENEWED\nR\tRESERVED\nS\tSTOLEN\nU\tUNCONFIRMED\nX\tCANCELLED\nXAP\tXAP\nXNA\tXNA",
       "code": null,
+      "created": "2026-06-29",
+      "modified": "2026-06-29"
+    },
+    {
+      "id": 1782751549977.6992,
+      "title": "My HR Info",
+      "folder": "Personal",
+      "type": "plain",
+      "tags": [
+        "HR",
+        "Info",
+        "HRCode"
+      ],
+      "links": [],
+      "body": "- HR Code: 00059814\n- Title: CVM Campaign Business Analyst\n- Department: Customer Value Management\n- Email: Huyen.VanNN@homecredit.vn\n- Team: SAS Campaign",
+      "code": null,
+      "created": "2026-06-29",
+      "modified": "2026-06-29"
+    },
+    {
+      "id": 1782751549977.682,
+      "title": "Perplexity Account",
+      "folder": "Personal",
+      "type": "plain",
+      "tags": [
+        "AI"
+      ],
+      "links": [],
+      "body": "simplelogin-newsletter.utter831@simplelogin.com\ngx19v-w52kp",
+      "code": null,
+      "created": "2026-06-29",
+      "modified": "2026-06-29"
+    },
+    {
+      "id": 1782752500865.9712,
+      "title": "Day Past Due",
+      "folder": "Business",
+      "type": "plain",
+      "tags": [
+        "DPD"
+      ],
+      "links": [],
+      "body": "Trong bảng FT_LOAN, 1 KH ~ n Loan, mỗi Loan-Contract có các fields như sau:\n- CNT_DAYS_PAST_DUE_CURRENT: current DPD for current contract; có thể bằng NULL khi KH hiện tại đã thanh toán, k nợ quá hạn nữa\n- CNT_DAYS_PAST_DUE_MAX: max DPD từng ghi nhận trên loan-contract này; chỉ bằng 0 khi KH chưa từng nợ quá hạn\n- CNT_DAYS_PAST_DUE_SUM: sum của DPD từng ghi nhận trên loan-contract này; chỉ bằng 0 khi KH chưa từng nợ quá hạn\n\nTừ các field trên, các field  trong bảng FT_CLIENT_PART_STATIC tức level client (có thể) được aggregate như sau:\n- CNT_DAYS_PAST_DUE_TOLERANCE: Max của field CNT_DAYS_PAST_DUE_CURRENT của các contract cùng 1 KH (trạng thái active hay paidoff/writen off/close gì thì vẫn tính)\n- CNT_DAYS_PAST_DUE_TOL_CUR_MAX: Max của field CNT_DAYS_PAST_DUE_MAX của các ACTIVE contract cùng 1 KH; bằng 0 khi KH hiện không có active contract\n- CNT_DAYS_PAST_DUE_TOL_MAX: Max của field CNT_DAYS_PAST_DUE_MAX của all contract cùng 1 KH\n- CNT_DAYS_PAST_DUE_TOL_SUM: Sum của field CNT_DAYS_PAST_DUE_SUM của các contract cùng 1 KH",
+      "code": null,
+      "created": "2026-06-29",
+      "modified": "2026-06-29"
+    },
+    {
+      "id": 1782752500866.7742,
+      "title": "Connect to DWH - SAS EG",
+      "folder": "Techie",
+      "type": "code",
+      "tags": [
+        "SASEG",
+        "DWH"
+      ],
+      "links": [],
+      "body": "",
+      "code": "proc pwencode in='Ði?n Password c?a ch? vào dây' method=sas002;\nrun;\n\noptions nosource nosymbolgen nosource2 nomprint;\n%LET USR=\"HCVN_HUYENVANNN\";\n%LET PSSWD=\"{SAS002}1B3D10513EB6ED6A4B9AC7811016D8AF0CB73F59\";\n%LET SCHM=AP_CRM_CC;\n%LET PATH=\"DBHDWVN.VN.PROD:1521/HDWVN.HOMECREDIT.VN\";\n%PUT PATH: &PATH;\nLIBNAME APCRM ORACLE PATH=&PATH SCHEMA=AP_CRM_CC USER=&USR PASSWORD=&PSSWD BUFFSIZE=5000;\n\nproc sql;\ncreate table AF_BLOCK_CUID as\nselect *\nfrom APCRM.TB_CALL_NRTU_EXCLUSION\n/*where data_updated_date=today()*/\n;quit;",
+      "created": "2026-06-29",
+      "modified": "2026-06-29"
+    },
+    {
+      "id": 1782752500866.2383,
+      "title": "Import into IL_IMPORT",
+      "folder": "Techie",
+      "type": "code",
+      "tags": [
+        "IL_IMPORT"
+      ],
+      "links": [],
+      "body": "Import into IL_IMPORT",
+      "code": "/*Import into IL_IMPORT*/\nPROC SQL OUTOBS=1100;\n\tINSERT INTO INT.IL_IMPORT\n\t(\n\t    ID_CUID, \n\t    IMPORT_NAME, \n\t    IMPORT_DATE, \n\t    CHAR_PARAM1, \n\t    CHAR_PARAM2, \n\t    CHAR_PARAM3, \n\t    CHAR_PARAM4, \n\t    CHAR_PARAM5,\n\t    CHAR_PARAM6,\n\t    NUM_PARAM1,\n\t    NUM_PARAM2,\n\t    DATE_PARAM1,\n\t    DATE_PARAM2\n\t)\n\tSELECT \n\t    ID_CUID, \n\t    'TB_CALL_NRTU_EXCLUSION_PHASE2' AS IMPORT_NAME,\n\t    DATETIME() FORMAT=datetime20. \tAS IMPORT_DATE,\n\t    CODE_CREDIT_TYPE \t\t\tAS CHAR_PARAM1, \n\t    CODE_PRODUCT \t\t\t\tAS CHAR_PARAM2, \n\t    CODE_CREDIT_STATUS \t\t\tAS CHAR_PARAM3, \n\t    CODE_CARD_STATUS \t\t\tAS CHAR_PARAM4, \n\t    CODE_LAST_BLOCKING_REASON \tAS CHAR_PARAM5,\n\t    LAST_TEXT_BLOCK_MESSAGE\t\tAS CHAR_PARAM6,\n\t    SKP_CREDIT_CASE \t\t\tAS NUM_PARAM1,\n\t    SKP_CARD\t\t\t\tAS NUM_PARAM2,\n\t    DTIME_START_BLOCK\t\t\tAS DATE_PARAM1,\n\t    DTIME_STOP_BLOCK\t\t\tAS DATE_PARAM2\n\tFROM WORK.FINAL_POOL_DATA\n;QUIT;",
+      "created": "2026-06-29",
+      "modified": "2026-06-29"
+    },
+    {
+      "id": 1782754182324.6807,
+      "title": "days_diff",
+      "folder": "Techie",
+      "type": "code",
+      "tags": [
+        "SASEG"
+      ],
+      "links": [],
+      "body": "",
+      "code": "intck('day', datepart(t1.DATE_CONTRACT_SIGNATURE), today()) as days_diff",
+      "created": "2026-06-29",
+      "modified": "2026-06-29"
+    },
+    {
+      "id": 1782754182325.9958,
+      "title": "Get client latest contract active",
+      "folder": "Techie",
+      "type": "code",
+      "tags": [
+        "SASEG"
+      ],
+      "links": [],
+      "body": "find the latest contract (active, HCVN) per client",
+      "code": "PROC SQL;\ncreate table get_client_contract_active as\nselect  t1.ID_CUID\n\t, t1.CODE_CREDIT_TYPE\n\t, t1.CODE_PRODUCT\n\t, t1.CODE_CREDIT_STATUS\t\n\t, t1.SKP_CREDIT_CASE\n\t, t1.TEXT_CONTRACT_NUMBER\n\t, t1.DATE_CONTRACT_SIGNATURE\n\t, t1.CODE_CREDIT_OWNER\n\t, t1.NAME_DISBURSMENT_CHANNEL_TYPE\n\t, intck('day', datepart(t1.DATE_CONTRACT_SIGNATURE), today()) as days_diff\nfrom SDM.FT_CONTRACT t1\ninner join SDM.FT_CLIENT_PART_STATIC t3\non t1.ID_CUID = t3.ID_CUID\ninner join (\n\t/*find the latest contract (active, HCVN) per client*/\n    select ID_CUID,\n           max(DATE_CONTRACT_SIGNATURE) as Max_Contract_Date\n    from SDM.FT_CONTRACT\n    where CODE_CREDIT_STATUS = 'A'\n      and CODE_CREDIT_OWNER = 'HCVN'\n    group by ID_CUID\n) t2\non t1.ID_CUID = t2.ID_CUID\nand t1.DATE_CONTRACT_SIGNATURE = t2.Max_Contract_Date\n\nwhere t1.CODE_CREDIT_STATUS ='A'\nand t1.CODE_CREDIT_OWNER = 'HCVN'\nand (t3.CNT_DAYS_PAST_DUE_TOLERANCE = 0\nor t3.CNT_DAYS_PAST_DUE_TOLERANCE is null)\nand (\n    (t2.Max_Contract_Date >= Today()-20 and t2.Max_Contract_Date < Today()-19)\n or (t2.Max_Contract_Date >= Today()-25 and t2.Max_Contract_Date < Today()-24)\n)\n;QUIT;",
+      "created": "2026-06-29",
+      "modified": "2026-06-29"
+    },
+    {
+      "id": 1782754182325.139,
+      "title": "Communication Policies",
+      "folder": "Techie",
+      "type": "code",
+      "tags": [
+        "SASEG"
+      ],
+      "links": [],
+      "body": "push_policy, zns_policy",
+      "code": "proc sql;  \ncreate table push_policy as\nselect distinct ID_CUID\nfrom SDM.FT_CLIENT_PART_DYNAMIC\nwhere FLAG_GLOBAL_MOBILE_APP = 'Y';\n\ncreate table zns_policy as\nselect distinct t0.ID_CUID\nfrom SDM.FT_CLIENT_PART_STATIC t0\ninner join SDM.FT_CLIENT_CONTACT t1\n  on t0.SKP_CLIENT = t1.SKP_CLIENT\nleft join INT.CM_BLACKLIST bl\n  on t0.ID_CUID = bl.ID_CUID\n  and bl.BLACKLIST_CHANNEL = 'ZNS'\nwhere t0.FLAG_PDP_CONSENT = 'Y'\nand t0.FLAG_VALID_DOCUMENT = 'Y'\nand t1.NAME_PHONE_MOBILE_PRIM_STATUS = 'Valid'\nand bl.ID_CUID is null\n;quit;",
+      "created": "2026-06-29",
+      "modified": "2026-06-29"
+    },
+    {
+      "id": 1782754182325.0315,
+      "title": "GMA Banner Log",
+      "folder": "Techie",
+      "type": "code",
+      "tags": [
+        "SASEG"
+      ],
+      "links": [],
+      "body": "Check log GMA Banner",
+      "code": "proc sql;\n    create table check_log_all as\n    select \n        t0.CUID,t0.CORRELATION_ID,t1.CORRELATION_ID as BN_CORRELATION_ID,\n         t1.RTDM_LOG_EVENT_ID, \n        t0.CREATED_DTTM,\n        t0.TEMPLATE_ID,\n        t0.TEMPLATE_PRIORITY,\n        t0.LIMIT_AMOUNT,\n        t0.CUSTOM_FIELD_1 as CF1_CODE_PRODUCT,\n        t0.CUSTOM_FIELD_2 as CF2_OFFER_TYPE,\n        t0.CUSTOM_FIELD_3 as CF3_OFFER_TYPE_CODE,\n        t0.CUSTOM_INFO7 as CF7_latestSegment,\n        t0.CUSTOM_INFO8 as CF8_JSP,\n        t0.CUSTOM_INFO9 as CF9_IDTRIGGER,\n        t0.CUSTOM_INFO10 as CF10_Customer_Type,\n        t0.CUSTOM_FIELD_5 as CF5_minDownPayment,\n        t0.CUSTOM_INFO6,\n        t0.OFFER_ID AS LOG_OFFER_ID,\n\t  t0.CUSTOM_FIELD_3 as LG_OFFER_TYPE_CODE,\n        t1.TRIGGER_ID,\n        t1.JOURNEY_START_POINT,\n        t1.RESPONSE_STATUS,\n        t1.RESPONSE_STATUS_DESC,\n        t1.CORRELATION_ID\n    from MONITOR.RTDM_LOG_GMA_MESSAGES t0\n    inner join MONITOR.RTDM_LOG_GMA_BANNER t1\n        on t0.rtdm_log_gma_banner_id = t1.rtdm_log_event_id\n    where 1=1\n      and t0.CREATED_DTTM >= dhms(today()-1, 22, 45, 0)\n\tand BN_CORRELATION_ID not like 'Test Case%'\n    order by t0.CREATED_DTTM asc\n    ;\nquit;",
       "created": "2026-06-29",
       "modified": "2026-06-29"
     }
