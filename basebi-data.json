@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "exported": "2026-06-29T11:56:22.403Z",
+  "folders": [
+    "Business",
+    "Techie",
+    "Lesson"
+  ],
+  "notes": [
+    {
+      "id": 1,
+      "title": "CRM – Overdue loan segmentation query",
+      "folder": "Techie",
+      "type": "sql",
+      "tags": [
+        "CRM",
+        "SQL",
+        "loan",
+        "segmentation"
+      ],
+      "code": "SELECT customer_id,\n       loan_id,\n       DATEDIFF(day, due_date, GETDATE()) AS days_overdue,\n       outstanding_balance\nFROM   loan_accounts\nWHERE  status = 'OVERDUE'\n  AND  DATEDIFF(day, due_date, GETDATE()) > 30\nORDER  BY days_overdue DESC;",
+      "body": "Use this to pull customers with DPD > 30 for the monthly NPL report. Pair with the MOB bucket logic.",
+      "links": [
+        "MOB bucket classification"
+      ],
+      "created": "2026-06-01",
+      "modified": "2026-06-01"
+    },
+    {
+      "id": 2,
+      "title": "MOB bucket classification",
+      "folder": "Techie",
+      "type": "sql",
+      "tags": [
+        "SQL",
+        "MOB",
+        "bucket",
+        "CRM"
+      ],
+      "code": "SELECT customer_id,\n       CASE\n         WHEN mob BETWEEN 1  AND 3  THEN 'Early'\n         WHEN mob BETWEEN 4  AND 6  THEN 'Mid'\n         WHEN mob BETWEEN 7  AND 12 THEN 'Mature'\n         ELSE 'Aged'\n       END AS mob_bucket\nFROM   customer_mob;",
+      "body": "MOB = Month on Book. Used in Last MOB campaign targeting.",
+      "links": [
+        "CRM – Overdue loan segmentation query"
+      ],
+      "created": "2026-06-05",
+      "modified": "2026-06-05"
+    },
+    {
+      "id": 3,
+      "title": "Sprint ticket escalation SOP",
+      "folder": "Business",
+      "type": "plain",
+      "tags": [
+        "SOP",
+        "sprint",
+        "escalation",
+        "process"
+      ],
+      "body": "1. Identify blocker tickets (status = Blocked > 2 days).\n2. Ping assignee on Teams with ticket link.\n3. If no response within 4h, escalate to team lead.\n4. Log escalation in TicketTracker sheet with timestamp.\n5. Follow up next standup.",
+      "links": [],
+      "created": "2026-06-10",
+      "modified": "2026-06-10"
+    },
+    {
+      "id": 4,
+      "title": "DuPont decomposition – bank ROE",
+      "folder": "Lesson",
+      "type": "plain",
+      "tags": [
+        "finance",
+        "DuPont",
+        "ROE",
+        "bank",
+        "UEH"
+      ],
+      "body": "ROE = Net Profit Margin × Asset Turnover × Equity Multiplier\n\nROE = (Net Income / Revenue) × (Revenue / Total Assets) × (Total Assets / Equity)\n\nFor Vietnamese banks:\n- NIM drives NP margin\n- Leverage (equity multiplier) is typically high (10–15x)\n- Asset quality affects the margin leg (via credit loss provisions)\n\nApply CAMEL alongside to contextualise each component.",
+      "links": [
+        "CAMEL framework – VN banks"
+      ],
+      "created": "2026-06-15",
+      "modified": "2026-06-15"
+    },
+    {
+      "id": 5,
+      "title": "CAMEL framework – VN banks",
+      "folder": "Lesson",
+      "type": "plain",
+      "tags": [
+        "CAMEL",
+        "bank",
+        "finance",
+        "UEH",
+        "analysis"
+      ],
+      "body": "C – Capital Adequacy: CAR (Basel II/III compliance, SBV minimum 8%)\nA – Asset Quality: NPL ratio, special-mention loans, LLR coverage\nM – Management: governance scores, board independence (VCGS)\nE – Earnings: ROA, ROE, NIM, CIR (Cost-to-Income)\nL – Liquidity: LDR, short-term funding gap, SBV repo access\n\nNote: SCB collapse (2022) is a canonical case of failure across A, M, L, H simultaneously.",
+      "links": [
+        "DuPont decomposition – bank ROE"
+      ],
+      "created": "2026-06-18",
+      "modified": "2026-06-29",
+      "code": null
+    }
+  ]
+}
