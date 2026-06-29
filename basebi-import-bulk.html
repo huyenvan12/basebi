@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>base·bi / bulk import</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--surface:#181c27;--surface2:#1f2535;--surface3:#242a3a;
+  --border:#2a3047;--accent:#5b8dee;--accent-dim:#1e2d52;--accent-glow:rgba(91,141,238,.12);
+  --text:#e2e8f0;--text-muted:#7a8599;--text-dim:#4a556b;
+  --sql:#f59e0b;--sql-dim:#3a2800;--sql-glow:rgba(245,158,11,.1);
+  --success:#4ade80;--success-dim:#0d2e1a;
+  --danger:#f87171;--danger-dim:#3d1515;
+  --code-bg:#0d1117;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;font-size:13px}
+
+/* TOPBAR */
+.topbar{display:flex;align-items:center;gap:14px;padding:10px 20px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.logo{font-size:15px;font-weight:600;color:var(--accent);letter-spacing:-.3px}
+.logo em{color:var(--text-muted);font-style:normal;font-weight:300}
+.logo-sep{color:var(--text-dim);margin:0 4px}
+.logo-sub{font-size:13px;font-weight:400;color:var(--text-muted)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.progress-pill{font-size:11px;color:var(--text-muted);background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 10px}
+.progress-pill span{color:var(--accent);font-weight:500}
+
+/* STEPS */
+.steps{display:flex;align-items:center;padding:12px 20px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;gap:0}
+.step{display:flex;align-items:center;gap:7px;font-size:11px;padding:5px 14px;border:1px solid var(--border);color:var(--text-dim);background:var(--bg);cursor:default;transition:all .15s}
+.step:first-child{border-radius:6px 0 0 6px}
+.step:last-child{border-radius:0 6px 6px 0}
+.step+.step{border-left:none}
+.step.done{background:var(--success-dim);color:var(--success);border-color:rgba(74,222,128,.3)}
+.step.active{background:var(--accent-dim);color:var(--accent);border-color:rgba(91,141,238,.4)}
+.step-num{width:17px;height:17px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;background:var(--border);color:var(--text-dim);flex-shrink:0}
+.step.done .step-num{background:var(--success);color:#0f1117}
+.step.active .step-num{background:var(--accent);color:#fff}
+
+/* LAYOUT */
+.body-wrap{flex:1;display:flex;overflow:hidden}
+.left-pane{flex:2;display:flex;flex-direction:column;overflow:hidden;transition:background .2s,border-color .2s}
+.left-pane.plain-mode{border-right:2px solid var(--accent)}
+.left-pane.code-mode{border-right:2px solid var(--sql)}
+.right-pane{width:280px;flex-shrink:0;background:var(--surface);display:flex;flex-direction:column;overflow:hidden}
+
+/* LEFT HEADER */
+.left-header{display:flex;align-items:center;justify-content:space-between;padding:11px 20px;flex-shrink:0;border-bottom:1px solid var(--border)}
+.left-pane.plain-mode .left-header{background:var(--accent-glow)}
+.left-pane.code-mode .left-header{background:var(--sql-glow)}
+.note-label{font-size:12px;font-weight:600;color:var(--text)}
+.note-sublabel{font-size:10px;color:var(--text-muted);margin-top:1px}
+
+.type-toggle{display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.type-btn{padding:5px 14px;font-size:11px;font-weight:500;border:none;background:var(--surface2);color:var(--text-dim);cursor:pointer;font-family:inherit;transition:all .15s}
+.type-btn.active-plain{background:var(--accent-dim);color:var(--accent)}
+.type-btn.active-code{background:var(--sql-dim);color:var(--sql)}
+
+/* LEFT FORM */
+.left-form{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px}
+.field-row{display:flex;flex-direction:column;gap:4px}
+.field-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text-dim)}
+.form-input{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:12px;outline:none;width:100%;transition:border-color .15s}
+.form-input:focus{border-color:var(--accent)}
+.code-mode .form-input:focus{border-color:var(--sql)}
+.form-input::placeholder{color:var(--text-dim)}
+select.form-input option{background:var(--surface2)}
+textarea.form-input{resize:vertical;min-height:90px;line-height:1.65}
+textarea.code-area{font-family:'JetBrains Mono',monospace;font-size:11px;min-height:110px;background:var(--code-bg);border-color:var(--border)}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* TAG / LINK SELECTOR */
+.selector-wrap{position:relative}
+.dropdown{position:absolute;top:calc(100% + 3px);left:0;right:0;background:var(--surface2);border:1px solid var(--border);border-radius:6px;z-index:50;display:none;max-height:150px;overflow-y:auto}
+.dropdown.open{display:block}
+.dd-item{padding:7px 10px;font-size:11px;color:var(--text-muted);cursor:pointer;transition:background .1s}
+.dd-item:hover{background:var(--accent-dim);color:var(--accent)}
+.dd-item.dd-new{color:var(--accent);font-style:italic}
+.dd-item.dd-link:hover{background:var(--success-dim);color:var(--success)}
+.dd-empty{padding:8px 10px;font-size:11px;color:var(--text-dim);text-align:center}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.chip{display:inline-flex;align-items:center;gap:4px;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:500}
+.chip-tag{background:var(--accent-dim);color:var(--accent);border:1px solid rgba(91,141,238,.3)}
+.chip-link{background:var(--success-dim);color:var(--success);border:1px solid rgba(74,222,128,.25)}
+.chip-x{background:none;border:none;cursor:pointer;color:inherit;opacity:.6;font-size:12px;padding:0;line-height:1}
+.chip-x:hover{opacity:1}
+
+/* LEFT FOOTER */
+.left-footer{display:flex;align-items:center;gap:8px;padding:10px 20px;border-top:1px solid var(--border);flex-shrink:0;background:var(--surface)}
+.kbd{display:inline-block;background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:1px 5px;font-size:9px;color:var(--text-dim);font-family:'JetBrains Mono',monospace}
+.hint{font-size:10px;color:var(--text-dim);margin-right:auto}
+.btn{padding:6px 12px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-family:inherit;font-size:11px;font-weight:500;transition:all .15s;background:transparent;color:var(--text-muted)}
+.btn:hover{background:var(--surface2);color:var(--text)}
+.btn-plain{background:var(--accent-dim);color:var(--accent);border-color:rgba(91,141,238,.4)}
+.btn-plain:hover{background:rgba(91,141,238,.25)}
+.btn-code{background:var(--sql-dim);color:var(--sql);border-color:rgba(245,158,11,.4)}
+.btn-code:hover{background:rgba(245,158,11,.2)}
+.btn-success{background:var(--success-dim);color:var(--success);border-color:rgba(74,222,128,.3)}
+.btn-success:hover{background:rgba(74,222,128,.15)}
+.btn-danger{background:var(--danger-dim);color:var(--danger);border-color:transparent}
+.btn-danger:hover{border-color:var(--danger)}
+
+/* RIGHT PANE */
+.right-header{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.right-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text-dim)}
+.prog-bar-wrap{padding:8px 14px 4px;flex-shrink:0}
+.prog-track{height:3px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:5px}
+.prog-fill{height:100%;background:var(--accent);border-radius:3px;transition:width .3s}
+.prog-labels{display:flex;justify-content:space-between;font-size:9px;color:var(--text-dim)}
+
+.queue{flex:1;overflow-y:auto}
+.q-item{display:flex;align-items:flex-start;gap:8px;padding:8px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s}
+.q-item:last-child{border-bottom:none}
+.q-item:hover{background:var(--surface2)}
+.q-item.q-active{background:var(--accent-dim);border-left:2px solid var(--accent)}
+.q-item.q-done{opacity:.7}
+.q-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.dot-plain{background:var(--accent)}
+.dot-code{background:var(--sql)}
+.dot-empty{background:var(--border)}
+.q-body{flex:1;min-width:0}
+.q-title{font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.q-title.empty{color:var(--text-dim);font-weight:400;font-style:italic}
+.q-meta{font-size:10px;color:var(--text-dim);margin-top:1px}
+.q-del{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:13px;padding:0;line-height:1;flex-shrink:0}
+.q-del:hover{color:var(--danger)}
+.q-add-row{padding:8px 14px;border-top:1px solid var(--border);flex-shrink:0}
+.q-add-btn{width:100%;background:none;border:1px dashed var(--border);border-radius:5px;color:var(--text-dim);font-family:inherit;font-size:11px;padding:6px;cursor:pointer;transition:all .15s}
+.q-add-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-glow)}
+
+/* EXPORT SECTION */
+.export-section{padding:10px 14px;border-top:1px solid var(--border);flex-shrink:0;display:flex;flex-direction:column;gap:8px}
+.export-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.6px;font-weight:600}
+.git-preview{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--success);background:var(--code-bg);border:1px solid var(--border);border-radius:5px;padding:7px 9px;line-height:1.6;word-break:break-all}
+.export-btns{display:flex;gap:6px}
+
+/* LOAD SCREEN */
+.load-screen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:40px}
+.load-screen.hidden{display:none}
+.drop-zone{border:2px dashed var(--accent);border-radius:12px;padding:32px 40px;text-align:center;cursor:pointer;transition:all .15s;max-width:400px;width:100%}
+.drop-zone:hover,.drop-zone.drag-over{background:var(--accent-glow);border-color:rgba(91,141,238,.8)}
+.drop-icon{font-size:32px;margin-bottom:8px;opacity:.6}
+.drop-title{font-size:14px;font-weight:500;color:var(--text);margin-bottom:4px}
+.drop-sub{font-size:11px;color:var(--text-muted);line-height:1.6}
+.drop-sub code{color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:10px}
+.loaded-banner{display:none;align-items:center;gap:10px;background:var(--success-dim);border:1px solid rgba(74,222,128,.3);border-radius:6px;padding:8px 14px;font-size:11px;color:var(--success);flex-shrink:0;margin:10px 20px 0}
+.loaded-banner.show{display:flex}
+.loaded-banner button{margin-left:auto;background:none;border:none;color:var(--success);cursor:pointer;font-size:11px;opacity:.7;font-family:inherit}
+.loaded-banner button:hover{opacity:1}
+
+/* CONFIRM DELETE */
+.confirm-inline{background:var(--danger-dim);border:1px solid rgba(248,113,113,.3);border-radius:6px;padding:8px 12px;margin:4px 14px;display:none;font-size:11px;color:var(--danger)}
+.confirm-inline.show{display:block}
+.confirm-btns{display:flex;gap:6px;margin-top:6px;justify-content:flex-end}
+
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">base<em>·</em>bi <span class="logo-sep">/</span><span class="logo-sub">bulk import</span></div>
+  <div class="topbar-right">
+    <div class="progress-pill" id="progressPill" style="display:none"><span id="doneCount">0</span> of <span id="totalCount">0</span> notes saved</div>
+  </div>
+</div>
+
+<!-- STEPS -->
+<div class="steps">
+  <div class="step active" id="step1el"><div class="step-num" id="s1num">1</div> Load data file</div>
+  <div class="step" id="step2el"><div class="step-num">2</div> Enter notes</div>
+  <div class="step" id="step3el"><div class="step-num">3</div> Export &amp; import</div>
+</div>
+
+<!-- LOADED BANNER -->
+<div class="loaded-banner" id="loadedBanner">
+  <span id="loadedMsg"></span>
+  <button onclick="reloadFile()">↺ reload file</button>
+</div>
+<input type="file" id="filePicker" accept=".json" style="display:none" onchange="handleFilePick(event)">
+
+<!-- BODY -->
+<div class="body-wrap">
+
+  <!-- LOAD SCREEN (step 1) -->
+  <div class="load-screen" id="loadScreen">
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('filePicker').click()"
+      ondragover="event.preventDefault();this.classList.add('drag-over')"
+      ondragleave="this.classList.remove('drag-over')"
+      ondrop="handleDrop(event)">
+      <div class="drop-icon">📂</div>
+      <div class="drop-title">Load your basebi-data.json</div>
+      <div class="drop-sub">Click to browse or drag and drop your file here.<br>Tags and note titles will populate the dropdowns.</div>
+    </div>
+    <div style="font-size:11px;color:var(--text-dim);text-align:center;line-height:1.8">
+      Don't have a file yet?<br>
+      <span style="color:var(--accent);cursor:pointer" onclick="startFresh()">Start fresh with an empty base·bi</span>
+    </div>
+  </div>
+
+  <!-- ENTRY SCREEN (step 2+3) -->
+  <div class="left-pane plain-mode hidden" id="leftPane">
+
+    <!-- LEFT HEADER -->
+    <div class="left-header" id="leftHeader">
+      <div>
+        <div class="note-label" id="noteLabel">Note 1</div>
+        <div class="note-sublabel" id="noteSubLabel">Plain note</div>
+      </div>
+      <div class="type-toggle">
+        <button class="type-btn active-plain" id="btnPlain" onclick="setType('plain')">Plain</button>
+        <button class="type-btn" id="btnCode" onclick="setType('code')">Code</button>
+      </div>
+    </div>
+
+    <!-- LEFT FORM -->
+    <div class="left-form" id="leftForm">
+      <div class="field-row">
+        <label class="field-label">Title *</label>
+        <input class="form-input" id="f-title" placeholder="Note title">
+      </div>
+      <div class="two-col">
+        <div class="field-row">
+          <label class="field-label">Folder</label>
+          <select class="form-input" id="f-folder"></select>
+        </div>
+        <div class="field-row">
+          <label class="field-label">Tags</label>
+          <div class="selector-wrap">
+            <input class="form-input" id="f-tag-input" placeholder="Search or create…" autocomplete="off"
+              oninput="filterTagDD()" onfocus="openTagDD()" onkeydown="tagKey(event)">
+            <div class="dropdown" id="tagDD"></div>
+          </div>
+          <div class="chips" id="tagChips"></div>
+        </div>
+      </div>
+
+      <!-- PLAIN content -->
+      <div id="plainSection">
+        <div class="field-row">
+          <label class="field-label">Content</label>
+          <textarea class="form-input" id="f-body" placeholder="Write your note here…"></textarea>
+        </div>
+      </div>
+
+      <!-- CODE content -->
+      <div id="codeSection" style="display:none">
+        <div class="field-row" style="margin-bottom:10px">
+          <label class="field-label">Code</label>
+          <textarea class="form-input code-area" id="f-code" placeholder="Paste your SQL or code here…"></textarea>
+        </div>
+        <div class="field-row">
+          <label class="field-label">Description (optional)</label>
+          <textarea class="form-input" id="f-desc" placeholder="What does this code do?" style="min-height:60px"></textarea>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <label class="field-label">Linked notes</label>
+        <div class="selector-wrap">
+          <input class="form-input" id="f-link-input" placeholder="Search existing note title…" autocomplete="off"
+            oninput="filterLinkDD()" onfocus="openLinkDD()" onkeydown="linkKey(event)">
+          <div class="dropdown" id="linkDD"></div>
+        </div>
+        <div class="chips" id="linkChips"></div>
+      </div>
+    </div>
+
+    <!-- LEFT FOOTER -->
+    <div class="left-footer">
+      <span class="hint"><span class="kbd">Ctrl+Enter</span> save &amp; next</span>
+      <button class="btn" onclick="navNote(-1)">← Prev</button>
+      <button class="btn" id="saveNextBtn" onclick="saveAndNext()">Save → next</button>
+    </div>
+  </div>
+
+  <!-- RIGHT PANE -->
+  <div class="right-pane hidden" id="rightPane">
+    <div class="right-header">
+      <span class="right-title">Queue</span>
+      <span style="font-size:10px;color:var(--text-dim)" id="queueTotal">0 notes</span>
+    </div>
+    <div class="prog-bar-wrap">
+      <div class="prog-labels"><span id="progDone">0 done</span><span id="progTotal">0 total</span></div>
+      <div class="prog-track"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+    </div>
+    <div class="queue" id="queueList"></div>
+    <div class="q-add-row">
+      <button class="q-add-btn" onclick="addSlot()">＋ add note</button>
+    </div>
+    <div class="export-section">
+      <div class="export-label">Step 3 — export when done</div>
+      <div class="git-preview" id="gitPreview">git add basebi-data.json &&<br>git commit -m "import: 0 notes"</div>
+      <div class="export-btns">
+        <button class="btn btn-success" style="flex:1" onclick="doExport()">⬇ Export JSON</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════
+let existingNotes = [];
+let existingFolders = ['Business','Techie','Lesson'];
+let queue = [emptySlot()];
+let cursor = 0;
+let selTags = [], selLinks = [];
+let currentType = 'plain';
+let fileLoaded = false;
+
+function emptySlot(){ return {id: Date.now()+Math.random(), title:'', folder:'Business', type:'plain', tags:[], links:[], body:'', code:'', desc:'', saved:false}; }
+
+// ══════════════════════════════════════════════════
+// FILE LOAD
+// ══════════════════════════════════════════════════
+function handleDrop(e){
+  e.preventDefault();
+  document.getElementById('dropZone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if(file) readFile(file);
+}
+function handleFilePick(e){ const file=e.target.files[0]; if(file) readFile(file); e.target.value=''; }
+
+function readFile(file){
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try{
+      const data = JSON.parse(ev.target.result);
+      if(!data.notes || !Array.isArray(data.notes)) throw new Error();
+      existingNotes = data.notes || [];
+      existingFolders = data.folders || ['Business','Techie','Lesson'];
+      fileLoaded = true;
+      const banner = document.getElementById('loadedBanner');
+      document.getElementById('loadedMsg').textContent =
+        `✓ Loaded ${existingNotes.length} notes · ${existingFolders.length} folders · ${allExistingTags().length} tags`;
+      banner.classList.add('show');
+      enterStep2();
+    } catch(e){ alert('Could not read file. Make sure it is a valid basebi-data.json.'); }
+  };
+  reader.readAsText(file);
+}
+
+function startFresh(){
+  fileLoaded = false; existingNotes = []; existingFolders = ['Business','Techie','Lesson'];
+  enterStep2();
+}
+
+function reloadFile(){ document.getElementById('filePicker').click(); }
+
+function enterStep2(){
+  document.getElementById('loadScreen').classList.add('hidden');
+  document.getElementById('leftPane').classList.remove('hidden');
+  document.getElementById('rightPane').classList.remove('hidden');
+  document.getElementById('progressPill').style.display='';
+  setStepUI(2);
+  queue = [emptySlot()];
+  cursor = 0;
+  populateFolderSelect();
+  renderQueue();
+  loadSlot(0);
+}
+
+// ══════════════════════════════════════════════════
+// STEPS UI
+// ══════════════════════════════════════════════════
+function setStepUI(active){
+  [1,2,3].forEach(n=>{
+    const el=document.getElementById('step'+n+'el');
+    el.className='step'+(n<active?' done':n===active?' active':'');
+    const num=el.querySelector('.step-num');
+    num.textContent = n<active ? '✓' : n;
+  });
+}
+
+// ══════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════
+function allExistingTags(){
+  const s=new Set();
+  existingNotes.forEach(n=>(n.tags||[]).forEach(t=>s.add(t)));
+  queue.forEach(s2=>( s2.tags||[]).forEach(t=>s.add(t)));
+  return [...s];
+}
+function allNoteTitles(){
+  const titles = existingNotes.map(n=>({title:n.title,folder:n.folder}));
+  queue.forEach((q,i)=>{ if(q.title&&i!==cursor) titles.push({title:q.title,folder:q.folder}); });
+  return titles;
+}
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function today(){ return new Date().toISOString().slice(0,10); }
+function savedCount(){ return queue.filter(q=>q.saved).length; }
+
+// ══════════════════════════════════════════════════
+// FOLDER SELECT
+// ══════════════════════════════════════════════════
+function populateFolderSelect(){
+  document.getElementById('f-folder').innerHTML = existingFolders.map(f=>`<option value="${esc(f)}">${esc(f)}</option>`).join('');
+}
+
+// ══════════════════════════════════════════════════
+// TYPE TOGGLE
+// ══════════════════════════════════════════════════
+function setType(t){
+  currentType = t;
+  const pane = document.getElementById('leftPane');
+  const header = document.getElementById('leftHeader');
+  pane.className = 'left-pane '+(t==='plain'?'plain-mode':'code-mode');
+  document.getElementById('btnPlain').className = 'type-btn'+(t==='plain'?' active-plain':'');
+  document.getElementById('btnCode').className  = 'type-btn'+(t==='code'?' active-code':'');
+  document.getElementById('plainSection').style.display = t==='plain'?'':'none';
+  document.getElementById('codeSection').style.display  = t==='code'?'':'none';
+  document.getElementById('noteSubLabel').textContent = t==='plain'?'Plain note':'Code snippet';
+  const saveBtn = document.getElementById('saveNextBtn');
+  saveBtn.className = 'btn '+(t==='plain'?'btn-plain':'btn-code');
+}
+
+// ══════════════════════════════════════════════════
+// TAG SELECTOR
+// ══════════════════════════════════════════════════
+function openTagDD(){ filterTagDD(); document.getElementById('tagDD').classList.add('open'); }
+function filterTagDD(){
+  const q=(document.getElementById('f-tag-input').value||'').toLowerCase().trim();
+  const all=allExistingTags().filter(t=>!selTags.includes(t));
+  const filtered=q?all.filter(t=>t.toLowerCase().includes(q)):all;
+  const dd=document.getElementById('tagDD');
+  let html=filtered.map(t=>`<div class="dd-item" onclick="addTag('${esc(t)}')">#${esc(t)}</div>`).join('');
+  if(q&&!all.map(t=>t.toLowerCase()).includes(q))
+    html+=`<div class="dd-item dd-new" onclick="addTag('${esc(q)}')">+ create "#${esc(q)}"</div>`;
+  if(!html) html='<div class="dd-empty">No tags yet</div>';
+  dd.innerHTML=html; dd.classList.add('open');
+}
+function addTag(t){
+  if(!selTags.includes(t)) selTags.push(t);
+  document.getElementById('f-tag-input').value='';
+  document.getElementById('tagDD').classList.remove('open');
+  renderTagChips();
+}
+function removeTag(t){ selTags=selTags.filter(x=>x!==t); renderTagChips(); }
+function renderTagChips(){
+  document.getElementById('tagChips').innerHTML=selTags
+    .map(t=>`<span class="chip chip-tag">#${esc(t)}<button class="chip-x" onclick="removeTag('${esc(t)}')">×</button></span>`).join('');
+}
+function tagKey(e){
+  if(e.key==='Enter'){ e.preventDefault(); const q=document.getElementById('f-tag-input').value.trim(); if(q) addTag(q); }
+  if(e.key==='Escape') document.getElementById('tagDD').classList.remove('open');
+}
+
+// ══════════════════════════════════════════════════
+// LINK SELECTOR
+// ══════════════════════════════════════════════════
+function openLinkDD(){ filterLinkDD(); document.getElementById('linkDD').classList.add('open'); }
+function filterLinkDD(){
+  const q=(document.getElementById('f-link-input').value||'').toLowerCase().trim();
+  const all=allNoteTitles().filter(n=>!selLinks.includes(n.title));
+  const filtered=q?all.filter(n=>n.title.toLowerCase().includes(q)):all;
+  const dd=document.getElementById('linkDD');
+  dd.innerHTML=filtered.length
+    ?filtered.map(n=>`<div class="dd-item dd-link" onclick="addLink('${esc(n.title)}')">${esc(n.title)}<span style="float:right;font-size:9px;opacity:.5">${esc(n.folder)}</span></div>`).join('')
+    :'<div class="dd-empty">No notes found</div>';
+  dd.classList.add('open');
+}
+function addLink(title){
+  if(!selLinks.includes(title)) selLinks.push(title);
+  document.getElementById('f-link-input').value='';
+  document.getElementById('linkDD').classList.remove('open');
+  renderLinkChips();
+}
+function removeLink(t){ selLinks=selLinks.filter(x=>x!==t); renderLinkChips(); }
+function renderLinkChips(){
+  document.getElementById('linkChips').innerHTML=selLinks
+    .map(t=>`<span class="chip chip-link">↗ ${esc(t)}<button class="chip-x" onclick="removeLink('${esc(t)}')">×</button></span>`).join('');
+}
+function linkKey(e){ if(e.key==='Escape') document.getElementById('linkDD').classList.remove('open'); }
+
+// ══════════════════════════════════════════════════
+// SLOT MANAGEMENT
+// ══════════════════════════════════════════════════
+function saveCurrentToSlot(){
+  const slot = queue[cursor];
+  slot.title   = document.getElementById('f-title').value.trim();
+  slot.folder  = document.getElementById('f-folder').value;
+  slot.type    = currentType;
+  slot.tags    = [...selTags];
+  slot.links   = [...selLinks];
+  slot.body    = document.getElementById('f-body').value.trim();
+  slot.code    = document.getElementById('f-code').value.trim();
+  slot.desc    = document.getElementById('f-desc').value.trim();
+  if(slot.title) slot.saved = true;
+}
+
+function loadSlot(i){
+  cursor = i;
+  const slot = queue[i];
+  selTags=[...( slot.tags||[])]; selLinks=[...(slot.links||[])];
+  document.getElementById('f-title').value = slot.title||'';
+  document.getElementById('f-folder').value = slot.folder||existingFolders[0]||'Business';
+  document.getElementById('f-body').value   = slot.body||'';
+  document.getElementById('f-code').value   = slot.code||'';
+  document.getElementById('f-desc').value   = slot.desc||'';
+  document.getElementById('f-tag-input').value='';
+  document.getElementById('f-link-input').value='';
+  document.getElementById('tagDD').classList.remove('open');
+  document.getElementById('linkDD').classList.remove('open');
+  setType(slot.type||'plain');
+  renderTagChips(); renderLinkChips();
+  document.getElementById('noteLabel').textContent = 'Note '+(i+1);
+  document.getElementById('f-title').focus();
+  renderQueue();
+  updateProgress();
+}
+
+function saveAndNext(){
+  saveCurrentToSlot();
+  const next = cursor+1;
+  if(next >= queue.length){ queue.push(emptySlot()); }
+  renderQueue();
+  updateProgress();
+  loadSlot(next);
+}
+
+function navNote(dir){
+  saveCurrentToSlot();
+  const next = cursor+dir;
+  if(next<0||next>=queue.length) return;
+  loadSlot(next);
+}
+
+function addSlot(){
+  saveCurrentToSlot();
+  queue.push(emptySlot());
+  renderQueue();
+  updateProgress();
+  loadSlot(queue.length-1);
+}
+
+function deleteSlot(i){
+  if(queue.length===1){ queue[0]=emptySlot(); loadSlot(0); return; }
+  queue.splice(i,1);
+  const newCursor = Math.min(cursor, queue.length-1);
+  renderQueue();
+  updateProgress();
+  loadSlot(newCursor);
+}
+
+// ══════════════════════════════════════════════════
+// RENDER QUEUE
+// ══════════════════════════════════════════════════
+function renderQueue(){
+  const total=queue.length;
+  document.getElementById('queueTotal').textContent=total+' note'+(total!==1?'s':'');
+  document.getElementById('queueList').innerHTML=queue.map((s,i)=>{
+    const dotClass=s.saved?(s.type==='code'?'dot-code':'dot-plain'):'dot-empty';
+    const titleEl=s.title?`<div class="q-title">${esc(s.title)}</div>`:`<div class="q-title empty">Empty slot ${i+1}</div>`;
+    const metaEl=s.saved?`<div class="q-meta">${esc(s.folder)} · ${s.type==='code'?'Code':'Plain'}</div>`:`<div class="q-meta">not filled yet</div>`;
+    return `<div class="q-item${i===cursor?' q-active':''}${s.saved?' q-done':''}" onclick="clickSlot(${i})">
+      <div class="q-dot ${dotClass}"></div>
+      <div class="q-body">${titleEl}${metaEl}</div>
+      <button class="q-del" onclick="event.stopPropagation();deleteSlot(${i})">×</button>
+    </div>`;
+  }).join('');
+  updateGitPreview();
+}
+
+function clickSlot(i){
+  if(i===cursor) return;
+  saveCurrentToSlot();
+  loadSlot(i);
+}
+
+// ══════════════════════════════════════════════════
+// PROGRESS
+// ══════════════════════════════════════════════════
+function updateProgress(){
+  const done=savedCount(), total=queue.length;
+  const pct=total?Math.round(done/total*100):0;
+  document.getElementById('progFill').style.width=pct+'%';
+  document.getElementById('progDone').textContent=done+' done';
+  document.getElementById('progTotal').textContent=total+' total';
+  document.getElementById('doneCount').textContent=done;
+  document.getElementById('totalCount').textContent=total;
+  updateGitPreview();
+}
+
+function updateGitPreview(){
+  const done=savedCount();
+  document.getElementById('gitPreview').innerHTML=
+    `git add basebi-data.json &&<br>git commit -m "import: ${done} note${done!==1?'s':''}"`;
+}
+
+// ══════════════════════════════════════════════════
+// EXPORT
+// ══════════════════════════════════════════════════
+function doExport(){
+  saveCurrentToSlot();
+  const newNotes = queue.filter(s=>s.saved&&s.title).map(s=>({
+    id: Date.now()+Math.random(),
+    title: s.title, folder: s.folder, type: s.type,
+    tags: s.tags, links: s.links,
+    body: s.type==='code'?s.desc:s.body,
+    code: s.type==='code'?s.code:null,
+    created: today(), modified: today()
+  }));
+  const merged = [...existingNotes, ...newNotes];
+  const payload = { version:1, exported: new Date().toISOString(), folders: existingFolders, notes: merged };
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='basebi-data.json'; a.click();
+  setStepUI(3);
+}
+
+// ══════════════════════════════════════════════════
+// KEYBOARD
+// ══════════════════════════════════════════════════
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){ e.preventDefault(); saveAndNext(); }
+  if(e.key==='Escape'){
+    document.getElementById('tagDD').classList.remove('open');
+    document.getElementById('linkDD').classList.remove('open');
+  }
+});
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#f-tag-input')&&!e.target.closest('#tagDD')) document.getElementById('tagDD').classList.remove('open');
+  if(!e.target.closest('#f-link-input')&&!e.target.closest('#linkDD')) document.getElementById('linkDD').classList.remove('open');
+});
+</script>
+</body>
+</html>
