@@ -155,6 +155,16 @@ textarea.code-input{font-family:'JetBrains Mono',monospace;font-size:12px;min-he
 .confirm-box p{font-size:12px;color:var(--text-muted)}
 .confirm-actions{display:flex;gap:8px;justify-content:flex-end}
 
+/* BACKUP REMINDER BANNER */
+.backup-banner{display:none;align-items:center;gap:10px;padding:7px 16px;background:#2d2200;border-bottom:1px solid #5a3e00;flex-shrink:0;font-size:11px;color:#fbbf24}
+.backup-banner.show{display:flex}
+.backup-banner strong{color:#fde68a}
+.backup-banner-msg{flex:1}
+.backup-banner-export{background:#92400e;color:#fde68a;border:1px solid #b45309;border-radius:5px;padding:3px 10px;font-size:11px;cursor:pointer;font-family:inherit;transition:all .15s}
+.backup-banner-export:hover{background:#b45309}
+.backup-banner-dismiss{background:none;border:none;color:#92400e;cursor:pointer;font-size:16px;line-height:1;padding:0 2px}
+.backup-banner-dismiss:hover{color:#fbbf24}
+
 mark{background:var(--highlight);color:var(--text);border-radius:2px;padding:0 1px}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 
@@ -282,6 +292,13 @@ pre.popup-code-body{padding:12px;font-family:'JetBrains Mono',monospace;font-siz
   </div>
 </div>
 <input type="file" id="importFilePicker" accept=".json" style="display:none" onchange="handleImport(event)">
+
+<!-- BACKUP REMINDER BANNER -->
+<div class="backup-banner" id="backupBanner">
+  <span class="backup-banner-msg" id="backupBannerMsg">💾 <strong>Backup reminder</strong> — it's been a while since your last export.</span>
+  <button class="backup-banner-export" onclick="openExportModal();dismissBackupBanner()">⬇ Export now</button>
+  <button class="backup-banner-dismiss" onclick="dismissBackupBanner()" title="Dismiss">×</button>
+</div>
 
 <!-- MAIN -->
 <div class="main">
@@ -475,6 +492,8 @@ pre.popup-code-body{padding:12px;font-family:'JetBrains Mono',monospace;font-siz
 // DATA LAYER
 // ══════════════════════════════════════════════════
 const LS_NOTES='basebi_notes', LS_FOLDERS='basebi_folders';
+const LS_LAST_EXPORT='basebi_last_export', LS_EDITS_SINCE='basebi_edits_since_export';
+const REMIND_DAYS=7, REMIND_EDITS=20;
 const SEED_FOLDERS=['Business','Techie','Lesson'];
 const SEED_NOTES=[
   {id:1,title:"CRM – Overdue loan segmentation query",folder:"Techie",type:"code",tags:["CRM","SQL","loan","segmentation"],code:"SELECT customer_id,\n       loan_id,\n       DATEDIFF(day, due_date, GETDATE()) AS days_overdue,\n       outstanding_balance\nFROM   loan_accounts\nWHERE  status = 'OVERDUE'\n  AND  DATEDIFF(day, due_date, GETDATE()) > 30\nORDER  BY days_overdue DESC;",body:"Use this to pull customers with DPD > 30 for the monthly NPL report.",links:["MOB bucket classification"],created:"2026-06-01",modified:"2026-06-01"},
@@ -587,14 +606,27 @@ function fmtDate(d){return d?d.slice(0,10):'';}
 function allTags(){const t={};notes.forEach(n=>(n.tags||[]).forEach(tag=>{t[tag]=(t[tag]||0)+1;}));return t;}
 
 function copyBtn(btn,text){
-  navigator.clipboard.writeText(text).then(()=>{
+  // Try modern clipboard API first, fall back to execCommand for file:// protocol
+  const doFeedback=()=>{
     btn.textContent='✓ Copied';btn.classList.add('copied');
     setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('copied');},1500);
-  }).catch(()=>{});
+  };
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(text).then(doFeedback).catch(()=>fallbackCopy(text,doFeedback));
+  } else {
+    fallbackCopy(text,doFeedback);
+  }
+}
+function fallbackCopy(text,cb){
+  const ta=document.createElement('textarea');
+  ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  try{ document.execCommand('copy'); if(cb)cb(); }catch(e){}
+  document.body.removeChild(ta);
 }
 function copyNoteCode(btn){
-  const id=parseInt(btn.getAttribute('data-noteid'));
-  const note=notes.find(n=>n.id===id);
+  const raw=btn.getAttribute('data-noteid');
+  const note=notes.find(n=>String(n.id)===raw);
   if(note&&note.code) copyBtn(btn,note.code);
 }
 
@@ -973,7 +1005,7 @@ function saveNote(){
     note.body=type==='code'?document.getElementById('f-desc').value.trim():document.getElementById('f-body').value.trim();
     note.code=type==='code'?document.getElementById('f-code').value.trim():null;
     note.modified=now;
-    saveNotes(notes);buildIndex();closeNoteModal();renderAll();selectNote(editingNoteId);
+    saveNotes(notes);buildIndex();incrementEdits();closeNoteModal();renderAll();selectNote(editingNoteId);
   }else{
     const note={id:Date.now(),title,folder:document.getElementById('f-folder').value,type,
       tags:[...selectedTags],links:[...selectedLinks],
@@ -981,7 +1013,7 @@ function saveNote(){
       code:type==='code'?document.getElementById('f-code').value.trim():null,
       created:now,modified:now};
     notes.unshift(note);
-    saveNotes(notes);buildIndex();closeNoteModal();renderAll();selectNote(note.id);
+    saveNotes(notes);buildIndex();incrementEdits();closeNoteModal();renderAll();selectNote(note.id);
   }
 }
 
@@ -1002,7 +1034,7 @@ function confirmDeleteNote(id){
 }
 function deleteNote(id){
   notes=notes.filter(n=>n.id!==id);if(activeNoteId===id)activeNoteId=null;
-  saveNotes(notes);buildIndex();renderAll();renderDetail(notes.find(n=>n.id===activeNoteId)||null);
+  saveNotes(notes);buildIndex();incrementEdits();renderAll();renderDetail(notes.find(n=>n.id===activeNoteId)||null);
 }
 
 // ══════════════════════════════════════════════════
@@ -1022,14 +1054,21 @@ function updatePreview(){
   document.getElementById('e-preview').textContent=`git add basebi-data.json && git commit -m "${msg}"`;
 }
 function copyGitCmd(){
-  navigator.clipboard.writeText(document.getElementById('e-preview').textContent).then(()=>{
+  const text=document.getElementById('e-preview').textContent;
+  const doFeedback=()=>{
     const el=document.getElementById('copySuccess');el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2000);
-  }).catch(()=>{});
+  };
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(text).then(doFeedback).catch(()=>fallbackCopy(text,doFeedback));
+  } else {
+    fallbackCopy(text,doFeedback);
+  }
 }
 function doExport(){
   const payload={version:1,exported:new Date().toISOString(),folders,notes};
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='basebi-data.json';a.click();
+  resetBackupTracking();
   closeExportModal();
 }
 function openImportPicker(){document.getElementById('importFilePicker').click();}
@@ -1183,10 +1222,53 @@ function renderBodyWithLinks(text,q){
   });
 }
 
+
+// ══════════════════════════════════════════════════
+// BACKUP REMINDER
+// ══════════════════════════════════════════════════
+function getLastExport(){ return localStorage.getItem(LS_LAST_EXPORT)||null; }
+function getEditsSince(){ return parseInt(localStorage.getItem(LS_EDITS_SINCE)||'0'); }
+function resetBackupTracking(){
+  localStorage.setItem(LS_LAST_EXPORT, new Date().toISOString());
+  localStorage.setItem(LS_EDITS_SINCE, '0');
+}
+function incrementEdits(){
+  const n=getEditsSince()+1;
+  localStorage.setItem(LS_EDITS_SINCE, String(n));
+  checkBackupReminder();
+}
+function checkBackupReminder(){
+  const lastExport=getLastExport();
+  const editsSince=getEditsSince();
+  let reason=null;
+  if(!lastExport){
+    // never exported — remind after first REMIND_EDITS edits
+    if(editsSince>=REMIND_EDITS) reason=`${editsSince} unsaved edits — export your data to keep it safe`;
+  } else {
+    const daysSince=Math.floor((Date.now()-new Date(lastExport).getTime())/(1000*60*60*24));
+    if(daysSince>=REMIND_DAYS && editsSince>0)
+      reason=`Last export ${daysSince} day${daysSince!==1?'s':''} ago · ${editsSince} edit${editsSince!==1?'s':''} since`;
+    else if(editsSince>=REMIND_EDITS)
+      reason=`${editsSince} edits since last export`;
+  }
+  const banner=document.getElementById('backupBanner');
+  const msg=document.getElementById('backupBannerMsg');
+  if(reason){
+    msg.innerHTML=`💾 <strong>Backup reminder</strong> — ${reason}.`;
+    banner.classList.add('show');
+  } else {
+    banner.classList.remove('show');
+  }
+}
+function dismissBackupBanner(){
+  document.getElementById('backupBanner').classList.remove('show');
+}
+
 // ══════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════
 buildIndex();renderAll();if(notes.length)selectNote(notes[0].id);
+checkBackupReminder();
 </script>
 </body>
 </html>
