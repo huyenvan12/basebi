@@ -7,13 +7,28 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
+/* ── DARK THEME (default) ── */
+:root,[data-theme="dark"]{
   --bg:#0f1117;--surface:#181c27;--surface2:#1f2535;
   --border:#2a3047;--accent:#5b8dee;--accent-dim:#1e2d52;
   --text:#e2e8f0;--text-muted:#7a8599;--text-dim:#4a556b;
   --tag-bg:#1a2540;--folder-active:#1e2d52;
   --highlight:#3d5a99;--code-bg:#131720;
   --sql:#f59e0b;--danger:#f87171;--danger-dim:#3d1515;--success:#4ade80;
+  --search-bg:rgba(242,243,247,.97);--search-text:#1a1d2e;--search-border:#3b6fe0;
+  --search-card:#ffffff;--search-card-border:#d4d8e8;--search-muted:#5a6380;
+}
+
+/* ── LIGHT THEME ── */
+[data-theme="light"]{
+  --bg:#f2f3f7;--surface:#ffffff;--surface2:#e8eaf2;
+  --border:#d4d8e8;--accent:#3b6fe0;--accent-dim:#dde8ff;
+  --text:#1a1d2e;--text-muted:#5a6380;--text-dim:#9099b5;
+  --tag-bg:#eef0f8;--folder-active:#dde8ff;
+  --highlight:#bfcff7;--code-bg:#1a1d2e;
+  --sql:#c47d0e;--danger:#dc2626;--danger-dim:#fee2e2;--success:#16a34a;
+  --search-bg:rgba(242,243,247,.97);--search-text:#1a1d2e;--search-border:#3b6fe0;
+  --search-card:#ffffff;--search-card-border:#d4d8e8;--search-muted:#5a6380;
 }
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;font-size:13px}
 
@@ -220,6 +235,46 @@ textarea.code-input{font-family:'JetBrains Mono',monospace;font-size:12px;min-he
 /* code textarea stays dark for contrast/readability even in light modal */
 #noteModalOverlay textarea.code-input{background:#131720;color:#e2e8f0;border-color:#2a3047}
 
+
+/* ══════════════════════════════════════
+   ALWAYS-LIGHT MODALS (note + campaign)
+   — immune to data-theme changes
+══════════════════════════════════════ */
+#noteModalOverlay .modal,
+#campModalOverlay .modal{
+  background:#f2f3f7 !important;
+  border-color:#d4d8e8 !important;
+}
+#noteModalOverlay .modal-title,
+#campModalOverlay .modal-title{color:#1a1d2e !important}
+#noteModalOverlay .modal-close,
+#campModalOverlay .modal-close{color:#9099b5 !important}
+#noteModalOverlay .modal-close:hover,
+#campModalOverlay .modal-close:hover{color:#1a1d2e !important}
+#noteModalOverlay .form-label,
+#campModalOverlay .form-label{color:#5a6380 !important}
+#noteModalOverlay .form-hint,
+#campModalOverlay .form-hint{color:#9099b5 !important}
+#noteModalOverlay .form-input,
+#campModalOverlay .form-input{background:#ffffff !important;border-color:#d4d8e8 !important;color:#1a1d2e !important}
+#noteModalOverlay .form-input:focus,
+#campModalOverlay .form-input:focus{border-color:#3b6fe0 !important}
+#noteModalOverlay .form-input::placeholder,
+#campModalOverlay .form-input::placeholder{color:#b0b6cc !important}
+#noteModalOverlay select.form-input option,
+#campModalOverlay select.form-input option{background:#ffffff;color:#1a1d2e}
+#noteModalOverlay .btn-ghost,
+#campModalOverlay .btn-ghost{background:transparent !important;color:#5a6380 !important;border-color:#d4d8e8 !important}
+#noteModalOverlay .btn-ghost:hover,
+#campModalOverlay .btn-ghost:hover{background:#e8eaf2 !important;color:#1a1d2e !important}
+#noteModalOverlay .btn-primary,
+#campModalOverlay .btn-primary{background:#3b6fe0 !important;color:#fff !important}
+#noteModalOverlay .btn-primary:hover,
+#campModalOverlay .btn-primary:hover{background:#2f5bc7 !important}
+#noteModalOverlay .btn-primary.code-save{background:#c47d0e !important}
+#campModalOverlay .modal-actions .btn-primary{background:#3b6fe0 !important}
+#noteModalOverlay textarea.code-input{background:#131720 !important;color:#e2e8f0 !important;border-color:#2a3047 !important}
+
 mark{background:var(--highlight);color:var(--text);border-radius:2px;padding:0 1px}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 
@@ -256,20 +311,20 @@ mark{background:var(--highlight);color:var(--text);border-radius:2px;padding:0 1
 /* ══════════════════════════════════════
    SEARCH SCREEN (off-white overlay)
 ══════════════════════════════════════ */
-.search-screen{position:fixed;inset:0;background:#f2f3f7;z-index:200;display:none;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:80px}
+.search-screen{position:fixed;inset:0;background:var(--search-bg);z-index:200;display:none;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:80px}
 .search-screen.open{display:flex}
 .search-screen-bar-wrap{width:100%;max-width:560px;position:relative;margin-bottom:20px}
-.search-screen-input{width:100%;border:2px solid #3b6fe0;border-radius:10px;padding:13px 16px 13px 44px;font-size:15px;color:#1a1d2e;background:#fff;font-family:'Inter',sans-serif;outline:none;box-shadow:0 0 0 4px rgba(59,111,224,.1),0 2px 8px rgba(0,0,0,.08)}
-.search-screen-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:17px;color:#3b6fe0}
+.search-screen-input{width:100%;border:2px solid var(--search-border);border-radius:10px;padding:13px 16px 13px 44px;font-size:15px;color:var(--search-text);background:var(--search-card);font-family:'Inter',sans-serif;outline:none;box-shadow:0 0 0 4px rgba(59,111,224,.1),0 2px 8px rgba(0,0,0,.08)}
+.search-screen-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:17px;color:var(--search-border)}
 .search-screen-results{width:100%;max-width:560px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;max-height:calc(100vh - 220px)}
-.search-result-card{background:#fff;border:1px solid #d4d8e8;border-radius:8px;padding:10px 14px;cursor:pointer;transition:all .12s}
-.search-result-card:hover,.search-result-card.focused{border-color:#3b6fe0;box-shadow:0 0 0 2px rgba(59,111,224,.12)}
-.search-result-title{font-size:13px;font-weight:600;color:#1a1d2e;margin-bottom:3px}
-.search-result-excerpt{font-size:11px;color:#5a6380;line-height:1.5}
+.search-result-card{background:var(--search-card);border:1px solid var(--search-card-border);border-radius:8px;padding:10px 14px;cursor:pointer;transition:all .12s}
+.search-result-card:hover,.search-result-card.focused{border-color:var(--search-border);box-shadow:0 0 0 2px rgba(59,111,224,.12)}
+.search-result-title{font-size:13px;font-weight:600;color:var(--search-text);margin-bottom:3px}
+.search-result-excerpt{font-size:11px;color:var(--search-muted);line-height:1.5}
 .search-result-type{font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;text-transform:uppercase;margin-right:6px}
 .srt-plain{background:#dde8ff;color:#3b6fe0}
 .srt-code{background:#fef3dc;color:#c47d0e}
-.search-screen-empty{font-size:13px;color:#9099b5;margin-top:20px}
+.search-screen-empty{font-size:13px;color:var(--text-dim);margin-top:20px}
 
 .search-screen mark{background:#dde8ff;color:#3b6fe0;border-radius:2px;padding:0 1px}
 
@@ -473,6 +528,8 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
     <div class="gear-wrap">
       <button class="gear-btn" onclick="toggleGearMenu()" title="Options">⚙</button>
       <div class="gear-menu" id="gearMenu">
+        <div class="gear-item" id="themeToggleItem" onclick="toggleTheme();closeGearMenu()">☀ &nbsp;Switch to Light</div>
+        <div class="gear-divider"></div>
         <div class="gear-item" onclick="openImportPicker();closeGearMenu()">⬆ &nbsp;Import data</div>
         <div class="gear-item" onclick="openExportModal();closeGearMenu()">⬇ &nbsp;Export data</div>
         <div class="gear-divider"></div>
@@ -1959,9 +2016,35 @@ function confirmDeleteCamp(){
   renderCampTable();
 }
 
+
+// ══════════════════════════════════════════════════
+// THEME TOGGLE
+// ══════════════════════════════════════════════════
+const LS_THEME = 'basebi_theme';
+
+function loadTheme(){
+  const saved = localStorage.getItem(LS_THEME) || 'dark';
+  applyTheme(saved, false);
+}
+
+function applyTheme(theme, save=true){
+  document.body.setAttribute('data-theme', theme);
+  if(save) localStorage.setItem(LS_THEME, theme);
+  const item = document.getElementById('themeToggleItem');
+  if(item){
+    item.textContent = theme==='dark' ? '☀  Switch to Light' : '🌙  Switch to Dark';
+  }
+}
+
+function toggleTheme(){
+  const current = document.body.getAttribute('data-theme') || 'dark';
+  applyTheme(current==='dark' ? 'light' : 'dark');
+}
+
 // ══════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════
+loadTheme();
 buildIndex();renderAll();if(notes.length)selectNote(notes[0].id);
 checkBackupReminder();
 </script>
