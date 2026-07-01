@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>base·bi</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -592,6 +593,13 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
   </div>
 </div>
 <input type="file" id="importFilePicker" accept=".json" style="display:none" onchange="handleImport(event)">
+<div id="loadingScreen" style="position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:12px">
+  <div style="font-size:22px;font-weight:600;color:var(--accent)">base<span style="color:var(--text-muted);font-weight:300">·</span>bi</div>
+  <div style="font-size:12px;color:var(--text-dim)" id="loadingMsg">Connecting to database…</div>
+  <div style="width:120px;height:3px;background:var(--border);border-radius:3px;overflow:hidden">
+    <div id="loadingBar" style="height:100%;background:var(--accent);border-radius:3px;width:0%;transition:width .4s"></div>
+  </div>
+</div>
 
 
 
@@ -891,6 +899,13 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
 // DATA LAYER
 // ══════════════════════════════════════════════════
 const LS_NOTES='basebi_notes', LS_FOLDERS='basebi_folders';
+
+// ══════════════════════════════════════════════════
+// SUPABASE CONFIG — replace placeholders with your values
+// ══════════════════════════════════════════════════
+const SUPABASE_URL  = 'https://adalbpcwdmzjtestfxuv.supabase.co/rest/v1/';
+const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFkYWxicGN3ZG16anRlc3RmeHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MDI3NTcsImV4cCI6MjA5ODQ3ODc1N30.s13SMg_J2X_I30AEYK2P6R0qqS2iFI9QCFxvKvpbaHo';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const LS_LAST_EXPORT='basebi_last_export', LS_EDITS_SINCE='basebi_edits_since_export';
 const SEED_FOLDERS=['Business','Techie','Lesson'];
 const SEED_NOTES=[
@@ -901,19 +916,72 @@ const SEED_NOTES=[
   {id:5,title:"CAMEL framework – VN banks",folder:"Lesson",type:"plain",tags:["CAMEL","bank","finance","analysis"],body:"C – Capital Adequacy: CAR (Basel II/III, SBV minimum 8%)\nA – Asset Quality: NPL ratio, LLR coverage\nM – Management: governance scores\nE – Earnings: ROA, ROE, NIM, CIR\nL – Liquidity: LDR, short-term funding gap",links:["DuPont decomposition – bank ROE"],created:"2026-06-18",modified:"2026-06-18"}
 ];
 
-function loadData(){
-  let notes=JSON.parse(localStorage.getItem(LS_NOTES)||'null');
-  let folders=JSON.parse(localStorage.getItem(LS_FOLDERS)||'null');
-  if(!notes){notes=JSON.parse(JSON.stringify(SEED_NOTES));saveNotes(notes);}
-  if(!folders){folders=[...SEED_FOLDERS];saveFolders(folders);}
-  // migrate old type 'sql' -> 'code'
-  notes.forEach(n=>{if(n.type==='sql')n.type='code';});
-  return{notes,folders};
+// ── async data loaders ───────────────────────────
+async function loadNotes(){
+  const{data,error}=await sb.from('notes').select('*').order('modified',{ascending:false});
+  if(error||!data||!data.length) return JSON.parse(JSON.stringify(SEED_NOTES));
+  return data.map(n=>({...n,tags:n.tags||[],links:n.links||[]}));
 }
-function saveNotes(n){try{localStorage.setItem(LS_NOTES,JSON.stringify(n));}catch(e){}}
-function saveFolders(f){try{localStorage.setItem(LS_FOLDERS,JSON.stringify(f));}catch(e){}}
+async function loadFolders(){
+  const{data,error}=await sb.from('folders').select('name').order('sort_order');
+  if(error||!data||!data.length) return [...SEED_FOLDERS];
+  return data.map(r=>r.name);
+}
+async function loadCampaignsDB(){
+  const{data,error}=await sb.from('campaigns').select('*').order('date',{ascending:false});
+  if(error||!data||!data.length) return JSON.parse(JSON.stringify(SEED_CAMPS));
+  return data.map(c=>({...c,extra:c.extra||{}}));
+}
 
-let{notes,folders}=loadData();
+// ── async savers ──────────────────────────────────
+async function saveNotes(arr){
+  // upsert all notes
+  if(!arr.length) return;
+  const rows = arr.map(n=>({
+    id:n.id, title:n.title, folder:n.folder, type:n.type,
+    tags:n.tags||[], links:n.links||[], body:n.body||null,
+    code:n.code||null, pinned:n.pinned||false,
+    created:n.created, modified:n.modified
+  }));
+  await sb.from('notes').upsert(rows,{onConflict:'id'});
+}
+async function saveOneNote(n){
+  await sb.from('notes').upsert({
+    id:n.id, title:n.title, folder:n.folder, type:n.type,
+    tags:n.tags||[], links:n.links||[], body:n.body||null,
+    code:n.code||null, pinned:n.pinned||false,
+    created:n.created, modified:n.modified
+  },{onConflict:'id'});
+}
+async function deleteNoteDB(id){ await sb.from('notes').delete().eq('id',id); }
+
+async function saveFolders(arr){
+  const rows = arr.map((name,i)=>({name,sort_order:i}));
+  await sb.from('folders').upsert(rows,{onConflict:'name'});
+}
+
+async function saveCamps(arr){
+  if(!arr.length) return;
+  const rows = arr.map(c=>({
+    id:c.id, campaign_cd:c.campaign_cd, campaign_nm:c.campaign_nm,
+    event_name:c.event_name||null, type:c.type, trigger_type:c.trigger_type,
+    status:c.status, date:c.date||null, note:c.note||null,
+    extra:c.extra||{}, created:c.created, modified:c.modified
+  }));
+  await sb.from('campaigns').upsert(rows,{onConflict:'id'});
+}
+async function saveOneCamp(camp){
+  await sb.from('campaigns').upsert({
+    id:camp.id, campaign_cd:camp.campaign_cd, campaign_nm:camp.campaign_nm,
+    event_name:camp.event_name||null, type:camp.type, trigger_type:camp.trigger_type,
+    status:camp.status, date:camp.date||null, note:camp.note||null,
+    extra:camp.extra||{}, created:camp.created, modified:camp.modified
+  },{onConflict:'id'});
+}
+async function deleteCampDB(id){ await sb.from('campaigns').delete().eq('id',id); }
+
+// ── initial data placeholders (populated in initApp) ─────────────────
+let notes=[], folders=[...SEED_FOLDERS];
 
 // ══════════════════════════════════════════════════
 // STATE
@@ -1310,13 +1378,13 @@ function saveTagRename(){
   const newName=document.getElementById('f-tag-rename').value.trim();if(!newName||!renamingTag)return;
   notes.forEach(n=>{n.tags=(n.tags||[]).map(t=>t===renamingTag?newName:t);});
   if(activeTag===renamingTag)activeTag=newName;
-  saveNotes(notes);closeTagModal();renderAll();if(activeNoteId)renderDetail(notes.find(n=>n.id===activeNoteId));
+  saveNotes(notes).then(()=>renderAll());closeTagModal();renderAll();if(activeNoteId)renderDetail(notes.find(n=>n.id===activeNoteId));
 }
 function deleteTag(tag){
   if(!confirm(`Remove tag "#${tag}" from all notes?`))return;
   notes.forEach(n=>{n.tags=(n.tags||[]).filter(t=>t!==tag);});
   if(activeTag===tag)activeTag=null;
-  saveNotes(notes);buildIndex();renderAll();if(activeNoteId)renderDetail(notes.find(n=>n.id===activeNoteId));
+  saveNotes(notes).then(()=>buildIndex());renderAll();if(activeNoteId)renderDetail(notes.find(n=>n.id===activeNoteId));
 }
 
 // ══════════════════════════════════════════════════
@@ -1435,7 +1503,7 @@ function saveNote(){
     note.body=type==='code'?document.getElementById('f-desc').value.trim():document.getElementById('f-body').value.trim();
     note.code=type==='code'?document.getElementById('f-code').value.trim():null;
     note.modified=now;
-    saveNotes(notes);buildIndex();incrementEdits();closeNoteModal();renderAll();selectNote(editingNoteId);
+    saveOneNote(note);buildIndex();incrementEdits();closeNoteModal();renderAll();selectNote(editingNoteId);
   }else{
     const note={id:Date.now(),title,folder:document.getElementById('f-folder').value,type,
       tags:[...selectedTags],links:[...selectedLinks],
@@ -1443,7 +1511,7 @@ function saveNote(){
       code:type==='code'?document.getElementById('f-code').value.trim():null,
       created:now,modified:now};
     notes.unshift(note);
-    saveNotes(notes);buildIndex();incrementEdits();closeNoteModal();renderAll();selectNote(note.id);
+    saveOneNote(note);buildIndex();incrementEdits();closeNoteModal();renderAll();selectNote(note.id);
   }
 }
 
@@ -1495,6 +1563,7 @@ function copyGitCmd(){
   }
 }
 function doExport(){
+  // export current in-memory state
   const payload={version:2,exported:new Date().toISOString(),folders,notes,campaigns};
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='basebi-data.json';a.click();
@@ -1502,18 +1571,24 @@ function doExport(){
   closeExportModal();
 }
 function openImportPicker(){document.getElementById('importFilePicker').click();}
-function handleImport(e){
+async function handleImport(e){
   const file=e.target.files[0];if(!file)return;
   const reader=new FileReader();
-  reader.onload=ev=>{
+  reader.onload=async ev=>{
     try{
       const data=JSON.parse(ev.target.result);
       if(!data.notes||!Array.isArray(data.notes))throw new Error('Invalid format');
       if(!confirm(`Import ${data.notes.length} notes and ${(data.folders||[]).length} folders?\n\nThis will REPLACE your current data.`))return;
-      notes=data.notes;folders=data.folders||SEED_FOLDERS;
+      notes=data.notes||[];folders=data.folders||SEED_FOLDERS;
       campaigns=data.campaigns||[];
       notes.forEach(n=>{if(n.type==='sql')n.type='code';});
-      saveNotes(notes);saveFolders(folders);saveCamps(campaigns);buildIndex();
+      document.getElementById('loadingScreen').style.display='flex';
+      document.getElementById('loadingMsg').textContent='Importing to Supabase…';
+      await saveNotes(notes);
+      await saveFolders(folders);
+      await saveCamps(campaigns);
+      document.getElementById('loadingScreen').style.display='none';
+      buildIndex();
       activeFolder='all';activeTag=null;activeNoteId=null;activeCampId=null;renderAll();
       if(notes.length)selectNote(notes[0].id);
       if(currentTab==='campaigns')renderCampTable();
@@ -1592,7 +1667,7 @@ document.addEventListener('mouseup',()=>{
 function togglePin(id){
   const note=notes.find(n=>n.id===id); if(!note)return;
   note.pinned=!note.pinned;
-  saveNotes(notes); renderAll(); renderDetail(note);
+  saveOneNote(note); renderAll(); renderDetail(note);
 }
 
 // ══════════════════════════════════════════════════
@@ -1793,14 +1868,10 @@ const SEED_CAMPS = [
   {id:2005,campaign_cd:'CAMP2815',campaign_nm:'Master_GMA_Diagram_v27.4',event_name:'IF100_EV_GMA_BANNER_v3',date:'2025-10-30',type:'BAU',trigger_type:'Event',status:'Active',note:'',extra:{},created:'2025-10-30',modified:'2025-10-30'}
 ];
 
-function loadCamps(){
-  let camps = JSON.parse(localStorage.getItem(LS_CAMPS)||'null');
-  if(!camps){ camps=[...SEED_CAMPS]; saveCamps(camps); }
-  return camps;
-}
-function saveCamps(camps){ try{ localStorage.setItem(LS_CAMPS,JSON.stringify(camps)); }catch(e){} }
+// loadCamps replaced by loadCampaignsDB() — called in initApp
+// saveCamps is now async — defined above in data layer
 
-let campaigns = loadCamps();
+let campaigns = [];
 let campSortCol = 'date', campSortDir = 'desc';
 let activeCampId = null, editingCampId = null;
 let campAddRowVisible = false;
@@ -1949,7 +2020,7 @@ function saveInlinecamp(){
     created: today(), modified: today()
   };
   campaigns.unshift(camp);
-  saveCamps(campaigns); hideInlineCampRow(); renderCampTable(); selectCamp(camp.id);
+  saveOneCamp(camp); hideInlineCampRow(); renderCampTable(); selectCamp(camp.id);
   incrementEdits();
 }
 
@@ -2058,14 +2129,14 @@ function addCampExtra(id){
   if(!camp) return;
   if(!camp.extra) camp.extra={};
   camp.extra[k]=v; camp.modified=today();
-  saveCamps(campaigns); selectCamp(id);
+  saveOneCamp(camp); selectCamp(id);
 }
 
 function deleteCampExtra(id, key){
   const camp = campaigns.find(c=>c.id===id);
   if(!camp||!camp.extra) return;
   delete camp.extra[key]; camp.modified=today();
-  saveCamps(campaigns); selectCamp(id);
+  saveOneCamp(camp); selectCamp(id);
 }
 
 // ══════════════════════════════════════════════════
@@ -2109,7 +2180,7 @@ function saveCampaign(){
   camp.date=document.getElementById('ca-date').value;
   camp.note=document.getElementById('ca-note').value.trim();
   camp.modified=today();
-  saveCamps(campaigns); hideInlineCampRow(); editingCampId=null; renderCampTable(); selectCamp(camp.id);
+  saveOneCamp(camp); hideInlineCampRow(); editingCampId=null; renderCampTable(); selectCamp(camp.id);
   incrementEdits();
 }
 
@@ -2117,8 +2188,8 @@ function confirmDeleteCamp(){
   if(!activeCampId) return;
   const camp=campaigns.find(c=>c.id===activeCampId); if(!camp) return;
   if(!confirm('Delete campaign "'+camp.campaign_cd+' — '+camp.campaign_nm+'"? This cannot be undone.')) return;
-  campaigns=campaigns.filter(c=>c.id!==activeCampId);
-  activeCampId=null; saveCamps(campaigns);
+  deleteCampDB(activeCampId); campaigns=campaigns.filter(c=>c.id!==activeCampId);
+  activeCampId=null;
   document.getElementById('campSidePanel').classList.remove('open');
   renderCampTable();
 }
@@ -2173,11 +2244,37 @@ document.addEventListener('mouseup',()=>{
   document.body.style.cursor=''; document.body.style.userSelect=''; campResizing=false;
 });
 // ══════════════════════════════════════════════════
-// INIT
+// INIT — async, loads from Supabase
 // ══════════════════════════════════════════════════
-loadTheme();loadThresholds();
-buildIndex();renderAll();if(notes.length)selectNote(notes[0].id);
-updateBackupStatus();
+async function initApp(){
+  const bar = document.getElementById('loadingBar');
+  const msg = document.getElementById('loadingMsg');
+  try{
+    loadTheme(); loadThresholds();
+    msg.textContent='Loading notes…'; bar.style.width='25%';
+    notes = await loadNotes();
+    notes.forEach(n=>{if(n.type==='sql')n.type='code';});
+
+    msg.textContent='Loading folders…'; bar.style.width='50%';
+    folders = await loadFolders();
+
+    msg.textContent='Loading campaigns…'; bar.style.width='75%';
+    campaigns = await loadCampaignsDB();
+
+    msg.textContent='Ready!'; bar.style.width='100%';
+    await new Promise(r=>setTimeout(r,300));
+    document.getElementById('loadingScreen').style.display='none';
+
+    buildIndex(); renderAll();
+    if(notes.length) selectNote(notes[0].id);
+    updateBackupStatus();
+  } catch(err){
+    msg.textContent='Connection failed — check your Supabase URL and key.';
+    msg.style.color='#f87171';
+    console.error('base·bi init error:', err);
+  }
+}
+initApp();
 </script>
 </body>
 </html>
