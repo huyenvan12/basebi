@@ -234,38 +234,6 @@ textarea.code-input{font-family:'JetBrains Mono',monospace;font-size:12px;min-he
    — immune to data-theme changes
 ══════════════════════════════════════ */
 #noteModalOverlay .modal,
-#campModalOverlay .modal{
-  background:#f2f3f7 !important;
-  border-color:#d4d8e8 !important;
-}
-#noteModalOverlay .modal-title,
-#campModalOverlay .modal-title{color:#1a1d2e !important}
-#noteModalOverlay .modal-close,
-#campModalOverlay .modal-close{color:#9099b5 !important}
-#noteModalOverlay .modal-close:hover,
-#campModalOverlay .modal-close:hover{color:#1a1d2e !important}
-#noteModalOverlay .form-label,
-#campModalOverlay .form-label{color:#5a6380 !important}
-#noteModalOverlay .form-hint,
-#campModalOverlay .form-hint{color:#9099b5 !important}
-#noteModalOverlay .form-input,
-#campModalOverlay .form-input{background:#ffffff !important;border-color:#d4d8e8 !important;color:#1a1d2e !important}
-#noteModalOverlay .form-input:focus,
-#campModalOverlay .form-input:focus{border-color:#3b6fe0 !important}
-#noteModalOverlay .form-input::placeholder,
-#campModalOverlay .form-input::placeholder{color:#b0b6cc !important}
-#noteModalOverlay select.form-input option,
-#campModalOverlay select.form-input option{background:#ffffff;color:#1a1d2e}
-#noteModalOverlay .btn-ghost,
-#campModalOverlay .btn-ghost{background:transparent !important;color:#5a6380 !important;border-color:#d4d8e8 !important}
-#noteModalOverlay .btn-ghost:hover,
-#campModalOverlay .btn-ghost:hover{background:#e8eaf2 !important;color:#1a1d2e !important}
-#noteModalOverlay .btn-primary,
-#campModalOverlay .btn-primary{background:#3b6fe0 !important;color:#fff !important}
-#noteModalOverlay .btn-primary:hover,
-#campModalOverlay .btn-primary:hover{background:#2f5bc7 !important}
-#noteModalOverlay .btn-primary.code-save{background:#c47d0e !important}
-#campModalOverlay .modal-actions .btn-primary{background:#3b6fe0 !important}
 #noteModalOverlay textarea.code-input{background:#131720 !important;color:#e2e8f0 !important;border-color:#2a3047 !important}
 
 
@@ -496,7 +464,7 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
 .cb-event{background:rgba(52,211,153,.1);color:#34d399}
 
 /* ADD ROW */
-.camp-add-row td{background:var(--bg);border-bottom:2px solid var(--border);padding:5px 6px}
+.camp-add-row{display:none}.camp-add-row.visible{display:table-row}.camp-add-row.visible td{background:var(--bg);border-bottom:2px solid var(--border);padding:5px 6px}
 .camp-add-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:5px 7px;color:var(--text);font-size:11px;font-family:inherit;outline:none;transition:border-color .15s}
 .camp-add-input:focus{border-color:var(--accent)}
 .camp-add-input::placeholder{color:var(--text-dim)}
@@ -508,8 +476,13 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
 .camp-add-cancel:hover{color:var(--danger)}
 
 /* SIDE PANEL */
-.camp-side-panel{width:320px;flex-shrink:0;background:var(--surface);border-left:1px solid var(--border);display:none;flex-direction:column;overflow:hidden}
+.camp-side-panel{width:320px;min-width:200px;max-width:560px;flex:none;background:var(--surface);border-left:none;display:none;flex-direction:column;overflow:hidden}
 .camp-side-panel.open{display:flex}
+.camp-resizer{width:5px;flex-shrink:0;background:var(--border);cursor:col-resize;position:relative;z-index:10;transition:background .15s;display:none}
+.camp-resizer.visible{display:block}
+.camp-resizer:hover,.camp-resizer.dragging{background:var(--accent)}
+.csp-close-btn{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;line-height:1;padding:0 2px;flex-shrink:0}
+.csp-close-btn:hover{color:var(--text)}
 .csp-header{padding:14px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
 .csp-cd{font-family:'JetBrains Mono',monospace;font-size:10px;color:#c4b5fd;background:rgba(196,181,253,.08);border-radius:3px;padding:2px 8px;display:inline-block;margin-bottom:6px}
 .csp-nm{font-size:14px;font-weight:600;color:var(--text);line-height:1.3;margin-bottom:8px}
@@ -716,9 +689,13 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
       </div>
 
       <!-- SIDE PANEL -->
+      <div class="camp-resizer" id="campResizer" onmousedown="startCampResize(event)"></div>
       <div class="camp-side-panel" id="campSidePanel">
         <div class="csp-header">
-          <div class="csp-cd" id="cspCd"></div>
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px">
+            <div class="csp-cd" id="cspCd"></div>
+            <button class="csp-close-btn" onclick="closeCampPanel()" title="Close">×</button>
+          </div>
           <div class="csp-nm" id="cspNm"></div>
           <div class="csp-badges" id="cspBadges"></div>
         </div>
@@ -908,53 +885,6 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
   </div>
 </div>
 
-<!-- CAMPAIGN EDIT MODAL -->
-<div class="modal-overlay" id="campModalOverlay">
-  <div class="modal camp-modal">
-    <div class="modal-title">
-      <span id="campModalTitle">New Campaign</span>
-      <button class="modal-close" onclick="closeCampModal()">×</button>
-    </div>
-    <div class="form-row">
-      <label class="form-label">CAMPAIGN_CD *</label>
-      <input class="form-input" id="cm-cd" placeholder="e.g. SMS_BAU_042" style="font-family:'JetBrains Mono',monospace">
-    </div>
-    <div class="form-row">
-      <label class="form-label">CAMPAIGN_NM *</label>
-      <input class="form-input" id="cm-nm" placeholder="Campaign name">
-    </div>
-    <div class="form-row">
-      <label class="form-label">EVENT_NAME</label>
-      <input class="form-input" id="cm-event" placeholder="e.g. LON_OVERDUE_30">
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-      <div class="form-row">
-        <label class="form-label">TYPE</label>
-        <select class="form-input" id="cm-type"><option>BAU</option><option>Adhoc</option></select>
-      </div>
-      <div class="form-row">
-        <label class="form-label">TRIGGER</label>
-        <select class="form-input" id="cm-trigger"><option>Batch</option><option>Event</option></select>
-      </div>
-      <div class="form-row">
-        <label class="form-label">STATUS</label>
-        <select class="form-input" id="cm-status"><option>Active</option><option>Stop</option></select>
-      </div>
-    </div>
-    <div class="form-row">
-      <label class="form-label">DATE</label>
-      <input class="form-input" id="cm-date" type="date">
-    </div>
-    <div class="form-row">
-      <label class="form-label">NOTE</label>
-      <textarea class="form-input" id="cm-note" placeholder="Technical design notes for later reference…" style="min-height:100px"></textarea>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeCampModal()">Cancel</button>
-      <button class="btn btn-primary" id="campSaveBtn" onclick="saveCampaign()">Save</button>
-    </div>
-  </div>
-</div>
 
 <script>
 // ══════════════════════════════════════════════════
@@ -1455,6 +1385,7 @@ function openNoteModal(id){
     renderTagChips();renderLinkChips();
   }
   document.getElementById('noteModalOverlay').classList.add('open');
+  toggleCodeField(); // apply type colors after modal is visible
   setTimeout(()=>document.getElementById('f-title').focus(),50);
 }
 function closeNoteModal(){document.getElementById('noteModalOverlay').classList.remove('open');editingNoteId=null;selectedTags=[];selectedLinks=[];closeInlineLinkDd();}
@@ -1613,7 +1544,7 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     if(document.getElementById('notePopupOverlay').classList.contains('open')){closeNotePopup();return;}
     if(searchScreenOpen){closeSearchScreen();return;}
-    closeNoteModal();closeFolderModal();closeTagModal();closeExportModal();closeCampModal();closeShortcutsModal();closeGearMenu();closeInlineLinkDd();
+    closeNoteModal();closeFolderModal();closeTagModal();closeExportModal();hideInlineCampRow();closeShortcutsModal();closeGearMenu();closeInlineLinkDd();
     document.getElementById('tagDropdown').classList.remove('open');
     document.getElementById('linkDropdown').classList.remove('open');
   }
@@ -1854,7 +1785,13 @@ function updateBackupStatus(){
 // CAMPAIGN DATA LAYER
 // ══════════════════════════════════════════════════
 const LS_CAMPS = 'basebi_campaigns';
-const SEED_CAMPS = [];
+const SEED_CAMPS = [
+  {id:2001,campaign_cd:'CAMP12140',campaign_nm:'RTDM_P_Z_HPL_CLIP_COMM_V1',event_name:'PROC_HPL_CLIP_COMM',date:'2026-07-01',type:'BAU',trigger_type:'Batch',status:'Active',note:'New design for 2 channel campaign',extra:{},created:'2026-07-01',modified:'2026-07-01'},
+  {id:2002,campaign_cd:'CAMP11628',campaign_nm:'RTDM_P_Z_S_C_SCORING_COMM_v2.4',event_name:'PROC_SCORING_OFFER_COMM',date:'2026-06-25',type:'BAU',trigger_type:'Batch',status:'Active',note:'Design sub-camp to detach OPO CG comm',extra:{},created:'2026-06-25',modified:'2026-06-25'},
+  {id:2003,campaign_cd:'CAMP11183',campaign_nm:'RTDM_Z_CSAT_SURVEY_NEW_OB_V3',event_name:'PROC_SURVEY_SIGNED_CONTRACT',date:'2026-05-29',type:'Adhoc',trigger_type:'Batch',status:'Active',note:'Will end at the end of 2026',extra:{},created:'2026-05-29',modified:'2026-05-29'},
+  {id:2004,campaign_cd:'CAMP10911',campaign_nm:'RTDM_P_Z_EPP_BY_BALANCE_AMT_V5',event_name:'PROC_EPP_BY_BALANCE_AMT',date:'2026-04-02',type:'BAU',trigger_type:'Batch',status:'Active',note:'1st batch of RTDM campaign',extra:{},created:'2026-04-02',modified:'2026-04-02'},
+  {id:2005,campaign_cd:'CAMP2815',campaign_nm:'Master_GMA_Diagram_v27.4',event_name:'IF100_EV_GMA_BANNER_v3',date:'2025-10-30',type:'BAU',trigger_type:'Event',status:'Active',note:'',extra:{},created:'2025-10-30',modified:'2025-10-30'}
+];
 
 function loadCamps(){
   let camps = JSON.parse(localStorage.getItem(LS_CAMPS)||'null');
@@ -1866,6 +1803,7 @@ function saveCamps(camps){ try{ localStorage.setItem(LS_CAMPS,JSON.stringify(cam
 let campaigns = loadCamps();
 let campSortCol = 'date', campSortDir = 'desc';
 let activeCampId = null, editingCampId = null;
+let campAddRowVisible = false;
 
 // ══════════════════════════════════════════════════
 // TAB SWITCHING
@@ -1969,14 +1907,14 @@ function renderCampTable(){
     <td><select class="camp-add-select" id="ca-status" style="width:75px"><option>Active</option><option>Stop</option></select></td>
     <td style="white-space:nowrap">
       <input class="camp-add-input" id="ca-note" placeholder="Note…" style="width:90px">
-      &nbsp;<button class="camp-add-save" onclick="saveInlinecamp()">Save</button>
-      <button class="camp-add-cancel" onclick="clearCampAddRow()">×</button>
+      &nbsp;<button class="camp-add-save" onclick="editingCampId?saveCampaign():saveInlinecamp()">Save</button>
+      <button class="camp-add-cancel" onclick="hideInlineCampRow()">×</button>
     </td>
   </tr>`;
 
   const dataRows = sorted.map(camp=>{
     const note = camp.note ? camp.note.slice(0,50).replace(/\n/g,' ') : '';
-    return `<tr class="${camp.id===activeCampId?'camp-row-active':''}" onclick="selectCamp(${camp.id})">
+    return `<tr class="${camp.id===activeCampId?'camp-row-active':''}" data-id="${camp.id}" onclick="selectCamp(${camp.id})">
       <td class="cc-date">${esc(camp.date||'')}</td>
       <td class="cc-cd">${esc(camp.campaign_cd||'')}</td>
       <td class="cc-nm">${esc(camp.campaign_nm||'')}</td>
@@ -1989,6 +1927,8 @@ function renderCampTable(){
   }).join('');
 
   tbody.innerHTML = addRow + dataRows;
+  // restore add row visibility state
+  if(campAddRowVisible){ const r=document.getElementById('campAddRow'); if(r) r.classList.add('visible'); }
 }
 
 function saveInlinecamp(){
@@ -2009,15 +1949,30 @@ function saveInlinecamp(){
     created: today(), modified: today()
   };
   campaigns.unshift(camp);
-  saveCamps(campaigns); renderCampTable(); selectCamp(camp.id);
+  saveCamps(campaigns); hideInlineCampRow(); renderCampTable(); selectCamp(camp.id);
+  incrementEdits();
 }
 
-function clearCampAddRow(){
-  ['ca-cd','ca-nm','ca-event','ca-note'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('ca-date').value=today();
-  document.getElementById('ca-type').value='BAU';
-  document.getElementById('ca-trigger').value='Batch';
-  document.getElementById('ca-status').value='Active';
+function showInlineCampRow(){
+  campAddRowVisible = true;
+  renderCampTable(); // ensure row exists in DOM
+  const row = document.getElementById('campAddRow');
+  if(row){
+    row.classList.add('visible');
+    // reset fields
+    ['ca-cd','ca-nm','ca-event','ca-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    const dateEl=document.getElementById('ca-date'); if(dateEl) dateEl.value=today();
+    const typeEl=document.getElementById('ca-type'); if(typeEl) typeEl.value='BAU';
+    const trigEl=document.getElementById('ca-trigger'); if(trigEl) trigEl.value='Batch';
+    const statEl=document.getElementById('ca-status'); if(statEl) statEl.value='Active';
+    setTimeout(()=>{const el=document.getElementById('ca-cd');if(el)el.focus();},50);
+  }
+}
+function hideInlineCampRow(){
+  campAddRowVisible = false;
+  editingCampId = null;
+  const row = document.getElementById('campAddRow');
+  if(row) row.classList.remove('visible');
 }
 
 function clearCampFilters(){
@@ -2032,10 +1987,29 @@ function clearCampFilters(){
 // ══════════════════════════════════════════════════
 // CAMPAIGN SIDE PANEL
 // ══════════════════════════════════════════════════
-function selectCamp(id){
-  activeCampId = id;
+function closeCampPanel(){
+  activeCampId=null;
+  document.getElementById('campSidePanel').classList.remove('open');
+  document.getElementById('campResizer').classList.remove('visible');
   renderCampTable();
-  const camp = campaigns.find(c=>c.id===id);
+}
+
+function selectCamp(id){
+  // ensure numeric comparison
+  id = Number(id);
+  // click same row = toggle close
+  if(activeCampId===id){
+    closeCampPanel();
+    return;
+  }
+  activeCampId = id;
+  // update row highlight without full re-render
+  document.querySelectorAll('table.camp-table tbody tr').forEach(tr=>{
+    tr.classList.remove('camp-row-active');
+  });
+  const activeRow = document.querySelector(`table.camp-table tbody tr[data-id="${id}"]`);
+  if(activeRow) activeRow.classList.add('camp-row-active');
+  const camp = campaigns.find(cc=>cc.id===id);
   if(!camp) return;
   document.getElementById('cspCd').textContent = camp.campaign_cd;
   document.getElementById('cspNm').textContent = camp.campaign_nm;
@@ -2072,6 +2046,7 @@ function selectCamp(id){
     </div>`;
 
   document.getElementById('campSidePanel').classList.add('open');
+  document.getElementById('campResizer').classList.add('visible');
 }
 
 function addCampExtra(id){
@@ -2096,68 +2071,46 @@ function deleteCampExtra(id, key){
 // ══════════════════════════════════════════════════
 // CAMPAIGN MODAL (add / edit)
 // ══════════════════════════════════════════════════
-function openAddCampModal(){
-  editingCampId=null;
-  document.getElementById('campModalTitle').textContent='New Campaign';
-  document.getElementById('campSaveBtn').textContent='Save';
-  ['cm-cd','cm-nm','cm-event','cm-note'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('cm-date').value=today();
-  document.getElementById('cm-type').value='BAU';
-  document.getElementById('cm-trigger').value='Batch';
-  document.getElementById('cm-status').value='Active';
-  document.getElementById('campModalOverlay').classList.add('open');
-  setTimeout(()=>document.getElementById('cm-cd').focus(),50);
-}
+function openAddCampModal(){ showInlineCampRow(); }
 
 function openCampEditModal(){
-  const camp=campaigns.find(c=>c.id===activeCampId); if(!camp) return;
+  const camp=campaigns.find(cc=>cc.id===activeCampId); if(!camp) return;
   editingCampId=activeCampId;
-  document.getElementById('campModalTitle').textContent='Edit Campaign';
-  document.getElementById('campSaveBtn').textContent='Save Changes';
-  document.getElementById('cm-cd').value=camp.campaign_cd||'';
-  document.getElementById('cm-nm').value=camp.campaign_nm||'';
-  document.getElementById('cm-event').value=camp.event_name||'';
-  document.getElementById('cm-type').value=camp.type||'BAU';
-  document.getElementById('cm-trigger').value=camp.trigger_type||'Batch';
-  document.getElementById('cm-status').value=camp.status||'Active';
-  document.getElementById('cm-date').value=camp.date||today();
-  document.getElementById('cm-note').value=camp.note||'';
-  document.getElementById('campModalOverlay').classList.add('open');
-  setTimeout(()=>document.getElementById('cm-cd').focus(),50);
+  renderCampTable();
+  const row=document.getElementById('campAddRow');
+  if(row){
+    row.classList.add('visible');
+    const dateEl=document.getElementById('ca-date'); if(dateEl) dateEl.value=camp.date||today();
+    const cdEl=document.getElementById('ca-cd'); if(cdEl) cdEl.value=camp.campaign_cd||'';
+    const nmEl=document.getElementById('ca-nm'); if(nmEl) nmEl.value=camp.campaign_nm||'';
+    const evEl=document.getElementById('ca-event'); if(evEl) evEl.value=camp.event_name||'';
+    const typeEl=document.getElementById('ca-type'); if(typeEl) typeEl.value=camp.type||'BAU';
+    const trigEl=document.getElementById('ca-trigger'); if(trigEl) trigEl.value=camp.trigger_type||'Batch';
+    const statEl=document.getElementById('ca-status'); if(statEl) statEl.value=camp.status||'Active';
+    const noteEl=document.getElementById('ca-note'); if(noteEl) noteEl.value=camp.note||'';
+    setTimeout(()=>{if(cdEl)cdEl.focus();},50);
+  }
 }
 
-function closeCampModal(){ document.getElementById('campModalOverlay').classList.remove('open'); editingCampId=null; }
+function closeCampModal(){ hideInlineCampRow(); editingCampId=null; }
 
 function saveCampaign(){
-  const cd=document.getElementById('cm-cd').value.trim();
-  const nm=document.getElementById('cm-nm').value.trim();
-  if(!cd||!nm){ document.getElementById('cm-cd').focus(); return; }
-  const now=today();
-  if(editingCampId){
-    const camp=campaigns.find(c=>c.id===editingCampId); if(!camp) return;
-    camp.campaign_cd=cd; camp.campaign_nm=nm;
-    camp.event_name=document.getElementById('cm-event').value.trim();
-    camp.type=document.getElementById('cm-type').value;
-    camp.trigger_type=document.getElementById('cm-trigger').value;
-    camp.status=document.getElementById('cm-status').value;
-    camp.date=document.getElementById('cm-date').value;
-    camp.note=document.getElementById('cm-note').value.trim();
-    camp.modified=now;
-    saveCamps(campaigns); closeCampModal(); renderCampTable(); selectCamp(editingCampId);
-  } else {
-    const camp={
-      id:Date.now(), campaign_cd:cd, campaign_nm:nm,
-      event_name:document.getElementById('cm-event').value.trim(),
-      type:document.getElementById('cm-type').value,
-      trigger_type:document.getElementById('cm-trigger').value,
-      status:document.getElementById('cm-status').value,
-      date:document.getElementById('cm-date').value,
-      note:document.getElementById('cm-note').value.trim(),
-      extra:{}, created:now, modified:now
-    };
-    campaigns.unshift(camp);
-    saveCamps(campaigns); closeCampModal(); renderCampTable(); selectCamp(camp.id);
-  }
+  // called when editing via inline row in edit mode
+  if(!editingCampId) return;
+  const cd=document.getElementById('ca-cd').value.trim();
+  const nm=document.getElementById('ca-nm').value.trim();
+  if(!cd||!nm){ document.getElementById('ca-cd').focus(); return; }
+  const camp=campaigns.find(cc=>cc.id===editingCampId); if(!camp) return;
+  camp.campaign_cd=cd; camp.campaign_nm=nm;
+  camp.event_name=document.getElementById('ca-event').value.trim();
+  camp.type=document.getElementById('ca-type').value;
+  camp.trigger_type=document.getElementById('ca-trigger').value;
+  camp.status=document.getElementById('ca-status').value;
+  camp.date=document.getElementById('ca-date').value;
+  camp.note=document.getElementById('ca-note').value.trim();
+  camp.modified=today();
+  saveCamps(campaigns); hideInlineCampRow(); editingCampId=null; renderCampTable(); selectCamp(camp.id);
+  incrementEdits();
 }
 
 function confirmDeleteCamp(){
@@ -2195,6 +2148,30 @@ function toggleTheme(){
   applyTheme(current==='dark' ? 'light' : 'dark');
 }
 
+
+// ══════════════════════════════════════════════════
+// CAMPAIGN SIDE PANEL RESIZE
+// ══════════════════════════════════════════════════
+let campResizing=false,campResizeStartX=0,campResizeStartW=0;
+function startCampResize(e){
+  campResizing=true; campResizeStartX=e.clientX;
+  campResizeStartW=document.getElementById('campSidePanel').offsetWidth;
+  document.getElementById('campResizer').classList.add('dragging');
+  document.body.style.cursor='col-resize';
+  document.body.style.userSelect='none';
+  e.preventDefault();
+}
+document.addEventListener('mousemove',e=>{
+  if(!campResizing)return;
+  const delta=campResizeStartX-e.clientX;
+  const newW=Math.min(560,Math.max(200,campResizeStartW+delta));
+  document.getElementById('campSidePanel').style.width=newW+'px';
+});
+document.addEventListener('mouseup',()=>{
+  if(!campResizing)return;
+  document.getElementById('campResizer').classList.remove('dragging');
+  document.body.style.cursor=''; document.body.style.userSelect=''; campResizing=false;
+});
 // ══════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════
