@@ -181,7 +181,7 @@ textarea.code-input{font-family:'JetBrains Mono',monospace;font-size:12px;min-he
    NOTE MODAL — LIGHT MODE (off-white)
 ══════════════════════════════════════ */
 #noteModalOverlay .modal{
-  background:#f2f3f7;border:1px solid #d4d8e8;
+  background:#f2f3f7 !important;border:1px solid #d4d8e8 !important;
 }
 #noteModalOverlay .modal-title{color:#1a1d2e}
 #noteModalOverlay .modal-close{color:#9099b5}
@@ -233,7 +233,7 @@ textarea.code-input{font-family:'JetBrains Mono',monospace;font-size:12px;min-he
    ALWAYS-LIGHT MODALS (note + campaign)
    — immune to data-theme changes
 ══════════════════════════════════════ */
-#noteModalOverlay .modal,
+/* code textarea stays dark inside light modal for readability */
 #noteModalOverlay textarea.code-input{background:#131720 !important;color:#e2e8f0 !important;border-color:#2a3047 !important}
 
 
@@ -1817,8 +1817,8 @@ function switchTab(tab){
   document.getElementById('campView').classList.toggle('active', tab==='campaigns');
   document.getElementById('notesSearchWrap').style.display = tab==='notes'?'':'none';
   const actionBtn = document.getElementById('topbarActionBtn');
-  if(tab==='notes'){ actionBtn.textContent='+ New Note'; actionBtn.onclick=openNoteModal; }
-  else{ actionBtn.textContent='+ Add Campaign'; actionBtn.onclick=openAddCampModal; }
+  if(tab==='notes'){ actionBtn.textContent='+ New Note'; actionBtn.setAttribute('onclick','openNoteModal()'); }
+  else{ actionBtn.textContent='+ Add Campaign'; actionBtn.setAttribute('onclick','openAddCampModal()'); }
   if(tab==='campaigns') renderCampTable();
 }
 
