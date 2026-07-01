@@ -34,7 +34,7 @@
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;font-size:13px}
 
 /* TOPBAR */
-.topbar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.topbar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;min-height:46px}
 .logo{font-size:15px;font-weight:600;color:var(--accent);letter-spacing:-.3px;white-space:nowrap}
 .logo em{color:var(--text-muted);font-style:normal;font-weight:300}
 .search-wrap{flex:1;position:relative;max-width:420px}
@@ -238,45 +238,9 @@ textarea.code-input{font-family:'JetBrains Mono',monospace;font-size:12px;min-he
 #noteModalOverlay textarea.code-input{background:#131720 !important;color:#e2e8f0 !important;border-color:#2a3047 !important}
 
 
-/* GEAR MENU STATUS SECTION */
-.gear-status-section{padding:12px 14px;border-bottom:1px solid var(--border)}
-.gear-status-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-.gear-status-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text-dim)}
-.status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:background .3s,box-shadow .3s}
-.status-dot.green{background:#4ade80;box-shadow:0 0 6px rgba(74,222,128,.5)}
-.status-dot.yellow{background:#fbbf24;box-shadow:0 0 6px rgba(251,191,36,.5)}
-.status-dot.red{background:#f87171;box-shadow:0 0 6px rgba(248,113,113,.5)}
-.gear-status-rows{display:flex;flex-direction:column;gap:5px;margin-bottom:8px}
-.gear-status-row{display:flex;align-items:center;justify-content:space-between}
-.gear-status-label{font-size:10px;color:var(--text-muted)}
-.gear-status-val{font-size:10px;font-weight:600;transition:color .3s}
-.gear-status-val.green{color:#4ade80}
-.gear-status-val.yellow{color:#fbbf24}
-.gear-status-val.red{color:#f87171}
-.gear-status-val.dim{color:var(--text-dim)}
-.gear-prog-wrap{margin-bottom:5px}
-.gear-prog-labels{display:flex;justify-content:space-between;margin-bottom:3px}
-.gear-prog-lbl{font-size:9px;color:var(--text-dim)}
-.gear-prog-val{font-size:9px;font-weight:600}
-.gear-prog-track{height:3px;background:var(--surface2);border-radius:3px;overflow:hidden}
-.gear-prog-fill{height:100%;border-radius:3px;transition:width .4s,background .3s}
-.gear-prog-fill.green{background:#4ade80}
-.gear-prog-fill.yellow{background:#fbbf24}
-.gear-prog-fill.red{background:#f87171}
-.gear-export-btn{width:100%;margin-top:8px;padding:5px 0;background:rgba(91,141,238,.12);border:1px solid rgba(91,141,238,.25);border-radius:5px;color:var(--accent);font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
-.gear-export-btn:hover{background:rgba(91,141,238,.2)}
-.gear-export-btn.urgent{background:rgba(248,113,113,.1);border-color:rgba(248,113,113,.25);color:#f87171}
-.gear-export-btn.urgent:hover{background:rgba(248,113,113,.18)}
 
-/* THRESHOLD SECTION */
-.gear-threshold-section{padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg)}
-.gear-threshold-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text-dim);margin-bottom:7px}
-.gear-threshold-row{display:flex;align-items:center;gap:8px;margin-bottom:5px}
-.gear-threshold-row:last-child{margin-bottom:0}
-.gear-threshold-label{font-size:10px;color:var(--text-muted);flex:1}
-.gear-threshold-input{width:46px;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:3px 6px;color:var(--text);font-size:11px;font-family:inherit;outline:none;text-align:center;transition:border-color .15s}
-.gear-threshold-input:focus{border-color:var(--accent)}
-.gear-threshold-unit{font-size:9px;color:var(--text-dim);white-space:nowrap;width:28px}
+
+
 
 mark{background:var(--highlight);color:var(--text);border-radius:2px;padding:0 1px}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
@@ -285,6 +249,15 @@ mark{background:var(--highlight);color:var(--text);border-radius:2px;padding:0 1
 .resizer{width:5px;flex-shrink:0;background:var(--border);cursor:col-resize;position:relative;z-index:10;transition:background .15s}
 .resizer:hover,.resizer.dragging{background:var(--accent);}
 .resizer::after{content:'';position:absolute;inset:0 -3px;background:transparent}
+
+/* PANE COLLAPSE BUTTONS (in pane headers) */
+.pane-collapse-btn{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:11px;padding:1px 4px;border-radius:3px;line-height:1;transition:all .12s;flex-shrink:0}
+.pane-collapse-btn:hover{background:var(--surface2);color:var(--accent)}
+.pane-collapse-btn.collapsed{color:var(--accent)}
+
+/* COLLAPSED PANE */
+.sidebar.collapsed,.note-list.collapsed{width:0!important;min-width:0!important;overflow:hidden;flex:none}
+.resizer.pane-collapsed{background:var(--accent-dim)}
 
 /* PIN */
 .pin-btn{background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;color:var(--text-dim);transition:all .15s;line-height:1}
@@ -334,36 +307,35 @@ mark{background:var(--highlight);color:var(--text);border-radius:2px;padding:0 1
 /* ══════════════════════════════════════
    NOTE POPUP (inside search screen)
 ══════════════════════════════════════ */
-.note-popup-overlay{position:fixed;inset:0;background:rgba(242,243,247,.85);z-index:300;display:none;align-items:flex-start;justify-content:center;padding-top:60px}
+.note-popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;display:none;align-items:flex-start;justify-content:center;padding-top:60px}
 .note-popup-overlay.open{display:flex}
-.note-popup{background:#fff;border:1.5px solid #d4d8e8;border-radius:12px;width:100%;max-width:620px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.12)}
+.note-popup{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;width:100%;max-width:620px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.35)}
 
-/* popup topbar — reuses search bar */
 /* popup content */
 .popup-content{flex:1;padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
 .popup-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
-.popup-title{font-size:15px;font-weight:700;color:#1a1d2e;flex:1;line-height:1.3}
+.popup-title{font-size:15px;font-weight:700;color:var(--text);flex:1;line-height:1.3}
 .popup-right-col{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
 .popup-type-badge{font-size:9px;font-weight:600;padding:2px 8px;border-radius:3px;text-transform:uppercase}
-.ptb-plain{background:#dde8ff;color:#3b6fe0}
-.ptb-code{background:#fef3dc;color:#c47d0e}
+.ptb-plain{background:var(--accent-dim);color:var(--accent)}
+.ptb-code{background:rgba(245,158,11,.15);color:var(--sql)}
 
 /* show/hide toggle */
-.info-toggle{display:flex;align-items:center;gap:5px;background:#f5f6fa;border:1px solid #d4d8e8;border-radius:5px;padding:3px 9px;cursor:pointer;transition:all .12s}
-.info-toggle:hover{border-color:#3b6fe0}
-.toggle-dot{width:10px;height:10px;border-radius:50%;border:2px solid #b0b6cc;background:#d4d8e8;flex-shrink:0;transition:all .15s}
-.info-toggle.on .toggle-dot{background:#3b6fe0;border-color:#3b6fe0}
-.toggle-label{font-size:9px;color:#9099b5;font-weight:500;white-space:nowrap}
-.info-toggle.on .toggle-label{color:#3b6fe0}
+.info-toggle{display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:3px 9px;cursor:pointer;transition:all .12s}
+.info-toggle:hover{border-color:var(--accent)}
+.toggle-dot{width:10px;height:10px;border-radius:50%;border:2px solid var(--text-dim);background:var(--border);flex-shrink:0;transition:all .15s}
+.info-toggle.on .toggle-dot{background:var(--accent);border-color:var(--accent)}
+.toggle-label{font-size:9px;color:var(--text-muted);font-weight:500;white-space:nowrap}
+.info-toggle.on .toggle-label{color:var(--accent)}
 
 /* metadata row */
 .popup-meta{display:flex;gap:5px;flex-wrap:wrap}
 .popup-meta.hidden{display:none}
-.pm-folder{font-size:9px;background:#dde8ff;color:#3b6fe0;border-radius:3px;padding:2px 7px;font-weight:500}
-.pm-tag{font-size:9px;background:#f0f2f8;color:#5a6380;border:1px solid #d4d8e8;border-radius:3px;padding:2px 7px}
-.popup-divider{height:1px;background:#e8eaf2}
+.pm-folder{font-size:9px;background:var(--accent-dim);color:var(--accent);border-radius:3px;padding:2px 7px;font-weight:500}
+.pm-tag{font-size:9px;background:var(--tag-bg);color:var(--text-muted);border:1px solid var(--border);border-radius:3px;padding:2px 7px}
+.popup-divider{height:1px;background:var(--border)}
 
-/* popup code block */
+/* popup code block — always dark for readability */
 .popup-code-block{background:#1a1d2e;border:1px solid #2a3047;border-radius:7px;overflow:hidden}
 .popup-code-header{display:flex;align-items:center;justify-content:space-between;padding:5px 12px;background:#1f2535;border-bottom:1px solid #2a3047}
 .popup-code-lang{font-size:9px;font-weight:600;color:#f59e0b;text-transform:uppercase;letter-spacing:.5px}
@@ -373,15 +345,15 @@ mark{background:var(--highlight);color:var(--text);border-radius:2px;padding:0 1
 pre.popup-code-body{padding:12px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.65;color:#e2e8f0;overflow-x:auto;margin:0;white-space:pre}
 
 /* popup plain body */
-.popup-plain-body{font-size:12px;color:#1a1d2e;line-height:1.8;white-space:pre-wrap}
-.popup-desc-text{font-size:11px;color:#5a6380;line-height:1.65}
+.popup-plain-body{font-size:12px;color:var(--text);line-height:1.8;white-space:pre-wrap}
+.popup-desc-text{font-size:11px;color:var(--text-muted);line-height:1.65}
 
 /* popup linked */
-.popup-linked{border-top:1px solid #e8eaf2;padding-top:8px}
+.popup-linked{border-top:1px solid var(--border);padding-top:8px}
 .popup-linked.hidden{display:none}
-.popup-linked-label{font-size:9px;text-transform:uppercase;letter-spacing:.6px;color:#9099b5;font-weight:600;margin-bottom:5px}
-.popup-linked-chip{display:inline-flex;align-items:center;font-size:10px;color:#3b6fe0;background:#dde8ff;border-radius:4px;padding:2px 8px;margin:2px;cursor:pointer;border:1px solid transparent;transition:border-color .1s}
-.popup-linked-chip:hover{border-color:#3b6fe0}
+.popup-linked-label{font-size:9px;text-transform:uppercase;letter-spacing:.6px;color:var(--text-dim);font-weight:600;margin-bottom:5px}
+.popup-linked-chip{display:inline-flex;align-items:center;font-size:10px;color:var(--accent);background:var(--accent-dim);border-radius:4px;padding:2px 8px;margin:2px;cursor:pointer;border:1px solid transparent;transition:border-color .1s}
+.popup-linked-chip:hover{border-color:var(--accent)}
 
 /* ══════════════════════════════════════
    TAB SWITCHER
@@ -536,52 +508,6 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
     <div class="gear-wrap">
       <button class="gear-btn" onclick="toggleGearMenu()" title="Options">⚙</button>
       <div class="gear-menu" id="gearMenu">
-        <!-- BACKUP STATUS -->
-        <div class="gear-status-section">
-          <div class="gear-status-header">
-            <span class="gear-status-title">💾 Backup status</span>
-            <div class="status-dot green" id="statusDot"></div>
-          </div>
-          <div class="gear-status-rows">
-            <div class="gear-status-row">
-              <span class="gear-status-label">Last export</span>
-              <span class="gear-status-val dim" id="statusLastExport">Never</span>
-            </div>
-            <div class="gear-status-row">
-              <span class="gear-status-label">Edits since</span>
-              <span class="gear-status-val dim" id="statusEdits">0 edits</span>
-            </div>
-          </div>
-          <div class="gear-prog-wrap">
-            <div class="gear-prog-labels">
-              <span class="gear-prog-lbl">Days</span>
-              <span class="gear-prog-val green" id="progDaysVal">0 / 7</span>
-            </div>
-            <div class="gear-prog-track"><div class="gear-prog-fill green" id="progDaysFill" style="width:0%"></div></div>
-          </div>
-          <div class="gear-prog-wrap">
-            <div class="gear-prog-labels">
-              <span class="gear-prog-lbl">Edits</span>
-              <span class="gear-prog-val green" id="progEditsVal">0 / 20</span>
-            </div>
-            <div class="gear-prog-track"><div class="gear-prog-fill green" id="progEditsFill" style="width:0%"></div></div>
-          </div>
-          <button class="gear-export-btn" id="gearExportBtn" onclick="openExportModal();closeGearMenu()">⬇ Export now</button>
-        </div>
-        <!-- THRESHOLDS -->
-        <div class="gear-threshold-section">
-          <div class="gear-threshold-title">Remind me when</div>
-          <div class="gear-threshold-row">
-            <span class="gear-threshold-label">Days since export</span>
-            <input class="gear-threshold-input" id="threshDays" type="number" min="1" max="365" value="7" oninput="saveThresholds();updateBackupStatus()">
-            <span class="gear-threshold-unit">days</span>
-          </div>
-          <div class="gear-threshold-row">
-            <span class="gear-threshold-label">Edits since export</span>
-            <input class="gear-threshold-input" id="threshEdits" type="number" min="1" max="999" value="20" oninput="saveThresholds();updateBackupStatus()">
-            <span class="gear-threshold-unit">edits</span>
-          </div>
-        </div>
         <div class="gear-divider"></div>
         <div class="gear-item" onclick="openImportPicker();closeGearMenu()">⬆ &nbsp;Import data</div>
         <div class="gear-item" onclick="openExportModal();closeGearMenu()">⬇ &nbsp;Export data</div>
@@ -610,7 +536,7 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
   <div class="notes-view" id="notesView">
     <div class="sidebar" id="sidebar">
       <div class="sidebar-section">
-        <div class="sidebar-label">Folders<button onclick="openFolderModal()" title="Add folder">＋</button></div>
+        <div class="sidebar-label">Folders<button onclick="openFolderModal()" title="Add folder">＋</button><button class="pane-collapse-btn" id="collapseA" onclick="togglePane('A')" title="Collapse sidebar">‹</button></div>
         <div id="folderList"></div>
       </div>
       <div class="sidebar-section"><div class="sidebar-label">Tags</div></div>
@@ -621,6 +547,7 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
       <div class="note-list-header">
         <span class="note-list-title" id="listTitle">All Notes</span>
         <span class="note-count" id="noteCount">0 notes</span>
+        <button class="pane-collapse-btn" id="collapseB" onclick="togglePane('B')" title="Collapse note list">‹</button>
       </div>
       <div class="note-items" id="noteItems"></div>
     </div>
@@ -629,7 +556,7 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
       <div class="empty-state">
         <div class="icon">📋</div>
         <p>Select a note to view it</p>
-        <p style="font-size:11px">or press + New Note to add one</p>
+        <p style="font-size:11px;margin-top:4px">or press <strong style="color:var(--accent)">+ New Note</strong> to create one</p>
       </div>
     </div>
   </div>
@@ -906,7 +833,6 @@ const LS_NOTES='basebi_notes', LS_FOLDERS='basebi_folders';
 const SUPABASE_URL  = 'https://adalbpcwdmzjtestfxuv.supabase.co';
 const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFkYWxicGN3ZG16anRlc3RmeHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MDI3NTcsImV4cCI6MjA5ODQ3ODc1N30.s13SMg_J2X_I30AEYK2P6R0qqS2iFI9QCFxvKvpbaHo';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-const LS_LAST_EXPORT='basebi_last_export', LS_EDITS_SINCE='basebi_edits_since_export';
 const SEED_FOLDERS=['Business','Techie','Lesson'];
 const SEED_NOTES=[
   {id:1,title:"CRM – Overdue loan segmentation query",folder:"Techie",type:"code",tags:["CRM","SQL","loan","segmentation"],code:"SELECT customer_id,\n       loan_id,\n       DATEDIFF(day, due_date, GETDATE()) AS days_overdue,\n       outstanding_balance\nFROM   loan_accounts\nWHERE  status = 'OVERDUE'\n  AND  DATEDIFF(day, due_date, GETDATE()) > 30\nORDER  BY days_overdue DESC;",body:"Use this to pull customers with DPD > 30 for the monthly NPL report.",links:["MOB bucket classification"],created:"2026-06-01",modified:"2026-06-01"},
@@ -1308,7 +1234,7 @@ function renderPopupContent(note,q){
   }
   const linkedHtml=links.length
     ?links.map(l=>`<span class="popup-linked-chip" onclick="closeNotePopup();jumpToPopupLink('${esc(l)}')">↗ ${esc(l)}</span>`).join('')
-    :'<span style="font-size:10px;color:#9099b5">None</span>';
+    :'<span style="font-size:10px;color:var(--text-dim)">None</span>';
 
   document.getElementById('popupContent').innerHTML=`
     <div class="popup-title-row">
@@ -1712,8 +1638,50 @@ document.addEventListener('mouseup',()=>{
 });
 
 // ══════════════════════════════════════════════════
-// PIN NOTE
+// COLLAPSIBLE PANES (buttons in pane headers)
 // ══════════════════════════════════════════════════
+let sidebarCollapsed=false, noteListCollapsed=false;
+let sidebarSavedW=215, noteListSavedW=260;
+
+function togglePane(which){
+  if(which==='A'){
+    const pane=document.getElementById('sidebar');
+    const resizer=document.getElementById('resizerA');
+    const btn=document.getElementById('collapseA');
+    sidebarCollapsed=!sidebarCollapsed;
+    if(sidebarCollapsed){
+      sidebarSavedW=pane.offsetWidth||215;
+      pane.classList.add('collapsed');
+      resizer.classList.add('pane-collapsed');
+      btn.textContent='›'; btn.classList.add('collapsed');
+      btn.title='Expand sidebar';
+    }else{
+      pane.classList.remove('collapsed');
+      pane.style.width=sidebarSavedW+'px';
+      resizer.classList.remove('pane-collapsed');
+      btn.textContent='‹'; btn.classList.remove('collapsed');
+      btn.title='Collapse sidebar';
+    }
+  } else {
+    const pane=document.getElementById('noteListPane');
+    const resizer=document.getElementById('resizerB');
+    const btn=document.getElementById('collapseB');
+    noteListCollapsed=!noteListCollapsed;
+    if(noteListCollapsed){
+      noteListSavedW=pane.offsetWidth||260;
+      pane.classList.add('collapsed');
+      resizer.classList.add('pane-collapsed');
+      btn.textContent='›'; btn.classList.add('collapsed');
+      btn.title='Expand note list';
+    }else{
+      pane.classList.remove('collapsed');
+      pane.style.width=noteListSavedW+'px';
+      resizer.classList.remove('pane-collapsed');
+      btn.textContent='‹'; btn.classList.remove('collapsed');
+      btn.title='Collapse note list';
+    }
+  }
+}
 function togglePin(id){
   const note=notes.find(n=>n.id===id); if(!note)return;
   note.pinned=!note.pinned;
@@ -1786,123 +1754,15 @@ function renderBodyWithLinks(text,q){
 
 
 // ══════════════════════════════════════════════════
-// BACKUP STATUS (gear menu)
+// BACKUP TRACKING (edit counter for export reminder)
 // ══════════════════════════════════════════════════
-const LS_THRESH_DAYS  = 'basebi_thresh_days';
-const LS_THRESH_EDITS = 'basebi_thresh_edits';
-
-function getLastExport(){ return localStorage.getItem(LS_LAST_EXPORT)||null; }
-function getEditsSince(){ return parseInt(localStorage.getItem(LS_EDITS_SINCE)||'0'); }
-function getThreshDays(){  return parseInt(localStorage.getItem(LS_THRESH_DAYS)||'7'); }
-function getThreshEdits(){ return parseInt(localStorage.getItem(LS_THRESH_EDITS)||'20'); }
-
-function saveThresholds(){
-  const d = parseInt(document.getElementById('threshDays').value)||7;
-  const e = parseInt(document.getElementById('threshEdits').value)||20;
-  localStorage.setItem(LS_THRESH_DAYS,  String(Math.max(1,d)));
-  localStorage.setItem(LS_THRESH_EDITS, String(Math.max(1,e)));
-}
-
-function loadThresholds(){
-  document.getElementById('threshDays').value  = getThreshDays();
-  document.getElementById('threshEdits').value = getThreshEdits();
-}
-
-function resetBackupTracking(){
-  localStorage.setItem(LS_LAST_EXPORT, new Date().toISOString());
-  localStorage.setItem(LS_EDITS_SINCE, '0');
-  updateBackupStatus();
-}
-
 function incrementEdits(){
-  const n = getEditsSince()+1;
-  localStorage.setItem(LS_EDITS_SINCE, String(n));
-  updateBackupStatus();
+  const n = (parseInt(localStorage.getItem('basebi_edits_since')||'0'))+1;
+  localStorage.setItem('basebi_edits_since', String(n));
 }
-
-function getStatusColor(daysPct, editsPct){
-  const max = Math.max(daysPct, editsPct);
-  if(max >= 1)    return 'red';
-  if(max >= 0.7)  return 'yellow';
-  return 'green';
-}
-
-function updateBackupStatus(){
-  const lastExport  = getLastExport();
-  const editsSince  = getEditsSince();
-  const threshDays  = getThreshDays();
-  const threshEdits = getThreshEdits();
-
-  // calc days since export
-  let daysSince = 0;
-  if(lastExport) daysSince = Math.floor((Date.now()-new Date(lastExport).getTime())/(1000*60*60*24));
-
-  const daysPct  = lastExport ? Math.min(daysSince/threshDays, 1.5) : (editsSince>0?1.5:0);
-  const editsPct = Math.min(editsSince/threshEdits, 1.5);
-  const color    = getStatusColor(daysPct, editsPct);
-
-  // dot
-  const dot = document.getElementById('statusDot');
-  if(dot){ dot.className='status-dot '+color; }
-
-  // last export text
-  const lastExportEl = document.getElementById('statusLastExport');
-  if(lastExportEl){
-    if(!lastExport){
-      lastExportEl.textContent='Never';
-      lastExportEl.className='gear-status-val '+(editsSince>0?'red':'dim');
-    } else {
-      const label = daysSince===0?'Today':daysSince===1?'Yesterday':`${daysSince} days ago`;
-      lastExportEl.textContent = label;
-      lastExportEl.className = 'gear-status-val '+color;
-    }
-  }
-
-  // edits text
-  const editsEl = document.getElementById('statusEdits');
-  if(editsEl){
-    editsEl.textContent = editsSince+' edit'+(editsSince!==1?'s':'');
-    editsEl.className = 'gear-status-val '+(editsSince===0?'dim':color);
-  }
-
-  // days progress bar
-  const daysValEl = document.getElementById('progDaysVal');
-  const daysFillEl = document.getElementById('progDaysFill');
-  if(daysValEl && daysFillEl){
-    const dColor = daysPct>=1?'red':daysPct>=0.7?'yellow':'green';
-    const dPct   = Math.min(daysPct*100,100).toFixed(0);
-    const dLabel = lastExport?`${daysSince} / ${threshDays}`:`— / ${threshDays}`;
-    daysValEl.textContent  = dLabel;
-    daysValEl.className    = 'gear-prog-val '+dColor;
-    daysFillEl.style.width = dPct+'%';
-    daysFillEl.className   = 'gear-prog-fill '+dColor;
-    if(daysSince>threshDays) daysValEl.textContent += ' !';
-  }
-
-  // edits progress bar
-  const editsValEl  = document.getElementById('progEditsVal');
-  const editsFillEl = document.getElementById('progEditsFill');
-  if(editsValEl && editsFillEl){
-    const eColor = editsPct>=1?'red':editsPct>=0.7?'yellow':'green';
-    const ePct   = Math.min(editsPct*100,100).toFixed(0);
-    editsValEl.textContent  = `${editsSince} / ${threshEdits}`;
-    editsValEl.className    = 'gear-prog-val '+eColor;
-    editsFillEl.style.width = ePct+'%';
-    editsFillEl.className   = 'gear-prog-fill '+eColor;
-    if(editsSince>threshEdits) editsValEl.textContent += ' !';
-  }
-
-  // export button
-  const exportBtn = document.getElementById('gearExportBtn');
-  if(exportBtn){
-    if(color==='red'){
-      exportBtn.className='gear-export-btn urgent';
-      exportBtn.textContent='⬇ Export now — overdue';
-    } else {
-      exportBtn.className='gear-export-btn';
-      exportBtn.textContent='⬇ Export now';
-    }
-  }
+function resetBackupTracking(){
+  localStorage.setItem('basebi_last_export', new Date().toISOString());
+  localStorage.setItem('basebi_edits_since', '0');
 }
 
 
@@ -1948,7 +1808,6 @@ function switchTab(tab){
 // ══════════════════════════════════════════════════
 function toggleGearMenu(){
   document.getElementById('gearMenu').classList.toggle('open');
-  updateBackupStatus();
 }
 function closeGearMenu(){
   document.getElementById('gearMenu').classList.remove('open');
@@ -1980,8 +1839,8 @@ function getCampFiltered(){
     if(tp && camp.type!==tp) return false;
     if(tr && camp.trigger_type!==tr) return false;
     if(st && camp.status!==st) return false;
-    if(mo && !(camp.date||'').slice(5,7)===mo) return false;
-    if(yr && !(camp.date||'').slice(0,4)===yr) return false;
+    if(mo && (camp.date||'').slice(5,7)!==mo) return false;
+    if(yr && (camp.date||'').slice(0,4)!==yr) return false;
     return true;
   });
 }
@@ -2300,7 +2159,7 @@ async function initApp(){
   const bar = document.getElementById('loadingBar');
   const msg = document.getElementById('loadingMsg');
   try{
-    loadTheme(); loadThresholds();
+    loadTheme();
     msg.textContent='Loading notes…'; bar.style.width='25%';
     notes = await loadNotes();
     notes.forEach(n=>{if(n.type==='sql')n.type='code';});
@@ -2316,8 +2175,6 @@ async function initApp(){
     document.getElementById('loadingScreen').style.display='none';
 
     buildIndex(); renderAll();
-    if(notes.length) selectNote(notes[0].id);
-    updateBackupStatus();
   } catch(err){
     msg.textContent='Connection failed — check your Supabase URL and key.';
     msg.style.color='#f87171';
