@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "exported": "2026-07-01T08:36:24.877855",
+  "exported": "2026-07-01T11:34:05.381Z",
   "folders": [
     "Business",
     "Techie",
@@ -19,9 +19,9 @@
       ],
       "links": [],
       "body": "",
-      "code": "SELECT OWNER, TABLE_NAME, COLUMN_NAME\nFROM ALL_TAB_COLS\nWHERE 1=1\nAND OWNER != 'APPDEPLOY' AND OWNER != 'MA_TEMP'\nAND TABLE_NAME LIKE '%TB_CRM_INAPP_MONITOR%' \nAND COLUMN_NAME LIKE '%%';SELECT OWNER, TABLE_NAME, COLUMN_NAME\nFROM ALL_TAB_COLS\nWHERE 1=1\nAND OWNER != 'APPDEPLOY' AND OWNER != 'MA_TEMP'\nAND TABLE_NAME LIKE '%TB_CRM_INAPP_MONITOR%' \nAND COLUMN_NAME LIKE '%%';",
+      "code": "SELECT OWNER, TABLE_NAME, COLUMN_NAME\nFROM ALL_TAB_COLS\nWHERE 1=1\nAND OWNER != 'APPDEPLOY' AND OWNER != 'MA_TEMP'\nAND TABLE_NAME LIKE '%TB_CRM_INAPP_MONITOR%' \nAND COLUMN_NAME LIKE '%%';",
       "created": "2026-06-29",
-      "modified": "2026-06-29"
+      "modified": "2026-07-01"
     },
     {
       "id": 1782750347452.2166,
@@ -302,6 +302,64 @@
       "code": "proc sql;\ncreate table check_scr_limit_RG4_RG5 as\nselect input(a.PARTY_ID, 12.) as ID_CUID, limit_status, \n\tlimit_type_code, limit_sub_type_code, code_risk_grade,\n\tdatepart(creation_timestamp) format date09. as created_date\nfrom ofs.limits a\nwhere a.limit_status = 'ACTIVE'\nand a.limit_type_code like 'CLX%'\nand a.limit_sub_type_code='SCORING'\nand a.code_risk_grade in ('RBP 04', 'RBP 05')\n;QUIT;",
       "created": "2026-06-29",
       "modified": "2026-06-29"
+    },
+    {
+      "id": 1782905491726.2314,
+      "title": "Note from Mid-year Review 2025",
+      "folder": "Personal",
+      "type": "plain",
+      "tags": [
+        "Loyalty"
+      ],
+      "links": [],
+      "body": "- Communication & Collaboration\n- Proactively check with seniors when you're in charge of tasks\n- Build up RTDM knowledge\n-> Next step: Set up live demo campaign setup (for Loyalty Seniors)",
+      "code": null,
+      "created": "2026-07-01",
+      "modified": "2026-07-01"
+    },
+    {
+      "id": 1782905491726.8835,
+      "title": "Sample API - Import Limit",
+      "folder": "Techie",
+      "type": "code",
+      "tags": [
+        "SASEG",
+        "limit",
+        "API"
+      ],
+      "links": [],
+      "body": "",
+      "code": "{\n  \"partyId\": \"10486913\",\n  \"limitBulkId\": \"20250717180555900000\",\n  \"limitScoringProcessSource\": \"IMPORTED MANUALLY\",\n  \"calculationSource\": \"IMPORTED BY RISK\",\n  \"flagEligibility\": true,\n  \"limits\": [\n    {\n      \"limitValidFrom\": \"2025-07-23T01:00:00.000+01:00\",\n      \"limitValidTo\": \"2026-07-23T01:00:00.000+01:00\",\n      \"limitScore\": \"0.022028219917566\",\n      \"amtCreditMax\": 20000000,\n      \"amtInstalmentMax\": 20000000,\n      \"amtDownPaymentMin\": 0,\n      \"amtDownPaymentMinRel\": 0,\n      \"codeRiskGrade\": \"RBP 03\",\n      \"limitAccuracy\": 5,\n      \"limitPilotCode\": \"CCX_\",\n      \"limitTypeCode\": \"CCX\",\n      \"limitSubTypeCode\": \"ONLINE\",\n      \"acqChannelCodes\": [\n        \"CAPP\", \"HOMEX\", \"TLS\", \"WEB\", \"GMA\"\n      ],\n      \"relationId\": null,\n      \"relationCode\": \"IMPORT_LIMIT\",\n      \"accountNumber\": null,\n      \"maxTenor\": 9999,\n      \"amtCreditMin\": 0,\n      \"amtDownPaymentMaxRel\": 1,\n      \"minTenor\": 0,\n      \"limitGuaranteedFlag\": \"GUARANTEED\",\n      \"commodityCategoryGroup\": \"MOBILE\"\n    }\n  ]\n}",
+      "created": "2026-07-01",
+      "modified": "2026-07-01"
+    },
+    {
+      "id": 1782905491726.1016,
+      "title": "Types of Product Offer",
+      "folder": "Business",
+      "type": "plain",
+      "tags": [
+        "offer"
+      ],
+      "links": [],
+      "body": "Đối với Product Offer:\n+ Non-0MOB (Active-score): Tự chủ động Score trên offer KH đang có (TLS gọi)\n+ 0MOB (Auto-score hay POS Approved): KH mua CD, TW -> Scoring offer CLX/CCX tự động được 'doing score' lên thẳng product offer. Product Offer này được hình thành dựa trên 0MOB của CD, TW contract.\n(0MOB: Chưa trả tiền tháng nào trên hợp đồng)\nTại sao:\nỞ 0MOB, KH có hợp đồng CD, TW, HPL, ACL\n4MOB bắt đầu sinh Scoring Limit -> 1 Offer (30d)\nTLS gọi xin consent (0BOD) -> KH đồng ý: Product Limit - Product Offer (90d)\n(1BOD) Application: UW approved hay declined\n(2BOD)",
+      "code": null,
+      "created": "2026-07-01",
+      "modified": "2026-07-01"
+    },
+    {
+      "id": 1782905491726.3445,
+      "title": "INTCK function",
+      "folder": "Techie",
+      "type": "code",
+      "tags": [
+        "SASEG"
+      ],
+      "links": [],
+      "body": "The SAS INTCK function is used to calculate the number of interval boundaries (periods) of a specified type that lie between two date, time, or datetime values.\nKey Points:\n+ INTCK counts interval boundaries, not the absolute number of days or units elapsed. For example, INTCK('YEAR','31DEC2023'd,'01JAN2024'd) returns 1 because the year boundary between 2023 and 2024 is crossed, even though only one day passed.\n+ Multiple intervals can be counted as well (e.g., 'MONTH3' to count 3-month periods).\n+ This function works with SAS dates (numeric values representing days since 1960), times, or timestamps.",
+      "code": "INTCK(interval,start-date-time,end-date-time,[method])INTCK(interval,start-date-time,end-date-time,[method])",
+      "created": "2026-07-01",
+      "modified": "2026-07-01"
     }
   ],
   "campaigns": [
@@ -401,7 +459,7 @@
       "note": "",
       "extra": {},
       "created": "2026-06-02",
-      "modified": "2026-06-02"
+      "modified": "2026-07-01"
     },
     {
       "id": 1782894048181,
