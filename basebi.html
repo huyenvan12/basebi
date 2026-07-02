@@ -550,7 +550,7 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
         <div class="gear-item" id="themeToggleItem" onclick="toggleTheme();closeGearMenu()">☀ &nbsp;Switch to Light</div>
         <div class="gear-item" onclick="openShortcutsModal();closeGearMenu()">⌨ &nbsp;Keyboard shortcuts</div>
         <div class="gear-divider"></div>
-        <div class="gear-item" onclick="sb.auth.signOut();location.reload()">⎋ &nbsp;Log out</div>
+        <div class="gear-item" onclick="doLogout()">⎋ &nbsp;Log out</div>
       </div>
     </div>
   </div>
@@ -2354,6 +2354,10 @@ async function checkAuthAndInit(){
     document.getElementById('connectGate').style.display='none';
     document.getElementById('loginGate').style.display='block';
   }
+}
+async function doLogout(){
+  await sb.auth.signOut();
+  location.reload();
 }
 checkAuthAndInit();
 </script>
