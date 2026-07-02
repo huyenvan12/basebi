@@ -229,6 +229,8 @@ textarea.code-input{font-family:'JetBrains Mono',monospace;font-size:12px;min-he
 #noteModalOverlay select.form-input option{background:#ffffff;color:#1a1d2e}
 #noteModalOverlay .btn-ghost{background:transparent;color:#5a6380;border:1px solid #d4d8e8}
 #noteModalOverlay .btn-ghost:hover{background:#e8eaf2;color:#1a1d2e}
+#noteModalOverlay .fmt-btn{border:1px solid #d4d8e8;color:#5a6380}
+#noteModalOverlay .fmt-btn:hover{border-color:#3b6fe0;color:#3b6fe0}
 #noteModalOverlay .dropdown-list{background:#ffffff;border:1px solid #d4d8e8}
 #noteModalOverlay .dropdown-item{color:#5a6380}
 #noteModalOverlay .dropdown-item:hover,#noteModalOverlay .dropdown-item.focused{background:#dde8ff;color:#3b6fe0}
@@ -275,6 +277,10 @@ textarea.code-input{font-family:'JetBrains Mono',monospace;font-size:12px;min-he
 
 
 mark{background:var(--highlight);color:var(--text);border-radius:2px;padding:0 1px}
+.md-highlight{background:#f5d90a4d;color:var(--text);border-radius:2px;padding:0 1px}
+.fmt-toolbar{display:flex;gap:4px;margin-bottom:6px}
+.fmt-btn{width:26px;height:24px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.fmt-btn:hover{border-color:var(--accent);color:var(--accent)}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 
 /* RESIZABLE PANES */
@@ -766,6 +772,11 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
     </div>
     <div class="form-row" id="bodyRow" style="position:relative">
       <label class="form-label">Content <span style="font-size:9px;color:var(--text-dim);font-weight:400">— type [[ to link a note</span></label>
+      <div class="fmt-toolbar">
+        <button type="button" class="fmt-btn" onclick="wrapSelection('**')" title="Bold"><b>B</b></button>
+        <button type="button" class="fmt-btn" onclick="wrapSelection('*')" title="Italic"><i>I</i></button>
+        <button type="button" class="fmt-btn" onclick="wrapSelection('==')" title="Highlight">H</button>
+      </div>
       <textarea class="form-input" id="f-body" placeholder="Write your note here…" oninput="bodyInput(event)" onkeydown="bodyKeydown(event)"></textarea>
       <div class="inline-link-dd" id="inlineLinkDd"></div>
     </div>
@@ -1844,6 +1855,36 @@ function bodyKeydown(e){
   else if(e.key==='Escape'){e.stopPropagation();closeInlineLinkDd();}
 }
 
+function wrapSelection(marker){
+  const ta=document.getElementById('f-body');
+  const val=ta.value;
+  let start=ta.selectionStart, end=ta.selectionEnd;
+  const mLen=marker.length;
+  const before=val.slice(0,start), selected=val.slice(start,end), after=val.slice(end);
+
+  const alreadyWrappedOutside = before.slice(-mLen)===marker && after.slice(0,mLen)===marker;
+  const alreadyWrappedInside = selected.slice(0,mLen)===marker && selected.slice(-mLen)===marker && selected.length>=mLen*2;
+
+  let newVal, newStart, newEnd;
+  if(alreadyWrappedOutside){
+    // unwrap: strip markers immediately outside the selection
+    newVal = before.slice(0,-mLen) + selected + after.slice(mLen);
+    newStart = start-mLen; newEnd = end-mLen;
+  } else if(alreadyWrappedInside){
+    // unwrap: strip markers from inside the selection
+    const inner = selected.slice(mLen,-mLen);
+    newVal = before + inner + after;
+    newStart = start; newEnd = start+inner.length;
+  } else {
+    // wrap
+    newVal = before + marker + selected + marker + after;
+    if(selected.length){ newStart=start+mLen; newEnd=end+mLen; }
+    else { newStart=newEnd=start+mLen; }
+  }
+  ta.value=newVal;
+  ta.selectionStart=newStart; ta.selectionEnd=newEnd;
+  ta.focus();
+}
 function insertInlineLink(title){
   const ta=document.getElementById('f-body');
   const val=ta.value, pos=ta.selectionStart;
@@ -1863,7 +1904,11 @@ function closeInlineLinkDd(){
 }
 
 function renderBodyWithLinks(text,q){
-  return hl(text,q).replace(/\[\[([^\]]+)\]\]/g,(match,title)=>{
+  let out = hl(text,q);
+  out = out.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  out = out.replace(/(?<!\*)\*([^*]+?)\*(?!\*)/g,'<em>$1</em>');
+  out = out.replace(/==(.+?)==/g,'<span class="md-highlight">$1</span>');
+  return out.replace(/\[\[([^\]]+)\]\]/g,(match,title)=>{
     const safeTitle=esc(title);
     return `<span class="inline-link" onclick="jumpToLink(this.dataset.title)" data-title="${safeTitle}">&#8599; ${safeTitle}</span>`;
   });
