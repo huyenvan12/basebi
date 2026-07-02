@@ -108,6 +108,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 .detail-dates{margin-left:auto;font-size:10px;color:var(--text-dim);display:flex;flex-direction:column;align-items:flex-end;gap:2px}
 .detail-actions{display:flex;gap:6px;padding:8px 20px;border-bottom:1px solid var(--border);flex-shrink:0}
 .note-detail-content{flex:1;padding:16px 20px;overflow-y:auto}
+.capture-bar{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:10px 20px;border-top:1px solid var(--border);background:var(--surface)}
+.capture-bar input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;transition:border-color .15s}
+.capture-bar input:focus{border-color:var(--accent)}
+.capture-hint{font-size:10px;color:var(--text-dim);flex-shrink:0;white-space:nowrap}
 .note-body{line-height:1.8;color:var(--text);white-space:pre-wrap;font-size:13px}
 .code-block{background:var(--code-bg);border:1px solid var(--border);border-radius:6px;margin:10px 0;overflow:hidden}
 .code-header{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:var(--surface2);border-bottom:1px solid var(--border)}
@@ -261,7 +265,9 @@ mark{background:var(--highlight);color:var(--text);border-radius:2px;padding:0 1
 
 /* COLLAPSED PANE */
 .sidebar.collapsed,.note-list.collapsed{width:0!important;min-width:0!important;overflow:hidden;flex:none}
-.resizer.pane-collapsed{background:var(--accent-dim)}
+.resizer.pane-collapsed{background:var(--accent-dim);cursor:pointer}
+.resizer.pane-collapsed::before{content:'›';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:11px;color:var(--accent);line-height:1;pointer-events:none}
+.resizer.pane-collapsed:hover{background:var(--accent)}
 
 /* PIN */
 .pin-btn{background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;color:var(--text-dim);transition:all .15s;line-height:1}
@@ -291,7 +297,7 @@ mark{background:var(--highlight);color:var(--text);border-radius:2px;padding:0 1
 /* ══════════════════════════════════════
    SEARCH SCREEN (off-white overlay)
 ══════════════════════════════════════ */
-.search-screen{position:fixed;inset:0;background:var(--search-bg);z-index:200;display:none;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:80px}
+.search-screen{position:fixed;inset:0;background-color:var(--search-bg);background-image:radial-gradient(var(--border) 1px, transparent 1px);background-size:22px 22px;z-index:200;display:none;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:80px}
 .search-screen.open{display:flex}
 .search-screen-bar-wrap{width:100%;max-width:560px;position:relative;margin-bottom:20px}
 .search-screen-input{width:100%;border:2px solid var(--search-border);border-radius:10px;padding:13px 16px 13px 44px;font-size:15px;color:var(--search-text);background:var(--search-card);font-family:'Inter',sans-serif;outline:none;box-shadow:0 0 0 4px rgba(59,111,224,.1),0 2px 8px rgba(0,0,0,.08)}
@@ -311,7 +317,7 @@ mark{background:var(--highlight);color:var(--text);border-radius:2px;padding:0 1
 /* ══════════════════════════════════════
    NOTE POPUP (inside search screen)
 ══════════════════════════════════════ */
-.note-popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;display:none;align-items:flex-start;justify-content:center;padding-top:60px}
+.note-popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:300;display:none;align-items:flex-start;justify-content:center;padding-top:60px}
 .note-popup-overlay.open{display:flex}
 .note-popup{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;width:100%;max-width:620px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.35)}
 
@@ -508,6 +514,7 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
     <input type="text" id="searchInput" placeholder="Search notes, code, tags… (Ctrl+K)" oninput="handleSearch()">
   </div>
   <div class="topbar-actions">
+    <button class="gear-btn" id="dailyNoteBtn" onclick="openDailyNote()" title="Today's note (Ctrl+Alt+D)">📅</button>
     <button class="btn btn-primary" id="topbarActionBtn" onclick="openNoteModal()">+ New Note</button>
     <div class="gear-wrap">
       <button class="gear-btn" onclick="toggleGearMenu()" title="Options">⚙</button>
@@ -812,8 +819,9 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
     <div class="shortcut-section-label">Navigation</div>
     <div class="shortcut-row"><span class="shortcut-desc">Focus search bar</span><div class="shortcut-keys"><span class="kbd">Ctrl</span><span class="kbd">K</span></div></div>
     <div class="shortcut-row"><span class="shortcut-desc">Search / presentation mode</span><div class="shortcut-keys"><span class="kbd">Ctrl</span><span class="kbd">Shift</span><span class="kbd">F</span></div></div>
-    <div class="shortcut-row"><span class="shortcut-desc">Go to Campaigns tab</span><div class="shortcut-keys"><span class="kbd">Ctrl</span><span class="kbd">Shift</span><span class="kbd">C</span></div></div>
-    <div class="shortcut-row"><span class="shortcut-desc">Go to Notes tab</span><div class="shortcut-keys"><span class="kbd">Ctrl</span><span class="kbd">Shift</span><span class="kbd">N</span></div></div>
+    <div class="shortcut-row"><span class="shortcut-desc">Go to Campaigns tab</span><div class="shortcut-keys"><span class="kbd">Ctrl</span><span class="kbd">Alt</span><span class="kbd">C</span></div></div>
+    <div class="shortcut-row"><span class="shortcut-desc">Go to Notes tab</span><div class="shortcut-keys"><span class="kbd">Ctrl</span><span class="kbd">Alt</span><span class="kbd">N</span></div></div>
+    <div class="shortcut-row"><span class="shortcut-desc">Open today's daily note</span><div class="shortcut-keys"><span class="kbd">Ctrl</span><span class="kbd">Alt</span><span class="kbd">D</span></div></div>
     <div class="shortcut-section-label">Notes</div>
     <div class="shortcut-row"><span class="shortcut-desc">Save note in modal</span><div class="shortcut-keys"><span class="kbd">Ctrl</span><span class="kbd">Enter</span></div></div>
     <div class="shortcut-row"><span class="shortcut-desc">Close modal / exit screen</span><div class="shortcut-keys"><span class="kbd">Esc</span></div></div>
@@ -871,7 +879,7 @@ async function saveNotes(arr){
     id:n.id, title:n.title, folder:n.folder, type:n.type,
     tags:n.tags||[], links:n.links||[], body:n.body||null,
     code:n.code||null, pinned:n.pinned||false,
-    created:n.created, modified:n.modified
+    created:n.created, modified:n.modified, daily_date:n.daily_date||null
   }));
   await sb.from('notes').upsert(rows,{onConflict:'id'});
 }
@@ -880,7 +888,7 @@ async function saveOneNote(n){
     id:n.id, title:n.title, folder:n.folder, type:n.type,
     tags:n.tags||[], links:n.links||[], body:n.body||null,
     code:n.code||null, pinned:n.pinned||false,
-    created:n.created, modified:n.modified
+    created:n.created, modified:n.modified, daily_date:n.daily_date||null
   },{onConflict:'id'});
 }
 async function deleteNoteDB(id){ await sb.from('notes').delete().eq('id',id); }
@@ -1103,6 +1111,10 @@ function renderDetail(note){
     <div class="linked-chips">${links.map(l=>`<span class="linked-chip" onclick="jumpToLink('${esc(l)}')">↗ ${esc(l)}</span>`).join('')}</div>
   </div>`:'';
   const modLine=note.modified&&note.modified!==note.created?`<span>modified ${fmtDate(note.modified)}</span>`:'';
+  const captureBar=note.daily_date?`<div class="capture-bar">
+      <input type="text" id="dailyCaptureInput" placeholder="Log a timestamped entry…" onkeydown="if(event.key==='Enter')appendDailyEntry(${note.id})">
+      <span class="capture-hint">Enter to append</span>
+    </div>`:'';
   el.innerHTML=`
     <div class="note-detail-header">
       <div class="note-detail-title">${hl(note.title,searchQuery)}</div>
@@ -1116,8 +1128,15 @@ function renderDetail(note){
       <button class="btn btn-danger" style="font-size:11px" onclick="confirmDeleteNote(${note.id})">✕ Delete</button>
       <button class="pin-btn ${note.pinned?'pinned':''}" onclick="togglePin(${note.id})" title="${note.pinned?'Unpin note':'Pin note'}">${note.pinned?'📌':'📍'}</button>
     </div>
-    <div class="note-detail-content">${body}</div>
-    ${linkedSection}`;
+    <div class="note-detail-content" id="noteDetailContent">${body}</div>
+    ${linkedSection}
+    ${captureBar}`;
+  if(note.daily_date){
+    const contentEl=document.getElementById('noteDetailContent');
+    contentEl.scrollTop=contentEl.scrollHeight;
+    const input=document.getElementById('dailyCaptureInput');
+    if(input)input.focus();
+  }
 }
 
 function renderAll(){renderFolders();renderTagCloud();renderNoteList();}
@@ -1582,10 +1601,12 @@ async function handleImport(e){
 // ══════════════════════════════════════════════════
 document.addEventListener('keydown',e=>{
   // Ctrl+Shift+F — toggle search screen
-  // Ctrl+Shift+C — campaigns tab
-  if((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.key==='C'){e.preventDefault();switchTab('campaigns');return;}
-  // Ctrl+Shift+N — notes tab
-  if((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.key==='N'){e.preventDefault();switchTab('notes');return;}
+  // Ctrl+Alt+C — campaigns tab (was Ctrl+Shift+C, reserved by browser DevTools inspect)
+  if((e.ctrlKey||e.metaKey)&&e.altKey&&e.key.toLowerCase()==='c'){e.preventDefault();switchTab('campaigns');return;}
+  // Ctrl+Alt+N — notes tab (was Ctrl+Shift+N, reserved by browser Incognito window)
+  if((e.ctrlKey||e.metaKey)&&e.altKey&&e.key.toLowerCase()==='n'){e.preventDefault();switchTab('notes');return;}
+  // Ctrl+Alt+D — today's daily note
+  if((e.ctrlKey||e.metaKey)&&e.altKey&&e.key.toLowerCase()==='d'){e.preventDefault();openDailyNote();return;}
   if((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.key==='F'){
     e.preventDefault();
     if(searchScreenOpen)closeSearchScreen();else openSearchScreen();
@@ -1617,6 +1638,11 @@ document.addEventListener('click',e=>{
 // ══════════════════════════════════════════════════
 let resizing=null,resizeStartX=0,resizeStartW=0;
 function startResize(e,which){
+  if((which==='A'&&sidebarCollapsed)||(which==='B'&&noteListCollapsed)){
+    e.preventDefault();
+    togglePane(which);
+    return;
+  }
   resizing=which; resizeStartX=e.clientX;
   // A resizes sidebar, B resizes noteListPane
   const pane=which==='A'?document.getElementById('sidebar'):document.getElementById('noteListPane');
@@ -1690,6 +1716,40 @@ function togglePin(id){
   const note=notes.find(n=>n.id===id); if(!note)return;
   note.pinned=!note.pinned;
   saveOneNote(note); renderAll(); renderDetail(note);
+}
+
+// ══════════════════════════════════════════════════
+// DAILY NOTE
+// ══════════════════════════════════════════════════
+function getTodayNote(){
+  const t=today();
+  return notes.find(n=>n.daily_date===t)||null;
+}
+function fmtDailyTitle(iso){
+  const d=new Date(iso+'T00:00:00');
+  return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+}
+function openDailyNote(){
+  if(currentTab!=='notes')switchTab('notes');
+  const existing=getTodayNote();
+  if(existing){selectNote(existing.id);return;}
+  if(!folders.includes('Daily')){folders.push('Daily');saveFolders(folders);}
+  const t=today();
+  const note={id:Date.now(),title:fmtDailyTitle(t),folder:'Daily',type:'plain',
+    tags:[],links:[],body:'',code:null,daily_date:t,
+    created:t,modified:t};
+  notes.unshift(note);
+  saveOneNote(note);buildIndex();renderAll();selectNote(note.id);
+}
+function appendDailyEntry(id){
+  const note=notes.find(n=>n.id===id); if(!note)return;
+  const input=document.getElementById('dailyCaptureInput');
+  const val=input.value.trim(); if(!val)return;
+  const now=new Date();
+  const hh=String(now.getHours()).padStart(2,'0'), mm=String(now.getMinutes()).padStart(2,'0');
+  note.body=(note.body?note.body+'\n':'')+`[${hh}:${mm}] ${val}`;
+  note.modified=today();
+  saveOneNote(note);buildIndex();incrementEdits();renderDetail(note);renderAll();
 }
 
 // ══════════════════════════════════════════════════
@@ -1801,6 +1861,7 @@ function switchTab(tab){
   document.getElementById('notesView').classList.toggle('hidden', tab!=='notes');
   document.getElementById('campView').classList.toggle('active', tab==='campaigns');
   document.getElementById('notesSearchWrap').style.display = tab==='notes'?'':'none';
+  document.getElementById('dailyNoteBtn').style.display = tab==='notes'?'':'none';
   const actionBtn = document.getElementById('topbarActionBtn');
   if(tab==='notes'){ actionBtn.textContent='+ New Note'; actionBtn.setAttribute('onclick','openNoteModal()'); }
   else{ actionBtn.textContent='+ Add Campaign'; actionBtn.setAttribute('onclick','openAddCampModal()'); }
