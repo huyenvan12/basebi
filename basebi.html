@@ -19,6 +19,7 @@
   <div class="tab-group">
     <button class="tab-btn active" id="tabNotes" onclick="switchTab('notes')">📋 Notes</button>
     <button class="tab-btn" id="tabCampaigns" onclick="switchTab('campaigns')">📊 Campaigns</button>
+    <button class="tab-btn" id="tabGraph" onclick="switchTab('graph')">🕸 Graph</button>
   </div>
   <div class="search-wrap" id="notesSearchWrap">
     <span class="search-icon">⌕</span>
@@ -190,6 +191,36 @@
           <button class="csp-edit-btn" onclick="openCampEditModal()">✎ Edit</button>
           <button class="csp-del-btn" onclick="confirmDeleteCamp()">✕ Delete</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GRAPH VIEW -->
+  <div class="graph-view" id="graphView">
+    <div class="graph-canvas-wrap">
+      <div class="graph-controls">
+        <div class="graph-count" id="graphCount">0 notes · 0 links</div>
+        <button class="graph-ctrl-btn" onclick="graphZoomCenter(0.8)" title="Zoom in">＋</button>
+        <button class="graph-ctrl-btn" onclick="graphZoomCenter(1.25)" title="Zoom out">－</button>
+        <button class="graph-ctrl-btn" onclick="graphResetView()" title="Reset view">⟲</button>
+      </div>
+      <div class="graph-legend">
+        <div class="graph-legend-row"><span class="graph-legend-swatch graph-legend-link"></span> [[ ]] link</div>
+        <div class="graph-legend-row"><span class="graph-legend-swatch graph-legend-tag"></span> shared tag</div>
+      </div>
+      <svg id="graphSvg" width="100%" height="100%"></svg>
+    </div>
+    <div class="graph-side-panel" id="graphSidePanel">
+      <div class="graph-empty" id="graphEmptyState">Click a node to see its title, tags, and connections here.<br><br>Hover a node to highlight its direct links.</div>
+      <div class="graph-node-detail" id="graphNodeDetail">
+        <div class="graph-node-title" id="gnTitle"></div>
+        <div class="graph-node-meta" id="gnMeta"></div>
+        <div class="graph-node-tags" id="gnTags"></div>
+        <div class="graph-link-list">
+          <div class="graph-link-list-title">Linked notes</div>
+          <div id="gnLinks"></div>
+        </div>
+        <button class="graph-open-btn" id="gnOpenBtn">Open note →</button>
       </div>
     </div>
   </div>
@@ -499,6 +530,293 @@ function searchIds(q){
   });
   return[...(result||[])];
 }
+
+// ══════════════════════════════════════════════════
+// LINK INDEX (backlinks + graph edge data)
+// Built client-side from notes already in memory — no schema change, no extra fetch.
+// ══════════════════════════════════════════════════
+let linkEdges=[];   // [{a:noteId,b:noteId}] — from [[ ]] refs (body text + note.links array)
+let tagEdges=[];    // [{a:noteId,b:noteId,tag:'...'}] — from shared tags
+let backlinks={};   // noteId -> Set(noteId) reverse map, union of link+tag edges (undirected, used by Graph)
+let incomingLinks={}; // noteId -> Set(noteId) — notes that link TO this note (directed, used by Notes tab backlinks section)
+const GRAPH_TAG_HUB_CAP=10; // skip tag-edge generation for tags shared by more than this many notes, to avoid hairballs
+
+function buildLinkIndex(){
+  linkEdges=[]; tagEdges=[]; backlinks={}; incomingLinks={};
+  notes.forEach(n=>{backlinks[n.id]=new Set(); incomingLinks[n.id]=new Set();});
+
+  const titleToId={};
+  notes.forEach(n=>titleToId[n.title.trim().toLowerCase()]=n.id);
+
+  const seenLinkPairs=new Set();
+  function addLinkEdge(fromId,toId){
+    if(fromId==null||toId==null||fromId===toId)return;
+    incomingLinks[toId].add(fromId);
+    const key=fromId<toId?fromId+'_'+toId:toId+'_'+fromId;
+    if(seenLinkPairs.has(key))return;
+    seenLinkPairs.add(key);
+    linkEdges.push({a:fromId,b:toId});
+    backlinks[fromId].add(toId); backlinks[toId].add(fromId);
+  }
+
+  const wikiLinkRe=/\[\[([^\]]+)\]\]/g;
+  notes.forEach(n=>{
+    // explicit links array (chosen via dropdown)
+    (n.links||[]).forEach(title=>{
+      const tid=titleToId[String(title).trim().toLowerCase()];
+      if(tid!=null)addLinkEdge(n.id,tid);
+    });
+    // raw [[Title]] refs inside body text
+    const body=n.body||'';
+    let m;
+    wikiLinkRe.lastIndex=0;
+    while((m=wikiLinkRe.exec(body))){
+      const tid=titleToId[m[1].trim().toLowerCase()];
+      if(tid!=null)addLinkEdge(n.id,tid);
+    }
+  });
+
+  // shared-tag edges — skip tags that are hubs (shared by too many notes) to avoid a hairball
+  const tagGroups={};
+  notes.forEach(n=>(n.tags||[]).forEach(t=>{
+    if(!tagGroups[t])tagGroups[t]=[];
+    tagGroups[t].push(n.id);
+  }));
+  const seenTagPairs=new Set();
+  Object.entries(tagGroups).forEach(([tag,ids])=>{
+    if(ids.length<2||ids.length>GRAPH_TAG_HUB_CAP)return;
+    for(let i=0;i<ids.length;i++){
+      for(let j=i+1;j<ids.length;j++){
+        const a=ids[i],b=ids[j];
+        const key=a<b?a+'_'+b:b+'_'+a;
+        if(seenTagPairs.has(key))continue; // avoid drawing the same pair twice for multiple shared tags
+        seenTagPairs.add(key);
+        tagEdges.push({a,b,tag});
+        backlinks[a].add(b); backlinks[b].add(a);
+      }
+    }
+  });
+}
+
+function getBacklinks(noteId){
+  return [...(backlinks[noteId]||[])].map(id=>notes.find(n=>n.id===id)).filter(Boolean);
+}
+function getIncomingLinks(noteId){
+  return [...(incomingLinks[noteId]||[])].map(id=>notes.find(n=>n.id===id)).filter(Boolean);
+}
+
+// ══════════════════════════════════════════════════
+// GRAPH VIEW
+// ══════════════════════════════════════════════════
+let graphNodePositions={}; // noteId -> {x,y}
+let graphActiveNodeId=null;
+let graphDefaultW=1400, graphDefaultH=880;
+let graphViewBox={x:0,y:0,w:graphDefaultW,h:graphDefaultH};
+let graphInteractionsBound=false;
+const GRAPH_LABEL_ZOOM_THRESHOLD=1.7; // once zoomed in past this factor, show all labels regardless of hover
+
+function graphApplyViewBox(){
+  document.getElementById('graphSvg').setAttribute('viewBox',
+    `${graphViewBox.x} ${graphViewBox.y} ${graphViewBox.w} ${graphViewBox.h}`);
+  graphSetLabelVisibility(graphActiveNodeId);
+}
+function graphResetView(){
+  graphViewBox={x:0,y:0,w:graphDefaultW,h:graphDefaultH};
+  graphApplyViewBox();
+}
+// zoom keeping a given SVG-space point fixed (used by wheel, anchored at cursor)
+function graphZoomAt(factor,px,py){
+  const minW=160,maxW=2800;
+  let newW=graphViewBox.w*factor; newW=Math.max(minW,Math.min(maxW,newW));
+  const actualFactor=newW/graphViewBox.w;
+  const newH=graphViewBox.h*actualFactor;
+  graphViewBox.x=px-(px-graphViewBox.x)*actualFactor;
+  graphViewBox.y=py-(py-graphViewBox.y)*actualFactor;
+  graphViewBox.w=newW; graphViewBox.h=newH;
+  graphApplyViewBox();
+}
+// zoom around the current view center (used by the +/- buttons)
+function graphZoomCenter(factor){
+  const cx=graphViewBox.x+graphViewBox.w/2, cy=graphViewBox.y+graphViewBox.h/2;
+  graphZoomAt(factor,cx,cy);
+}
+function graphClientToSvg(clientX,clientY){
+  const svg=document.getElementById('graphSvg');
+  const rect=svg.getBoundingClientRect();
+  return{
+    x:graphViewBox.x+(clientX-rect.left)/rect.width*graphViewBox.w,
+    y:graphViewBox.y+(clientY-rect.top)/rect.height*graphViewBox.h
+  };
+}
+// Labels are hidden by default and only reveal on hover/select, or once zoomed in
+// past GRAPH_LABEL_ZOOM_THRESHOLD — with 20-30+ real notes, showing every title at
+// once made the canvas unreadable regardless of zoom level.
+function graphSetLabelVisibility(focusId){
+  const scale=graphDefaultW/graphViewBox.w;
+  const showAll=scale>=GRAPH_LABEL_ZOOM_THRESHOLD;
+  const keep=focusId!=null?new Set([...graphNeighbors(focusId),focusId]):null;
+  document.querySelectorAll('#graphSvg .graph-node-label').forEach(t=>{
+    const id=+t.dataset.id;
+    t.style.display=(showAll||(keep&&keep.has(id)))?'':'none';
+  });
+}
+function graphDeselect(){
+  graphActiveNodeId=null;
+  graphClearHighlight();
+  document.getElementById('graphNodeDetail').classList.remove('show');
+  document.getElementById('graphEmptyState').style.display='';
+}
+function graphBindInteractions(){
+  if(graphInteractionsBound)return;
+  graphInteractionsBound=true;
+  const svg=document.getElementById('graphSvg');
+  svg.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const p=graphClientToSvg(e.clientX,e.clientY);
+    graphZoomAt(e.deltaY>0?1.1:0.9,p.x,p.y);
+  },{passive:false});
+  let panState=null,panMoved=false;
+  svg.addEventListener('mousedown',e=>{
+    panState={startX:e.clientX,startY:e.clientY,vb:{...graphViewBox}};
+    panMoved=false;
+    svg.classList.add('is-panning');
+  });
+  document.addEventListener('mousemove',e=>{
+    if(!panState)return;
+    if(Math.abs(e.clientX-panState.startX)>3||Math.abs(e.clientY-panState.startY)>3)panMoved=true;
+    const rect=svg.getBoundingClientRect();
+    const dx=(e.clientX-panState.startX)/rect.width*panState.vb.w;
+    const dy=(e.clientY-panState.startY)/rect.height*panState.vb.h;
+    graphViewBox.x=panState.vb.x-dx; graphViewBox.y=panState.vb.y-dy;
+    graphApplyViewBox();
+  });
+  document.addEventListener('mouseup',()=>{
+    if(panState){panState=null; svg.classList.remove('is-panning');}
+  });
+  // click on empty canvas (not a node) clears the current selection — skip if it was actually a pan drag
+  svg.addEventListener('click',e=>{
+    if(e.target.id==='graphSvg'&&!panMoved)graphDeselect();
+  });
+}
+
+function computeGraphLayout(){
+  const W=graphDefaultW,H=graphDefaultH;
+  graphNodePositions={};
+  const folderGroups={};
+  notes.forEach(n=>{
+    const f=n.folder||'Unfiled';
+    if(!folderGroups[f])folderGroups[f]=[];
+    folderGroups[f].push(n);
+  });
+  const folderNames=Object.keys(folderGroups);
+  const cx=W/2, cy=H/2;
+  const clusterR=Math.min(W,H)*0.36;
+  folderNames.forEach((f,fi)=>{
+    const angle=(fi/folderNames.length)*Math.PI*2 - Math.PI/2;
+    const fcx=cx+Math.cos(angle)*clusterR;
+    const fcy=cy+Math.sin(angle)*clusterR;
+    const group=folderGroups[f];
+    group.forEach((n,ni)=>{
+      const a=ni*137.508*Math.PI/180; // golden-angle spiral — spreads continuously outward, no repeated radii
+      const r=20+Math.sqrt(ni)*34;
+      graphNodePositions[n.id]={x:fcx+Math.cos(a)*r, y:fcy+Math.sin(a)*r};
+    });
+  });
+}
+
+function graphNeighbors(id){
+  return backlinks[id]||new Set();
+}
+function graphTruncateTitle(title){
+  return title.length>26?title.slice(0,24)+'…':title;
+}
+
+function renderGraph(){
+  buildLinkIndex();
+  computeGraphLayout();
+  graphActiveNodeId=null;
+  document.getElementById('graphEmptyState').style.display='';
+  document.getElementById('graphNodeDetail').classList.remove('show');
+
+  const svg=document.getElementById('graphSvg');
+  svg.innerHTML='';
+  graphResetView();
+  graphBindInteractions();
+  document.getElementById('graphCount').textContent=`${notes.length} notes · ${linkEdges.length} links`;
+
+  const ns='http://www.w3.org/2000/svg';
+  function mk(tag,attrs){const e=document.createElementNS(ns,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);return e;}
+
+  linkEdges.forEach(({a,b})=>{
+    const A=graphNodePositions[a],B=graphNodePositions[b];
+    if(!A||!B)return;
+    svg.appendChild(mk('line',{x1:A.x,y1:A.y,x2:B.x,y2:B.y,class:'graph-edge graph-edge-link','data-a':a,'data-b':b}));
+  });
+  tagEdges.forEach(({a,b})=>{
+    const A=graphNodePositions[a],B=graphNodePositions[b];
+    if(!A||!B)return;
+    svg.appendChild(mk('line',{x1:A.x,y1:A.y,x2:B.x,y2:B.y,class:'graph-edge graph-edge-tag','data-a':a,'data-b':b}));
+  });
+
+  notes.forEach(n=>{
+    const p=graphNodePositions[n.id];
+    if(!p)return;
+    const connCount=graphNeighbors(n.id).size;
+    const r=5+Math.min(6,connCount*1.3);
+    const c=mk('circle',{cx:p.x,cy:p.y,r:r,class:'graph-node','data-id':n.id});
+    const t=mk('text',{x:p.x+r+4,y:p.y+3,class:'graph-node-label','data-id':n.id});
+    t.textContent=graphTruncateTitle(n.title);
+    svg.appendChild(c); svg.appendChild(t);
+    c.addEventListener('mouseenter',()=>graphHighlight(n.id));
+    c.addEventListener('mouseleave',()=>{ if(graphActiveNodeId==null) graphClearHighlight(); else graphHighlight(graphActiveNodeId); });
+    c.addEventListener('click',e=>{e.stopPropagation();graphShowDetail(n.id);});
+  });
+  graphSetLabelVisibility(null);
+}
+
+function graphHighlight(id){
+  const nb=graphNeighbors(id); const keep=new Set(nb); keep.add(id);
+  document.querySelectorAll('#graphSvg .graph-node').forEach(c=>{
+    const cid=+c.dataset.id;
+    c.classList.toggle('is-active', cid===id);
+    c.classList.toggle('is-dim', !keep.has(cid));
+  });
+  document.querySelectorAll('#graphSvg .graph-edge').forEach(e=>{
+    const a=+e.dataset.a,b=+e.dataset.b;
+    e.classList.toggle('is-dim', !(a===id||b===id));
+  });
+  graphSetLabelVisibility(id);
+}
+function graphClearHighlight(){
+  document.querySelectorAll('#graphSvg .graph-node,#graphSvg .graph-edge')
+    .forEach(e=>e.classList.remove('is-dim','is-active'));
+  graphSetLabelVisibility(graphActiveNodeId);
+}
+
+function graphShowDetail(id){
+  graphActiveNodeId=id;
+  const n=notes.find(n=>n.id===id);
+  if(!n)return;
+  graphHighlight(id);
+  document.getElementById('graphEmptyState').style.display='none';
+  const detail=document.getElementById('graphNodeDetail');
+  detail.classList.add('show');
+  document.getElementById('gnTitle').textContent=n.title;
+  const conns=graphNeighbors(id).size;
+  document.getElementById('gnMeta').textContent=`${n.folder||'Unfiled'} · ${conns} connection${conns===1?'':'s'}`;
+  document.getElementById('gnTags').innerHTML=(n.tags||[]).map(t=>`<span class="graph-chip">#${esc(t)}</span>`).join('')||'';
+  const linked=getBacklinks(id);
+  document.getElementById('gnLinks').innerHTML=linked.length
+    ? linked.map(ln=>`<div class="graph-link-item" onclick="graphShowDetail(${ln.id})">${esc(ln.title)}</div>`).join('')
+    : '<div class="graph-node-meta">No connections yet</div>';
+  document.getElementById('gnOpenBtn').setAttribute('onclick',`graphOpenNote(${id})`);
+}
+
+function graphOpenNote(id){
+  switchTab('notes');
+  selectNote(id);
+}
+
 function getFiltered(){
   let ids=searchQuery?searchIds(searchQuery):notes.map(n=>n.id);
   let f=notes.filter(n=>ids.includes(n.id));
@@ -551,7 +869,11 @@ function sqlHL(code){
       .replace(numRe, function(m){return '<span class="num">'+m+'</span>';});
   }).join('');
 }
-function today(){return new Date().toISOString().slice(0,10);}
+function today(){
+  const d=new Date();
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
 function fmtDate(d){return d?d.slice(0,10):'';}
 function allTags(){const t={};notes.forEach(n=>(n.tags||[]).forEach(tag=>{t[tag]=(t[tag]||0)+1;}));return t;}
 
@@ -655,6 +977,13 @@ function renderDetail(note){
     <div class="linked-label">Linked Notes</div>
     <div class="linked-chips">${links.map(l=>`<span class="linked-chip" onclick="jumpToLink('${esc(l)}')">↗ ${esc(l)}</span>`).join('')}</div>
   </div>`:'';
+  buildLinkIndex();
+  const outgoingTitles=new Set(links.map(l=>l.trim().toLowerCase()));
+  const incoming=getIncomingLinks(note.id).filter(bn=>!outgoingTitles.has(bn.title.trim().toLowerCase()));
+  const backlinksSection=incoming.length?`<div class="linked-section">
+    <div class="linked-label">Backlinks</div>
+    <div class="linked-chips">${incoming.map(bn=>`<span class="linked-chip" onclick="jumpToLink('${esc(bn.title)}')">↙ ${esc(bn.title)}</span>`).join('')}</div>
+  </div>`:'';
   const modLine=note.modified&&note.modified!==note.created?`<span>modified ${fmtDate(note.modified)}</span>`:'';
   const captureBar=note.daily_date?`<div class="capture-bar">
       <input type="text" id="dailyCaptureInput" placeholder="Log a timestamped entry…" onkeydown="if(event.key==='Enter')appendDailyEntry(${note.id})">
@@ -675,6 +1004,7 @@ function renderDetail(note){
     </div>
     <div class="note-detail-content" id="noteDetailContent">${body}</div>
     ${linkedSection}
+    ${backlinksSection}
     ${captureBar}`;
   if(note.daily_date){
     const contentEl=document.getElementById('noteDetailContent');
@@ -1152,6 +1482,8 @@ document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.altKey&&e.key.toLowerCase()==='n'){e.preventDefault();switchTab('notes');return;}
   // Ctrl+Alt+D — today's daily note
   if((e.ctrlKey||e.metaKey)&&e.altKey&&e.key.toLowerCase()==='d'){e.preventDefault();openDailyNote();return;}
+  // Ctrl+Alt+G — graph tab
+  if((e.ctrlKey||e.metaKey)&&e.altKey&&e.key.toLowerCase()==='g'){e.preventDefault();switchTab('graph');return;}
   if((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.key==='F'){
     e.preventDefault();
     if(searchScreenOpen)closeSearchScreen();else openSearchScreen();
@@ -1437,14 +1769,18 @@ function switchTab(tab){
   currentTab = tab;
   document.getElementById('tabNotes').classList.toggle('active', tab==='notes');
   document.getElementById('tabCampaigns').classList.toggle('active', tab==='campaigns');
+  document.getElementById('tabGraph').classList.toggle('active', tab==='graph');
   document.getElementById('notesView').classList.toggle('hidden', tab!=='notes');
   document.getElementById('campView').classList.toggle('active', tab==='campaigns');
+  document.getElementById('graphView').classList.toggle('active', tab==='graph');
   document.getElementById('notesSearchWrap').style.display = tab==='notes'?'':'none';
   document.getElementById('dailyNoteBtn').style.display = tab==='notes'?'':'none';
   const actionBtn = document.getElementById('topbarActionBtn');
-  if(tab==='notes'){ actionBtn.textContent='+ New Note'; actionBtn.setAttribute('onclick','openNoteModal()'); }
-  else{ actionBtn.textContent='+ Add Campaign'; actionBtn.setAttribute('onclick','openAddCampModal()'); }
+  if(tab==='notes'){ actionBtn.style.display=''; actionBtn.textContent='+ New Note'; actionBtn.setAttribute('onclick','openNoteModal()'); }
+  else if(tab==='campaigns'){ actionBtn.style.display=''; actionBtn.textContent='+ Add Campaign'; actionBtn.setAttribute('onclick','openAddCampModal()'); }
+  else{ actionBtn.style.display='none'; }
   if(tab==='campaigns') renderCampTable();
+  if(tab==='graph') renderGraph();
 }
 
 // ══════════════════════════════════════════════════
