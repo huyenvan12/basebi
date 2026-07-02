@@ -112,6 +112,30 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 .capture-bar input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;transition:border-color .15s}
 .capture-bar input:focus{border-color:var(--accent)}
 .capture-hint{font-size:10px;color:var(--text-dim);flex-shrink:0;white-space:nowrap}
+
+/* LOGIN SCREEN */
+.login-card{width:100%;max-width:340px;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.4)}
+.login-card-top{padding:20px 22px 14px 22px;border-bottom:1px solid var(--border)}
+.login-brand{font-size:15px;font-weight:700}
+.login-brand em{color:var(--accent);font-style:normal}
+.login-subtitle{font-size:10.5px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;margin-top:2px}
+.login-job{padding:16px 22px 18px 22px}
+.login-code-line{display:flex;align-items:center;gap:9px;margin-bottom:9px;font-family:'JetBrains Mono',monospace;font-size:12px}
+.login-gutter{color:var(--text-dim);width:13px;flex-shrink:0;text-align:right;user-select:none}
+.login-kw{color:#c792ea;flex-shrink:0}
+.login-code-line input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 9px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;outline:none;min-width:0}
+.login-code-line input:focus{border-color:var(--accent)}
+.login-run-btn{width:100%;margin-top:2px;background:var(--accent);color:#0b1220;border:none;border-radius:7px;padding:9px;font-weight:700;font-size:12px;font-family:'JetBrains Mono',monospace;cursor:pointer;letter-spacing:.3px;transition:filter .12s,transform .05s}
+.login-run-btn:hover{filter:brightness(1.08)}
+.login-run-btn:active{transform:scale(.98)}
+.login-run-btn:disabled{opacity:.5;cursor:default}
+.login-log-panel{margin-top:12px;background:#0a0c12;border:1px solid var(--border);border-radius:7px;padding:9px 11px;min-height:66px;font-family:'JetBrains Mono',monospace;font-size:10.5px;line-height:1.75;white-space:pre-wrap}
+.login-log-line{opacity:0;animation:loginFadeIn .18s forwards}
+@keyframes loginFadeIn{to{opacity:1}}
+.login-log-note{color:var(--accent)}
+.login-log-warn{color:var(--sql)}
+.login-log-err{color:var(--danger)}
+.login-log-plain{color:var(--text-dim)}
 .note-body{line-height:1.8;color:var(--text);white-space:pre-wrap;font-size:13px}
 .code-block{background:var(--code-bg);border:1px solid var(--border);border-radius:6px;margin:10px 0;overflow:hidden}
 .code-header{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:var(--surface2);border-bottom:1px solid var(--border)}
@@ -525,17 +549,46 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
         <div class="gear-divider"></div>
         <div class="gear-item" id="themeToggleItem" onclick="toggleTheme();closeGearMenu()">☀ &nbsp;Switch to Light</div>
         <div class="gear-item" onclick="openShortcutsModal();closeGearMenu()">⌨ &nbsp;Keyboard shortcuts</div>
+        <div class="gear-divider"></div>
+        <div class="gear-item" onclick="sb.auth.signOut();location.reload()">⎋ &nbsp;Log out</div>
       </div>
     </div>
   </div>
 </div>
 <input type="file" id="importFilePicker" accept=".json" style="display:none" onchange="handleImport(event)">
 <div id="loadingScreen" style="position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:12px">
-  <div style="font-size:22px;font-weight:600;color:var(--accent)">base<span style="color:var(--text-muted);font-weight:300">·</span>bi</div>
-  <div style="font-size:12px;color:var(--text-dim)" id="loadingMsg">Connecting to database…</div>
-  <div style="width:120px;height:3px;background:var(--border);border-radius:3px;overflow:hidden">
-    <div id="loadingBar" style="height:100%;background:var(--accent);border-radius:3px;width:0%;transition:width .4s"></div>
+
+  <div id="loginGate" style="display:none">
+    <div class="login-card">
+      <div class="login-card-top">
+        <div class="login-brand">base<em>·</em>bi</div>
+        <div class="login-subtitle">// authentication required to proceed</div>
+      </div>
+      <div class="login-job">
+        <div class="login-code-line">
+          <span class="login-gutter">1</span>
+          <span class="login-kw">%LET</span>
+          <input type="email" id="loginEmail" placeholder="user=">
+        </div>
+        <div class="login-code-line">
+          <span class="login-gutter">2</span>
+          <span class="login-kw">%LET</span>
+          <input type="password" id="loginPass" placeholder="pwd=" onkeydown="if(event.key==='Enter')submitLoginJob()">
+        </div>
+        <button class="login-run-btn" id="loginRunBtn" onclick="submitLoginJob()">▶ SUBMIT</button>
+        <div class="login-log-panel" id="loginLogPanel"></div>
+      </div>
+    </div>
   </div>
+
+  <div id="connectGate" style="display:none;flex-direction:column;align-items:center;gap:12px">
+    <div style="font-size:22px;font-weight:600;color:var(--accent)">base<span style="color:var(--text-muted);font-weight:300">·</span>bi</div>
+    <div style="font-size:12px;color:var(--text-dim)" id="loadingMsg">Connecting to database…</div>
+    <div style="width:120px;height:3px;background:var(--border);border-radius:3px;overflow:hidden">
+      <div id="loadingBar" style="height:100%;background:var(--accent);border-radius:3px;width:0%;transition:width .4s"></div>
+    </div>
+  </div>
+
 </div>
 
 
@@ -2221,6 +2274,8 @@ document.addEventListener('mouseup',()=>{
 // INIT — async, loads from Supabase
 // ══════════════════════════════════════════════════
 async function initApp(){
+  document.getElementById('loginGate').style.display='none';
+  document.getElementById('connectGate').style.display='flex';
   const bar = document.getElementById('loadingBar');
   const msg = document.getElementById('loadingMsg');
   try{
@@ -2246,7 +2301,61 @@ async function initApp(){
     console.error('base·bi init error:', err);
   }
 }
-initApp();
+
+// ══════════════════════════════════════════════════
+// AUTH GATE
+// ══════════════════════════════════════════════════
+function appendLoginLog(panel,lines,cb){
+  lines.forEach(l=>{
+    setTimeout(()=>{
+      const div=document.createElement('div');
+      div.className='login-log-line '+l.cls;
+      div.textContent=l.text;
+      panel.appendChild(div);
+      panel.scrollTop=panel.scrollHeight;
+    },l.delay);
+  });
+  if(cb)setTimeout(cb,lines[lines.length-1].delay+250);
+}
+async function submitLoginJob(){
+  const btn=document.getElementById('loginRunBtn');
+  const panel=document.getElementById('loginLogPanel');
+  const email=document.getElementById('loginEmail').value.trim();
+  const pass=document.getElementById('loginPass').value;
+  if(!email||!pass)return;
+  btn.disabled=true; panel.innerHTML='';
+
+  appendLoginLog(panel,[
+    {text:'NOTE: PROCEDURE LOGIN starting execution.',cls:'login-log-note',delay:150},
+    {text:'NOTE: Session established for &user.',cls:'login-log-note',delay:450},
+  ]);
+
+  const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
+
+  if(error){
+    appendLoginLog(panel,[
+      {text:'WARNING: Credential hash mismatch, retrying…',cls:'login-log-warn',delay:850},
+      {text:`ERROR: Authentication failed. ${error.message}. ROLLBACK.`,cls:'login-log-err',delay:1300},
+      {text:'NOTE: PROCEDURE LOGIN used (Total process time): 0.63 seconds',cls:'login-log-plain',delay:1650},
+    ],()=>{ btn.disabled=false; });
+  }else{
+    appendLoginLog(panel,[
+      {text:'NOTE: Credentials verified. 1 row returned.',cls:'login-log-note',delay:850},
+      {text:'NOTE: PROCEDURE LOGIN used (Total process time): 0.41 seconds',cls:'login-log-plain',delay:1150},
+      {text:`NOTE: Welcome back, ${email.split('@')[0]}. Loading workspace…`,cls:'login-log-note',delay:1500},
+    ],()=>{ initApp(); });
+  }
+}
+async function checkAuthAndInit(){
+  const {data:{session}} = await sb.auth.getSession();
+  if(session){
+    initApp();
+  } else {
+    document.getElementById('connectGate').style.display='none';
+    document.getElementById('loginGate').style.display='block';
+  }
+}
+checkAuthAndInit();
 </script>
 </body>
 </html>
