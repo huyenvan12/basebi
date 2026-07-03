@@ -94,6 +94,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 .detail-folder-badge{font-size:10px;color:var(--accent);background:var(--accent-dim);padding:2px 8px;border-radius:4px;font-weight:500}
 .detail-tag{font-size:10px;color:var(--text-muted);background:var(--tag-bg);border:1px solid var(--border);padding:2px 6px;border-radius:4px}
 .author-badge{font-size:9px;font-weight:600;color:var(--sql);background:rgba(245,158,11,.15);padding:2px 7px;border-radius:4px;margin-left:6px;letter-spacing:.2px}
+.privacy-badge{font-size:9px;font-weight:600;padding:2px 7px;border-radius:4px;letter-spacing:.2px}
+.privacy-badge.is-private{color:var(--text-muted);background:var(--tag-bg);border:1px solid var(--border)}
+.privacy-badge.is-shared{color:#1f8a4c;background:rgba(56,165,106,.18)}
 .detail-dates{margin-left:auto;font-size:10px;color:var(--text-dim);display:flex;flex-direction:column;align-items:flex-end;gap:2px}
 .detail-actions{display:flex;gap:6px;padding:8px 20px;border-bottom:1px solid var(--border);flex-shrink:0}
 .note-detail-content{flex:1;padding:16px 20px;overflow-y:auto}

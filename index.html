@@ -592,6 +592,13 @@ function searchIds(q){
   return[...(result||[])];
 }
 
+// notes the current user is allowed to see the existence/title/content of: their own
+// notes plus anything explicitly shared org-wide. `notes` itself may contain other
+// users' private notes too (RLS only enforces org-scoping, not per-user privacy), so
+// every UI surface that lists/suggests/links notes MUST filter through this — never
+// iterate the raw `notes` array directly for anything user-facing.
+function visibleNotes(){ return notes.filter(n=>n.owner_id===currentUserId||n.is_shared); }
+
 // ══════════════════════════════════════════════════
 // LINK INDEX (backlinks + graph edge data)
 // Built client-side from notes already in memory — no schema change, no extra fetch.
@@ -604,10 +611,14 @@ const GRAPH_TAG_HUB_CAP=10; // skip tag-edge generation for tags shared by more 
 
 function buildLinkIndex(){
   linkEdges=[]; tagEdges=[]; backlinks={}; incomingLinks={};
-  notes.forEach(n=>{backlinks[n.id]=new Set(); incomingLinks[n.id]=new Set();});
+  // scoped to visibleNotes() — a private note owned by someone else must never surface
+  // as a backlink/graph connection, even if it happens to reference or share a tag with
+  // a note you can see.
+  const vis=visibleNotes();
+  vis.forEach(n=>{backlinks[n.id]=new Set(); incomingLinks[n.id]=new Set();});
 
   const titleToId={};
-  notes.forEach(n=>titleToId[n.title.trim().toLowerCase()]=n.id);
+  vis.forEach(n=>titleToId[n.title.trim().toLowerCase()]=n.id);
 
   const seenLinkPairs=new Set();
   function addLinkEdge(fromId,toId){
@@ -621,7 +632,7 @@ function buildLinkIndex(){
   }
 
   const wikiLinkRe=/\[\[([^\]]+)\]\]/g;
-  notes.forEach(n=>{
+  vis.forEach(n=>{
     // explicit links array (chosen via dropdown)
     (n.links||[]).forEach(title=>{
       const tid=titleToId[String(title).trim().toLowerCase()];
@@ -639,7 +650,7 @@ function buildLinkIndex(){
 
   // shared-tag edges — skip tags that are hubs (shared by too many notes) to avoid a hairball
   const tagGroups={};
-  notes.forEach(n=>(n.tags||[]).forEach(t=>{
+  vis.forEach(n=>(n.tags||[]).forEach(t=>{
     if(!tagGroups[t])tagGroups[t]=[];
     tagGroups[t].push(n.id);
   }));
@@ -1065,7 +1076,8 @@ function renderDetail(note){
     <div class="note-detail-header">
       <div class="note-detail-title">${hl(note.title,searchQuery)}</div>
       <div class="note-detail-meta">
-        <span class="detail-folder-badge">${esc(note.folder)}</span>${tags}
+        <span class="detail-folder-badge">${esc(note.folder)}</span>
+        <span class="privacy-badge ${note.is_shared?'is-shared':'is-private'}">${note.is_shared?'🌐 Shared':'🔒 Private'}</span>${tags}
         <div class="detail-dates"><span>created ${fmtDate(note.created)}</span>${modLine}</div>
       </div>
     </div>
@@ -1081,9 +1093,17 @@ function renderDetail(note){
   if(note.daily_date){
     const contentEl=document.getElementById('noteDetailContent');
     contentEl.scrollTop=contentEl.scrollHeight;
-    const input=document.getElementById('dailyCaptureInput');
-    if(input)input.focus();
   }
+}
+// Focuses the daily capture input. Deliberately NOT called from inside renderDetail()
+// itself — renderDetail() re-runs for lots of unrelated reasons (e.g. typing in the
+// main search bar re-renders whatever note is active), and unconditionally stealing
+// focus back into this field on every one of those re-renders was breaking the search
+// bar (each keystroke there would immediately bounce focus back to this input). Only
+// call this from the specific actions that should actually land the user in the field.
+function focusDailyCapture(){
+  const input=document.getElementById('dailyCaptureInput');
+  if(input)input.focus();
 }
 
 function renderAll(){renderFolders();renderTagCloud();renderNoteList();}
@@ -1091,7 +1111,12 @@ function renderAll(){renderFolders();renderTagCloud();renderNoteList();}
 // ══════════════════════════════════════════════════
 // NAVIGATION
 // ══════════════════════════════════════════════════
-function selectNote(id){activeNoteId=id;renderNoteList();renderDetail(notes.find(n=>n.id===id));}
+function selectNote(id){
+  activeNoteId=id;renderNoteList();
+  const note=notes.find(n=>n.id===id);
+  renderDetail(note);
+  if(note&&note.daily_date)focusDailyCapture();
+}
 function selectFolder(f,el){
   activeFolder=f;activeTag=null;
   document.querySelectorAll('.folder-item').forEach(e=>e.classList.remove('active'));
@@ -1100,7 +1125,7 @@ function selectFolder(f,el){
 }
 function selectTag(t){activeTag=activeTag===t?null:t;renderAll();}
 function handleSearch(){searchQuery=document.getElementById('searchInput').value;renderNoteList();if(activeNoteId)renderDetail(notes.find(n=>n.id===activeNoteId));}
-function jumpToLink(title){const n=notes.find(n=>n.title.toLowerCase()===title.toLowerCase());if(n)selectNote(n.id);}
+function jumpToLink(title){const n=visibleNotes().find(n=>n.title.toLowerCase()===title.toLowerCase());if(n)selectNote(n.id);}
 
 // ══════════════════════════════════════════════════
 // TEAM SHARED
@@ -1180,7 +1205,7 @@ function handleSearchScreen(){
   ssCursor=-1;
   if(!q){document.getElementById('searchScreenResults').innerHTML='';ssResults=[];return;}
   const ids=searchIds(q);
-  ssResults=notes.filter(n=>ids.includes(n.id)).slice(0,12);
+  ssResults=visibleNotes().filter(n=>ids.includes(n.id)).slice(0,12);
   renderSearchResults(q);
 }
 
@@ -1276,7 +1301,8 @@ function renderPopupContent(note,q){
       </div>
     </div>
     <div class="popup-meta hidden" id="popupMeta">
-      <span class="pm-folder">${esc(note.folder)}</span>${tags}
+      <span class="pm-folder">${esc(note.folder)}</span>
+      <span class="privacy-badge ${note.is_shared?'is-shared':'is-private'}">${note.is_shared?'🌐 Shared':'🔒 Private'}</span>${tags}
     </div>
     <div class="popup-divider"></div>
     ${bodyHtml}
@@ -1287,7 +1313,7 @@ function renderPopupContent(note,q){
 }
 
 function jumpToPopupLink(title){
-  const n=notes.find(n=>n.title.toLowerCase()===title.toLowerCase());
+  const n=visibleNotes().find(n=>n.title.toLowerCase()===title.toLowerCase());
   if(n)openNotePopup(n.id);
 }
 
@@ -1369,7 +1395,7 @@ function tagInputKey(e){if(e.key==='Enter'){e.preventDefault();const q=document.
 function openLinkDropdown(){filterLinkDropdown();document.getElementById('linkDropdown').classList.add('open');}
 function filterLinkDropdown(){
   const q=(document.getElementById('f-link-input').value||'').toLowerCase().trim();
-  const available=notes.filter(n=>n.id!==editingNoteId&&!selectedLinks.includes(n.title));
+  const available=visibleNotes().filter(n=>n.id!==editingNoteId&&!selectedLinks.includes(n.title));
   const filtered=q?available.filter(n=>n.title.toLowerCase().includes(q)):available;
   const dd=document.getElementById('linkDropdown');
   dd.innerHTML=filtered.length
@@ -1783,7 +1809,10 @@ function togglePin(id){
 // ══════════════════════════════════════════════════
 function getTodayNote(){
   const t=today();
-  return notes.find(n=>n.daily_date===t)||null;
+  // daily notes are personal — must be scoped to the current user, otherwise this could
+  // match a teammate's daily note for the same date (if it happens to sort first) and
+  // open their private journal entry instead of creating/opening your own.
+  return notes.find(n=>n.daily_date===t&&n.owner_id===currentUserId)||null;
 }
 function fmtDailyTitle(iso){
   const d=new Date(iso+'T00:00:00');
@@ -1809,7 +1838,7 @@ function appendDailyEntry(id){
   const hh=String(now.getHours()).padStart(2,'0'), mm=String(now.getMinutes()).padStart(2,'0');
   note.body=(note.body?note.body+'\n':'')+`[${hh}:${mm}] ${val}`;
   note.modified=today();
-  saveOneNote(note);buildIndex();incrementEdits();renderDetail(note);renderAll();
+  saveOneNote(note);buildIndex();incrementEdits();renderDetail(note);focusDailyCapture();renderAll();
 }
 
 // ══════════════════════════════════════════════════
@@ -1826,7 +1855,7 @@ function bodyInput(e){
   const query=before.slice(ddOpen+2);
   inlineLinkQuery=query; inlineLinkStart=ddOpen; inlineLinkCursor=-1;
   const q=query.toLowerCase();
-  inlineLinkResults=notes.filter(n=>n.id!==editingNoteId&&(!q||n.title.toLowerCase().includes(q))).slice(0,8);
+  inlineLinkResults=visibleNotes().filter(n=>n.id!==editingNoteId&&(!q||n.title.toLowerCase().includes(q))).slice(0,8);
   renderInlineLinkDd(ta);
 }
 
