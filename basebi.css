@@ -93,6 +93,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 .note-detail-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .detail-folder-badge{font-size:10px;color:var(--accent);background:var(--accent-dim);padding:2px 8px;border-radius:4px;font-weight:500}
 .detail-tag{font-size:10px;color:var(--text-muted);background:var(--tag-bg);border:1px solid var(--border);padding:2px 6px;border-radius:4px}
+.author-badge{font-size:9px;font-weight:600;color:var(--sql);background:rgba(245,158,11,.15);padding:2px 7px;border-radius:4px;margin-left:6px;letter-spacing:.2px}
 .detail-dates{margin-left:auto;font-size:10px;color:var(--text-dim);display:flex;flex-direction:column;align-items:flex-end;gap:2px}
 .detail-actions{display:flex;gap:6px;padding:8px 20px;border-bottom:1px solid var(--border);flex-shrink:0}
 .note-detail-content{flex:1;padding:16px 20px;overflow-y:auto}
@@ -250,6 +251,10 @@ textarea.code-input{font-family:'JetBrains Mono',monospace;font-size:12px;min-he
 
 /* code textarea stays dark for contrast/readability even in light modal */
 #noteModalOverlay textarea.code-input{background:#131720;color:#e2e8f0;border-color:#2a3047}
+
+/* share toggle — must be visually obvious at a glance whether a note is private or shared */
+.share-toggle-btn{align-self:flex-start;padding:6px 14px;font-size:12px;font-weight:600;border-radius:6px;cursor:pointer;font-family:inherit;transition:all .15s;border:1px solid #d4d8e8;background:#eef0f7;color:#5a6380}
+.share-toggle-btn.is-shared{background:#e3f5e8;border-color:#38a56a;color:#1f8a4c}
 
 
 /* ══════════════════════════════════════
@@ -417,6 +422,8 @@ pre.popup-code-body{padding:12px;font-family:'JetBrains Mono',monospace;font-siz
 .camp-view.active{display:flex}
 .notes-view{display:flex;flex:1;overflow:hidden}
 .notes-view.hidden{display:none}
+.team-view{display:none;flex:1;overflow:hidden}
+.team-view.active{display:flex}
 
 /* FILTER BAR */
 .camp-filter-bar{display:flex;align-items:center;gap:6px;padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface);flex-wrap:wrap}
@@ -528,6 +535,8 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
 .graph-count{font-size:11px;color:var(--text-dim);background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 12px}
 .graph-ctrl-btn{font-size:13px;color:var(--text-muted);background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 10px;cursor:pointer;font-family:inherit;line-height:1}
 .graph-ctrl-btn:hover{background:var(--surface2);color:var(--text)}
+.graph-shared-toggle{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 10px;cursor:pointer;user-select:none}
+.graph-shared-toggle input{cursor:pointer}
 .graph-canvas-wrap svg{cursor:grab}
 .graph-canvas-wrap svg.is-panning{cursor:grabbing}
 .graph-legend{position:absolute;bottom:12px;left:12px;z-index:3;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:9px 11px;display:flex;flex-direction:column;gap:6px}

@@ -20,6 +20,7 @@
     <button class="tab-btn active" id="tabNotes" onclick="switchTab('notes')">📋 Notes</button>
     <button class="tab-btn" id="tabCampaigns" onclick="switchTab('campaigns')">📊 Campaigns</button>
     <button class="tab-btn" id="tabGraph" onclick="switchTab('graph')">🕸 Graph</button>
+    <button class="tab-btn" id="tabTeam" onclick="switchTab('team')">🌐 Team Shared</button>
   </div>
   <div class="search-wrap" id="notesSearchWrap">
     <span class="search-icon">⌕</span>
@@ -38,6 +39,7 @@
         <div class="gear-item" id="themeToggleItem" onclick="toggleTheme();closeGearMenu()">☀ &nbsp;Switch to Light</div>
         <div class="gear-item" onclick="openShortcutsModal();closeGearMenu()">⌨ &nbsp;Keyboard shortcuts</div>
         <div class="gear-divider"></div>
+        <div class="gear-item" onclick="openPasswordModal();closeGearMenu()">🔑 &nbsp;Change password</div>
         <div class="gear-item" onclick="doLogout()">⎋ &nbsp;Log out</div>
       </div>
     </div>
@@ -200,6 +202,7 @@
     <div class="graph-canvas-wrap">
       <div class="graph-controls">
         <div class="graph-count" id="graphCount">0 notes · 0 links</div>
+        <label class="graph-shared-toggle"><input type="checkbox" id="graphSharedCheckbox" onchange="toggleGraphShared(this.checked)"> Include team-shared</label>
         <button class="graph-ctrl-btn" onclick="graphZoomCenter(0.8)" title="Zoom in">＋</button>
         <button class="graph-ctrl-btn" onclick="graphZoomCenter(1.25)" title="Zoom out">－</button>
         <button class="graph-ctrl-btn" onclick="graphResetView()" title="Reset view">⟲</button>
@@ -221,6 +224,23 @@
           <div id="gnLinks"></div>
         </div>
         <button class="graph-open-btn" id="gnOpenBtn">Open note →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TEAM SHARED VIEW -->
+  <div class="team-view" id="teamView">
+    <div class="note-list" id="teamListPane">
+      <div class="note-list-header">
+        <span class="note-list-title">🌐 Team Shared</span>
+        <span class="note-count" id="teamCount">0 notes</span>
+      </div>
+      <div class="note-items" id="teamItems"></div>
+    </div>
+    <div class="note-detail" id="teamDetail">
+      <div class="empty-state">
+        <div class="icon">🌐</div>
+        <p>Select a shared note to view it</p>
       </div>
     </div>
   </div>
@@ -255,6 +275,9 @@
     <div class="modal-title">
       <span id="noteModalTitle">New Note</span>
       <button class="modal-close" onclick="closeNoteModal()">×</button>
+    </div>
+    <div class="form-row">
+      <button type="button" class="share-toggle-btn" id="shareToggleBtn" onclick="toggleShareState()"></button>
     </div>
     <div class="form-row">
       <label class="form-label">Title *</label>
@@ -385,6 +408,29 @@
   </div>
 </div>
 
+<!-- PASSWORD CHANGE MODAL -->
+<div class="modal-overlay" id="passwordModalOverlay">
+  <div class="modal modal-sm">
+    <div class="modal-title">
+      <span>Change Password</span>
+      <button class="modal-close" onclick="closePasswordModal()">×</button>
+    </div>
+    <div class="form-row">
+      <label class="form-label">New password *</label>
+      <input type="password" class="form-input" id="pw-new" placeholder="At least 6 characters" onkeydown="if(event.key==='Enter')document.getElementById('pw-confirm').focus()">
+    </div>
+    <div class="form-row">
+      <label class="form-label">Confirm password *</label>
+      <input type="password" class="form-input" id="pw-confirm" placeholder="Retype new password" onkeydown="if(event.key==='Enter')submitPasswordChange()">
+    </div>
+    <div class="form-hint" id="pw-error" style="color:#f87171;display:none"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closePasswordModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitPasswordChange()">Update Password</button>
+    </div>
+  </div>
+</div>
+
 <!-- SHORTCUTS MODAL -->
 <div class="modal-overlay" id="shortcutsOverlay">
   <div class="modal shortcuts-modal">
@@ -398,6 +444,7 @@
     <div class="shortcut-row"><span class="shortcut-desc">Go to Campaigns tab</span><div class="shortcut-keys"><span class="kbd">Ctrl</span><span class="kbd">Alt</span><span class="kbd">C</span></div></div>
     <div class="shortcut-row"><span class="shortcut-desc">Go to Notes tab</span><div class="shortcut-keys"><span class="kbd">Ctrl</span><span class="kbd">Alt</span><span class="kbd">N</span></div></div>
     <div class="shortcut-row"><span class="shortcut-desc">Open today's daily note</span><div class="shortcut-keys"><span class="kbd">Ctrl</span><span class="kbd">Alt</span><span class="kbd">D</span></div></div>
+    <div class="shortcut-row"><span class="shortcut-desc">Go to Team Shared tab</span><div class="shortcut-keys"><span class="kbd">Ctrl</span><span class="kbd">Alt</span><span class="kbd">T</span></div></div>
     <div class="shortcut-section-label">Notes</div>
     <div class="shortcut-row"><span class="shortcut-desc">Save note in modal</span><div class="shortcut-keys"><span class="kbd">Ctrl</span><span class="kbd">Enter</span></div></div>
     <div class="shortcut-row"><span class="shortcut-desc">Close modal / exit screen</span><div class="shortcut-keys"><span class="kbd">Esc</span></div></div>
@@ -446,6 +493,12 @@ async function loadCampaignsDB(){
   if(error||!data||!data.length) return JSON.parse(JSON.stringify(SEED_CAMPS));
   return data.map(c=>({...c,extra:c.extra||{}}));
 }
+async function loadProfilesMap(){
+  const{data,error}=await sb.from('profiles').select('id,display_name');
+  const map={};
+  if(!error&&data)data.forEach(p=>{map[p.id]=p.display_name||'Unknown';});
+  return map;
+}
 
 // ── async savers ──────────────────────────────────
 async function saveNotes(arr){
@@ -455,7 +508,8 @@ async function saveNotes(arr){
     id:n.id, title:n.title, folder:n.folder, type:n.type,
     tags:n.tags||[], links:n.links||[], body:n.body||null,
     code:n.code||null, pinned:n.pinned||false,
-    created:n.created, modified:n.modified, daily_date:n.daily_date||null
+    created:n.created, modified:n.modified, daily_date:n.daily_date||null,
+    is_shared:n.is_shared||false
   }));
   await sb.from('notes').upsert(rows,{onConflict:'id'});
 }
@@ -464,7 +518,8 @@ async function saveOneNote(n){
     id:n.id, title:n.title, folder:n.folder, type:n.type,
     tags:n.tags||[], links:n.links||[], body:n.body||null,
     code:n.code||null, pinned:n.pinned||false,
-    created:n.created, modified:n.modified, daily_date:n.daily_date||null
+    created:n.created, modified:n.modified, daily_date:n.daily_date||null,
+    is_shared:n.is_shared||false
   },{onConflict:'id'});
 }
 async function deleteNoteDB(id){ await sb.from('notes').delete().eq('id',id); }
@@ -508,6 +563,12 @@ let idx={};
 let searchScreenOpen=false;
 let popupMetaVisible=false;
 let ssResults=[],ssCursor=-1;
+let currentUserId=null,profilesMap={};
+let noteIsShared=false;
+let activeTeamNoteId=null;
+let graphIncludeShared=false;
+let noteEditOriginTab='notes';
+function authorName(ownerId){ return profilesMap[ownerId]||'Unknown'; }
 
 // ══════════════════════════════════════════════════
 // INDEX
@@ -699,11 +760,18 @@ function graphBindInteractions(){
   });
 }
 
+function toggleGraphShared(checked){
+  graphIncludeShared=checked;
+  renderGraph();
+}
+function graphNotes(){
+  return notes.filter(n=>n.owner_id===currentUserId||(graphIncludeShared&&n.is_shared));
+}
 function computeGraphLayout(){
   const W=graphDefaultW,H=graphDefaultH;
   graphNodePositions={};
   const folderGroups={};
-  notes.forEach(n=>{
+  graphNotes().forEach(n=>{
     const f=n.folder||'Unfiled';
     if(!folderGroups[f])folderGroups[f]=[];
     folderGroups[f].push(n);
@@ -742,7 +810,8 @@ function renderGraph(){
   svg.innerHTML='';
   graphResetView();
   graphBindInteractions();
-  document.getElementById('graphCount').textContent=`${notes.length} notes · ${linkEdges.length} links`;
+  const gNotes=graphNotes();
+  document.getElementById('graphCount').textContent=`${gNotes.length} notes · ${linkEdges.length} links`;
 
   const ns='http://www.w3.org/2000/svg';
   function mk(tag,attrs){const e=document.createElementNS(ns,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);return e;}
@@ -758,7 +827,7 @@ function renderGraph(){
     svg.appendChild(mk('line',{x1:A.x,y1:A.y,x2:B.x,y2:B.y,class:'graph-edge graph-edge-tag','data-a':a,'data-b':b}));
   });
 
-  notes.forEach(n=>{
+  gNotes.forEach(n=>{
     const p=graphNodePositions[n.id];
     if(!p)return;
     const connCount=graphNeighbors(n.id).size;
@@ -817,9 +886,11 @@ function graphOpenNote(id){
   selectNote(id);
 }
 
+function myNotes(){ return notes.filter(n=>n.owner_id===currentUserId); }
 function getFiltered(){
-  let ids=searchQuery?searchIds(searchQuery):notes.map(n=>n.id);
-  let f=notes.filter(n=>ids.includes(n.id));
+  const own=myNotes();
+  let ids=searchQuery?searchIds(searchQuery):own.map(n=>n.id);
+  let f=own.filter(n=>ids.includes(n.id));
   if(activeFolder!=='all')f=f.filter(n=>n.folder===activeFolder);
   if(activeTag)f=f.filter(n=>(n.tags||[]).includes(activeTag));
   f.sort((a,b)=>{ if(a.pinned&&!b.pinned)return -1; if(!a.pinned&&b.pinned)return 1; return new Date(b.modified||b.created||0)-new Date(a.modified||a.created||0); });
@@ -875,7 +946,7 @@ function today(){
   return `${y}-${m}-${day}`;
 }
 function fmtDate(d){return d?d.slice(0,10):'';}
-function allTags(){const t={};notes.forEach(n=>(n.tags||[]).forEach(tag=>{t[tag]=(t[tag]||0)+1;}));return t;}
+function allTags(list){const t={};(list||notes).forEach(n=>(n.tags||[]).forEach(tag=>{t[tag]=(t[tag]||0)+1;}));return t;}
 
 function copyBtn(btn,text){
   // Try modern clipboard API first, fall back to execCommand for file:// protocol
@@ -907,10 +978,11 @@ function copyNoteCode(btn){
 // ══════════════════════════════════════════════════
 function renderFolders(){
   const el=document.getElementById('folderList');
+  const own=myNotes();
   const allItem=`<div class="folder-item ${activeFolder==='all'?'active':''}" onclick="selectFolder('all',this)">
-    <span>◈</span> All Notes <span class="count">${notes.length}</span></div>`;
+    <span>◈</span> All Notes <span class="count">${own.length}</span></div>`;
   const folderItems=folders.map(f=>{
-    const cnt=notes.filter(n=>n.folder===f).length;
+    const cnt=own.filter(n=>n.folder===f).length;
     return`<div class="folder-item ${activeFolder===f?'active':''}" onclick="selectFolder('${esc(f)}',this)">
       <span>◆</span>
       <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f)}</span>
@@ -923,7 +995,7 @@ function renderFolders(){
   el.innerHTML=allItem+folderItems;
 }
 function renderTagCloud(){
-  const tags=allTags();
+  const tags=allTags(myNotes());
   document.getElementById('tagCloud').innerHTML=Object.entries(tags).sort((a,b)=>b[1]-a[1])
     .map(([t,c])=>`<div class="tag-row">
       <span class="tag-chip ${activeTag===t?'active':''}" onclick="selectTag('${esc(t)}')">
@@ -1031,6 +1103,62 @@ function handleSearch(){searchQuery=document.getElementById('searchInput').value
 function jumpToLink(title){const n=notes.find(n=>n.title.toLowerCase()===title.toLowerCase());if(n)selectNote(n.id);}
 
 // ══════════════════════════════════════════════════
+// TEAM SHARED
+// ══════════════════════════════════════════════════
+function getTeamSharedNotes(){
+  return notes.filter(n=>n.is_shared&&n.owner_id!==currentUserId)
+    .sort((a,b)=>new Date(b.modified||b.created||0)-new Date(a.modified||a.created||0));
+}
+function renderTeamList(){
+  const list=getTeamSharedNotes();
+  document.getElementById('teamCount').textContent=list.length+' note'+(list.length!==1?'s':'');
+  document.getElementById('teamItems').innerHTML=list.length===0
+    ?'<div class="note-empty">No team-shared notes yet</div>'
+    :list.map(n=>{
+      const excerpt=(n.body||n.code||'').slice(0,55).replace(/\n/g,' ');
+      return`<div class="note-item ${n.id===activeTeamNoteId?'active':''}" onclick="selectTeamNote(${n.id})">
+        <div class="note-item-title">${hl(n.title,'')}</div>
+        <div class="note-item-meta">
+          <span class="note-type-badge ${n.type==='code'?'type-code':'type-plain'}">${n.type==='code'?'Code':'Plain'}</span>
+          <span class="note-item-folder">${esc(n.folder)}</span>
+          <span class="author-badge">${esc(authorName(n.owner_id))}</span>
+        </div>
+        <div class="note-item-excerpt">${esc(excerpt)}</div>
+      </div>`;
+    }).join('');
+}
+function selectTeamNote(id){activeTeamNoteId=id;renderTeamList();renderTeamDetail(notes.find(n=>n.id===id));}
+function renderTeamDetail(note){
+  const el=document.getElementById('teamDetail');
+  if(!note){el.innerHTML=`<div class="empty-state"><div class="icon">🌐</div><p>Select a shared note to view it</p></div>`;return;}
+  const tags=(note.tags||[]).map(t=>`<span class="detail-tag">#${esc(t)}</span>`).join('');
+  let body='';
+  if(note.type==='code'||note.type==='sql'){
+    body=`<div class="code-block">
+      <div class="code-header"><span class="code-lang">Code</span>
+        <button class="code-copy" data-noteid="${note.id}" onclick="copyNoteCode(this)">Copy</button>
+      </div>
+      <pre class="code-body">${sqlHL(note.code||'')}</pre></div>`;
+    if(note.body)body+=`<div class="note-desc">${esc(note.body)}</div>`;
+  }else{body=`<div class="note-body">${renderBodyWithLinks(note.body||'','')}</div>`;}
+  const isOwner=note.owner_id===currentUserId;
+  const actions=isOwner?`<div class="detail-actions">
+      <button class="btn btn-ghost" style="font-size:11px" onclick="openNoteModal(${note.id})">✎ Edit</button>
+      <button class="btn btn-danger" style="font-size:11px" onclick="confirmDeleteNote(${note.id},'teamDetail')">✕ Delete</button>
+    </div>`:`<div class="detail-actions"></div>`;
+  el.innerHTML=`
+    <div class="note-detail-header">
+      <div class="note-detail-title">${esc(note.title)}</div>
+      <div class="note-detail-meta">
+        <span class="detail-folder-badge">${esc(note.folder)}</span>${tags}
+        <span class="author-badge">by ${esc(authorName(note.owner_id))}</span>
+      </div>
+    </div>
+    ${actions}
+    <div class="note-detail-content">${body}</div>`;
+}
+
+// ══════════════════════════════════════════════════
 // SEARCH SCREEN
 // ══════════════════════════════════════════════════
 function openSearchScreen(){
@@ -1061,10 +1189,11 @@ function renderSearchResults(q){
   if(!ssResults.length){el.innerHTML=`<div class="search-screen-empty">No notes found for "${esc(q)}"</div>`;return;}
   el.innerHTML=ssResults.map((n,i)=>{
     const excerpt=(n.body||n.code||'').slice(0,100).replace(/\n/g,' ');
+    const ownerBadge=n.owner_id!==currentUserId?`<span class="author-badge">${esc(authorName(n.owner_id))}</span>`:'';
     return`<div class="search-result-card ${i===ssCursor?'focused':''}" onclick="openNotePopup(${n.id})" data-idx="${i}">
       <div class="search-result-title">
         <span class="search-result-type ${n.type==='code'?'srt-code':'srt-plain'}">${n.type==='code'?'Code':'Plain'}</span>
-        ${hl(n.title,q)}
+        ${hl(n.title,q)}${ownerBadge}
       </div>
       <div class="search-result-excerpt">${hl(excerpt,q)}</div>
     </div>`;
@@ -1134,9 +1263,10 @@ function renderPopupContent(note,q){
     ?links.map(l=>`<span class="popup-linked-chip" onclick="closeNotePopup();jumpToPopupLink('${esc(l)}')">↗ ${esc(l)}</span>`).join('')
     :'<span style="font-size:10px;color:var(--text-dim)">None</span>';
 
+  const ownerBadge=note.owner_id!==currentUserId?`<span class="author-badge">${esc(authorName(note.owner_id))}</span>`:'';
   document.getElementById('popupContent').innerHTML=`
     <div class="popup-title-row">
-      <div class="popup-title">${hl(note.title,q)}</div>
+      <div class="popup-title">${hl(note.title,q)}${ownerBadge}</div>
       <div class="popup-right-col">
         <span class="popup-type-badge ${isCode?'ptb-code':'ptb-plain'}">${isCode?'Code':'Plain'}</span>
         <div class="info-toggle" id="infoToggle" onclick="togglePopupMeta()">
@@ -1174,16 +1304,17 @@ function openFolderModal(existing){
 function closeFolderModal(){document.getElementById('folderModalOverlay').classList.remove('open');editingFolderName=null;}
 function saveFolder(){
   const name=document.getElementById('f-folder-name').value.trim();if(!name)return;
+  let changed=[];
   if(editingFolderName){
     if(folders.includes(name)&&name!==editingFolderName){alert('A folder with that name already exists.');return;}
     const i=folders.indexOf(editingFolderName);if(i>-1)folders[i]=name;
-    notes.forEach(n=>{if(n.folder===editingFolderName)n.folder=name;});
+    myNotes().forEach(n=>{if(n.folder===editingFolderName){n.folder=name;changed.push(n);}});
     if(activeFolder===editingFolderName)activeFolder=name;
   }else{
     if(folders.includes(name)){alert('A folder with that name already exists.');return;}
     folders.push(name);
   }
-  saveFolders(folders);saveNotes(notes);closeFolderModal();renderAll();
+  saveFolders(folders);if(changed.length)saveNotes(changed);closeFolderModal();renderAll();
 }
 function deleteFolder(name){
   const cnt=notes.filter(n=>n.folder===name).length;
@@ -1200,15 +1331,17 @@ function openTagModal(tag){renamingTag=tag;document.getElementById('f-tag-rename
 function closeTagModal(){document.getElementById('tagModalOverlay').classList.remove('open');renamingTag=null;}
 function saveTagRename(){
   const newName=document.getElementById('f-tag-rename').value.trim();if(!newName||!renamingTag)return;
-  notes.forEach(n=>{n.tags=(n.tags||[]).map(t=>t===renamingTag?newName:t);});
+  const changed=myNotes().filter(n=>(n.tags||[]).includes(renamingTag));
+  changed.forEach(n=>{n.tags=(n.tags||[]).map(t=>t===renamingTag?newName:t);});
   if(activeTag===renamingTag)activeTag=newName;
-  saveNotes(notes).then(()=>renderAll());closeTagModal();renderAll();if(activeNoteId)renderDetail(notes.find(n=>n.id===activeNoteId));
+  if(changed.length)saveNotes(changed).then(()=>renderAll());closeTagModal();renderAll();if(activeNoteId)renderDetail(notes.find(n=>n.id===activeNoteId));
 }
 function deleteTag(tag){
-  if(!confirm(`Remove tag "#${tag}" from all notes?`))return;
-  notes.forEach(n=>{n.tags=(n.tags||[]).filter(t=>t!==tag);});
+  if(!confirm(`Remove tag "#${tag}" from your notes?`))return;
+  const changed=myNotes().filter(n=>(n.tags||[]).includes(tag));
+  changed.forEach(n=>{n.tags=(n.tags||[]).filter(t=>t!==tag);});
   if(activeTag===tag)activeTag=null;
-  saveNotes(notes).then(()=>buildIndex());renderAll();if(activeNoteId)renderDetail(notes.find(n=>n.id===activeNoteId));
+  if(changed.length)saveNotes(changed).then(()=>buildIndex());renderAll();if(activeNoteId)renderDetail(notes.find(n=>n.id===activeNoteId));
 }
 
 // ══════════════════════════════════════════════════
@@ -1257,6 +1390,7 @@ function populateFolderSelect(){
 }
 function openNoteModal(id){
   editingNoteId=id||null;selectedTags=[];selectedLinks=[];
+  noteEditOriginTab=currentTab;
   populateFolderSelect();
   document.getElementById('noteModalTitle').textContent=id?'Edit Note':'New Note';
   document.getElementById('noteSaveBtn').textContent=id?'Save Changes':'Save Note';
@@ -1265,17 +1399,20 @@ function openNoteModal(id){
   renderTagChips();renderLinkChips();
   document.getElementById('tagDropdown').classList.remove('open');
   document.getElementById('linkDropdown').classList.remove('open');
+  noteIsShared=false;
   if(id){
     const note=notes.find(n=>n.id===id);if(!note)return;
     document.getElementById('f-title').value=note.title;
     document.getElementById('f-folder').value=note.folder;
     currentNoteType=(note.type==='sql'?'code':note.type);
     selectedTags=[...(note.tags||[])];selectedLinks=[...(note.links||[])];
+    noteIsShared=!!note.is_shared;
     toggleCodeField();
     if(note.type==='code'||note.type==='sql'){document.getElementById('f-code').value=note.code||'';document.getElementById('f-desc').value=note.body||'';}
     else{document.getElementById('f-body').value=note.body||'';}
     renderTagChips();renderLinkChips();
   }
+  renderShareToggle();
   document.getElementById('noteModalOverlay').classList.add('open');
   toggleCodeField(); // apply type colors after modal is visible
   setTimeout(()=>document.getElementById('f-title').focus(),50);
@@ -1284,6 +1421,20 @@ function closeNoteModal(){document.getElementById('noteModalOverlay').classList.
 function setNoteType(t){
   currentNoteType=t;
   toggleCodeField();
+}
+function toggleShareState(){
+  noteIsShared=!noteIsShared;
+  renderShareToggle();
+}
+function renderShareToggle(){
+  const btn=document.getElementById('shareToggleBtn');
+  if(noteIsShared){
+    btn.textContent='🌐 Shared with Team';
+    btn.classList.add('is-shared');
+  }else{
+    btn.textContent='🔒 Private (only you)';
+    btn.classList.remove('is-shared');
+  }
 }
 
 function toggleCodeField(){
@@ -1326,13 +1477,16 @@ function saveNote(){
     note.type=type;note.tags=[...selectedTags];note.links=[...selectedLinks];
     note.body=type==='code'?document.getElementById('f-desc').value.trim():document.getElementById('f-body').value.trim();
     note.code=type==='code'?document.getElementById('f-code').value.trim():null;
-    note.modified=now;
-    saveOneNote(note);buildIndex();incrementEdits();closeNoteModal();renderAll();selectNote(editingNoteId);
+    note.modified=now;note.is_shared=noteIsShared;
+    saveOneNote(note);buildIndex();incrementEdits();closeNoteModal();
+    if(noteEditOriginTab==='team'){renderTeamList();renderTeamDetail(note);}
+    else{renderAll();selectNote(editingNoteId);}
   }else{
     const note={id:Date.now(),title,folder:document.getElementById('f-folder').value,type,
       tags:[...selectedTags],links:[...selectedLinks],
       body:type==='code'?document.getElementById('f-desc').value.trim():document.getElementById('f-body').value.trim(),
       code:type==='code'?document.getElementById('f-code').value.trim():null,
+      is_shared:noteIsShared,owner_id:currentUserId,
       created:now,modified:now};
     notes.unshift(note);
     saveOneNote(note);buildIndex();incrementEdits();closeNoteModal();renderAll();selectNote(note.id);
@@ -1342,21 +1496,26 @@ function saveNote(){
 // ══════════════════════════════════════════════════
 // DELETE NOTE
 // ══════════════════════════════════════════════════
-function confirmDeleteNote(id){
+function confirmDeleteNote(id,targetId){
+  targetId=targetId||'noteDetail';
   const note=notes.find(n=>n.id===id);if(!note)return;
-  const el=document.getElementById('noteDetail');
+  const el=document.getElementById(targetId);
   const existing=el.querySelector('.confirm-box');if(existing){existing.remove();return;}
   const box=document.createElement('div');box.className='confirm-box';
   box.innerHTML=`<p>Delete "<strong>${esc(note.title)}</strong>"? This cannot be undone.</p>
     <div class="confirm-actions">
       <button class="btn btn-ghost" style="font-size:11px" onclick="this.closest('.confirm-box').remove()">Cancel</button>
-      <button class="btn btn-danger" style="font-size:11px" onclick="deleteNote(${id})">Yes, delete</button>
+      <button class="btn btn-danger" style="font-size:11px" onclick="deleteNote(${id},'${targetId}')">Yes, delete</button>
     </div>`;
   el.querySelector('.detail-actions').insertAdjacentElement('afterend',box);
 }
-function deleteNote(id){
-  notes=notes.filter(n=>n.id!==id);if(activeNoteId===id)activeNoteId=null;
-  saveNotes(notes);buildIndex();incrementEdits();renderAll();renderDetail(notes.find(n=>n.id===activeNoteId)||null);
+function deleteNote(id,targetId){
+  notes=notes.filter(n=>n.id!==id);
+  if(activeNoteId===id)activeNoteId=null;
+  if(activeTeamNoteId===id)activeTeamNoteId=null;
+  saveNotes(notes);buildIndex();incrementEdits();
+  if(targetId==='teamDetail'){renderTeamList();renderTeamDetail(notes.find(n=>n.id===activeTeamNoteId)||null);}
+  else{renderAll();renderDetail(notes.find(n=>n.id===activeNoteId)||null);}
 }
 
 // ══════════════════════════════════════════════════
@@ -1393,6 +1552,28 @@ function doExport(){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='basebi-data.json';a.click();
   resetBackupTracking();
   closeExportModal();
+}
+// ══════════════════════════════════════════════════
+// PASSWORD CHANGE
+// ══════════════════════════════════════════════════
+function openPasswordModal(){
+  document.getElementById('pw-new').value='';
+  document.getElementById('pw-confirm').value='';
+  document.getElementById('pw-error').style.display='none';
+  document.getElementById('passwordModalOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('pw-new').focus(),50);
+}
+function closePasswordModal(){document.getElementById('passwordModalOverlay').classList.remove('open');}
+async function submitPasswordChange(){
+  const pw=document.getElementById('pw-new').value;
+  const confirm=document.getElementById('pw-confirm').value;
+  const errEl=document.getElementById('pw-error');
+  errEl.style.display='none';
+  if(pw.length<6){errEl.textContent='Password must be at least 6 characters.';errEl.style.display='';return;}
+  if(pw!==confirm){errEl.textContent='Passwords do not match.';errEl.style.display='';return;}
+  const{error}=await sb.auth.updateUser({password:pw});
+  if(error){errEl.textContent=error.message||'Failed to update password.';errEl.style.display='';return;}
+  closePasswordModal();
 }
 function openImportPicker(){document.getElementById('importFilePicker').click();}
 async function handleImport(e){
@@ -1484,6 +1665,8 @@ document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.altKey&&e.key.toLowerCase()==='d'){e.preventDefault();openDailyNote();return;}
   // Ctrl+Alt+G — graph tab
   if((e.ctrlKey||e.metaKey)&&e.altKey&&e.key.toLowerCase()==='g'){e.preventDefault();switchTab('graph');return;}
+  // Ctrl+Alt+T — team shared tab
+  if((e.ctrlKey||e.metaKey)&&e.altKey&&e.key.toLowerCase()==='t'){e.preventDefault();switchTab('team');return;}
   if((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.key==='F'){
     e.preventDefault();
     if(searchScreenOpen)closeSearchScreen();else openSearchScreen();
@@ -1497,7 +1680,7 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     if(document.getElementById('notePopupOverlay').classList.contains('open')){closeNotePopup();return;}
     if(searchScreenOpen){closeSearchScreen();return;}
-    closeNoteModal();closeFolderModal();closeTagModal();closeExportModal();hideInlineCampRow();closeShortcutsModal();closeGearMenu();closeInlineLinkDd();
+    closeNoteModal();closeFolderModal();closeTagModal();closeExportModal();closePasswordModal();hideInlineCampRow();closeShortcutsModal();closeGearMenu();closeInlineLinkDd();
     document.getElementById('tagDropdown').classList.remove('open');
     document.getElementById('linkDropdown').classList.remove('open');
   }
@@ -1770,9 +1953,11 @@ function switchTab(tab){
   document.getElementById('tabNotes').classList.toggle('active', tab==='notes');
   document.getElementById('tabCampaigns').classList.toggle('active', tab==='campaigns');
   document.getElementById('tabGraph').classList.toggle('active', tab==='graph');
+  document.getElementById('tabTeam').classList.toggle('active', tab==='team');
   document.getElementById('notesView').classList.toggle('hidden', tab!=='notes');
   document.getElementById('campView').classList.toggle('active', tab==='campaigns');
   document.getElementById('graphView').classList.toggle('active', tab==='graph');
+  document.getElementById('teamView').classList.toggle('active', tab==='team');
   document.getElementById('notesSearchWrap').style.display = tab==='notes'?'':'none';
   document.getElementById('dailyNoteBtn').style.display = tab==='notes'?'':'none';
   const actionBtn = document.getElementById('topbarActionBtn');
@@ -1781,6 +1966,7 @@ function switchTab(tab){
   else{ actionBtn.style.display='none'; }
   if(tab==='campaigns') renderCampTable();
   if(tab==='graph') renderGraph();
+  if(tab==='team') renderTeamList();
 }
 
 // ══════════════════════════════════════════════════
@@ -2152,6 +2338,9 @@ async function initApp(){
     msg.textContent='Loading campaigns…'; bar.style.width='75%';
     campaigns = await loadCampaignsDB();
 
+    msg.textContent='Loading team…'; bar.style.width='90%';
+    profilesMap = await loadProfilesMap();
+
     msg.textContent='Ready!'; bar.style.width='100%';
     await new Promise(r=>setTimeout(r,300));
     document.getElementById('loadingScreen').style.display='none';
@@ -2193,6 +2382,7 @@ async function submitLoginJob(){
   ]);
 
   const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(data&&data.user) currentUserId = data.user.id;
 
   if(error){
     appendLoginLog(panel,[
@@ -2211,6 +2401,7 @@ async function submitLoginJob(){
 async function checkAuthAndInit(){
   const {data:{session}} = await sb.auth.getSession();
   if(session){
+    currentUserId = session.user.id;
     initApp();
   } else {
     document.getElementById('connectGate').style.display='none';
