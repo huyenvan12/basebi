@@ -230,17 +230,65 @@
 
   <!-- TEAM SHARED VIEW -->
   <div class="team-view" id="teamView">
-    <div class="note-list" id="teamListPane">
-      <div class="note-list-header">
-        <span class="note-list-title">🌐 Team Shared</span>
-        <span class="note-count" id="teamCount">0 notes</span>
+    <div class="team-subnav">
+      <div class="tab-group team-subtab-group">
+        <button class="tab-btn active" id="teamSubTabNotes" onclick="switchTeamSubTab('notes')">🌐 Shared Notes</button>
+        <button class="tab-btn" id="teamSubTabChecklists" onclick="switchTeamSubTab('checklists')">✅ Checklists</button>
       </div>
-      <div class="note-items" id="teamItems"></div>
     </div>
-    <div class="note-detail" id="teamDetail">
-      <div class="empty-state">
-        <div class="icon">🌐</div>
-        <p>Select a shared note to view it</p>
+
+    <!-- SHARED NOTES SUB-VIEW -->
+    <div class="team-subview active" id="teamNotesSubview">
+      <div class="note-list" id="teamListPane">
+        <div class="note-list-header">
+          <span class="note-list-title">🌐 Team Shared</span>
+          <span class="note-count" id="teamCount">0 notes</span>
+        </div>
+        <div class="note-items" id="teamItems"></div>
+      </div>
+      <div class="note-detail" id="teamDetail">
+        <div class="empty-state">
+          <div class="icon">🌐</div>
+          <p>Select a shared note to view it</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHECKLISTS SUB-VIEW -->
+    <div class="team-subview" id="teamChecklistsSubview">
+      <div class="checklist-panel" id="checklistPanel">
+        <div class="checklist-innernav" id="checklistInnerNav" style="display:none">
+          <div class="tab-group checklist-subtab-group">
+            <button class="tab-btn" id="checklistTabTemplates" onclick="switchChecklistSubView('templates')">📋 Templates</button>
+            <button class="tab-btn active" id="checklistTabMine" onclick="switchChecklistSubView('mine')">✅ My Checklists</button>
+          </div>
+        </div>
+
+        <!-- TEMPLATES VIEW (admin only) -->
+        <div class="checklist-page" id="checklistTemplatesView">
+          <div class="note-list-header">
+            <span class="note-list-title">📋 Checklist Templates</span>
+            <button class="btn btn-primary" onclick="openTemplateModal()">+ New Template</button>
+          </div>
+          <div class="checklist-template-grid" id="checklistTemplateGrid"></div>
+        </div>
+
+        <!-- MY CHECKLISTS VIEW -->
+        <div class="checklist-page active" id="checklistMineView">
+          <div class="note-list-header">
+            <span class="note-list-title">✅ My Checklists</span>
+            <button class="btn btn-primary" onclick="openNewChecklistModal()">+ New Checklist</button>
+          </div>
+          <div class="checklist-instance-groups" id="checklistInstanceGroups"></div>
+        </div>
+
+        <!-- CHECKLIST DETAIL VIEW -->
+        <div class="checklist-page" id="checklistDetailView">
+          <div class="checklist-detail-topbar">
+            <button class="btn btn-ghost" onclick="backToMyChecklists()">← Back to My Checklists</button>
+          </div>
+          <div class="checklist-detail-scroll" id="checklistDetailScroll"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -455,6 +503,62 @@
   </div>
 </div>
 
+<!-- CHECKLIST TEMPLATE MODAL (admin: new/edit template) -->
+<div class="modal-overlay" id="templateModalOverlay">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="templateModalTitle">New Checklist Template</span>
+      <button class="modal-close" onclick="closeTemplateModal()">×</button>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Title *</label>
+      <input class="form-input" id="tpl-title" placeholder="e.g. BRD Check List">
+    </div>
+    <div class="form-row">
+      <label class="form-label">Description</label>
+      <input class="form-input" id="tpl-desc" placeholder="What is this checklist used for?">
+    </div>
+    <div class="form-row">
+      <label class="form-label">Items</label>
+      <div class="tpl-items-editor" id="tplItemsEditor"></div>
+      <button type="button" class="btn btn-ghost" style="align-self:flex-start;font-size:11px" onclick="addTemplateItemRow()">+ Add item</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeTemplateModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTemplate()">Save Template</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW CHECKLIST MODAL (pick template -> title) -->
+<div class="modal-overlay" id="newChecklistModalOverlay">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="newChecklistModalTitle">New Checklist — Step 1: Pick a template</span>
+      <button class="modal-close" onclick="closeNewChecklistModal()">×</button>
+    </div>
+
+    <div id="newChecklistStep1">
+      <div class="form-row">
+        <div class="template-picker-list" id="templatePickerList"></div>
+      </div>
+    </div>
+
+    <div id="newChecklistStep2" style="display:none">
+      <div class="form-row">
+        <label class="form-label">Using template: <strong id="newChecklistTplName"></strong></label>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Title for this checklist *</label>
+        <input class="form-input" id="newChecklistTitle" placeholder="e.g. Campaign ABC – July 2026">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="newChecklistBackToStep1()">← Back</button>
+        <button class="btn btn-primary" onclick="createChecklistInstance()">Create Checklist</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
 // ══════════════════════════════════════════════════
@@ -498,6 +602,25 @@ async function loadProfilesMap(){
   const map={};
   if(!error&&data)data.forEach(p=>{map[p.id]=p.display_name||'Unknown';});
   return map;
+}
+// Reusable role check — fetches the current user's role from profiles once.
+// Exposed globally as currentUserIsAdmin (see STATE section). Also reused by
+// future features (Campaign Log, Admin Hub) that need the same admin gate.
+async function loadCurrentUserIsAdmin(){
+  if(!currentUserId) return false;
+  const{data,error}=await sb.from('profiles').select('role').eq('id',currentUserId).single();
+  return !error && data && data.role==='admin';
+}
+async function loadChecklistTemplates(){
+  const{data,error}=await sb.from('checklist_templates').select('*').order('created_at',{ascending:true});
+  if(error||!data) return [];
+  return data.map(t=>({...t,items:t.items||[]}));
+}
+async function loadChecklistInstances(){
+  if(!currentUserId) return [];
+  const{data,error}=await sb.from('checklist_instances').select('*').eq('owner_id',currentUserId).order('created_at',{ascending:false});
+  if(error||!data) return [];
+  return data.map(c=>({...c,items:c.items||[]}));
 }
 
 // ── async savers ──────────────────────────────────
@@ -549,6 +672,31 @@ async function saveOneCamp(camp){
 }
 async function deleteCampDB(id){ await sb.from('campaigns').delete().eq('id',id); }
 
+// ── checklist templates / instances ──────────────────
+async function insertTemplateDB(title,description,items){
+  const{data,error}=await sb.from('checklist_templates').insert({title,description,items}).select().single();
+  if(error) throw error;
+  return data;
+}
+async function updateTemplateDB(id,title,description,items){
+  await sb.from('checklist_templates').update({title,description,items}).eq('id',id);
+}
+async function deleteTemplateDB(id){ await sb.from('checklist_templates').delete().eq('id',id); }
+
+async function insertChecklistInstanceDB(templateId,title,items){
+  const{data,error}=await sb.from('checklist_instances').insert({
+    template_id:templateId, title, items, status:'in_progress'
+  }).select().single();
+  if(error) throw error;
+  return data;
+}
+async function saveChecklistInstanceItemsDB(id,items){
+  await sb.from('checklist_instances').update({items}).eq('id',id);
+}
+async function markChecklistInstanceDoneDB(id){
+  await sb.from('checklist_instances').update({status:'done',completed_at:new Date().toISOString()}).eq('id',id);
+}
+
 // ── initial data placeholders (populated in initApp) ─────────────────
 let notes=[], folders=[...SEED_FOLDERS];
 
@@ -564,11 +712,24 @@ let searchScreenOpen=false;
 let popupMetaVisible=false;
 let ssResults=[],ssCursor=-1;
 let currentUserId=null,profilesMap={};
+let currentUserIsAdmin=false;
 let noteIsShared=false;
 let activeTeamNoteId=null;
 let graphIncludeShared=false;
 let noteEditOriginTab='notes';
 function authorName(ownerId){ return profilesMap[ownerId]||'Unknown'; }
+
+// ── CHECKLIST STATE ───────────────────────────────
+let checklistTemplates=[], checklistInstances=[];
+let currentTeamSubTab='notes';                 // 'notes' | 'checklists'
+let currentChecklistView='mine';               // 'templates' | 'mine' | 'detail'
+let activeChecklistInstanceId=null;
+let checklistPhaseOpen={};                     // { [phaseName]: bool } — persists manual expand/collapse across re-renders
+let checklistNoteSaveTimer=null;
+let editingTemplateId=null;
+let templateEditItems=[];                      // working array while template modal is open
+let newChecklistSelectedTemplateId=null;
+let templatePickerExpandedId=null;
 
 // ══════════════════════════════════════════════════
 // INDEX
@@ -1181,6 +1342,367 @@ function renderTeamDetail(note){
     </div>
     ${actions}
     <div class="note-detail-content">${body}</div>`;
+}
+
+// ══════════════════════════════════════════════════
+// CHECKLISTS
+// ══════════════════════════════════════════════════
+function escJs(s){ return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+// Groups a flat items[] array for rendering. If any item has a `phase` field
+// (e.g. the Campaign Deployment template) we group phase -> section. Otherwise
+// (e.g. the BRD template) we just group by section, no phase-level collapsing.
+function groupChecklistItems(items){
+  items=items||[];
+  const hasPhase=items.some(it=>it.phase);
+  if(hasPhase){
+    const phases=[],phaseMap={};
+    items.forEach(it=>{
+      const pname=it.phase||'(No phase)';
+      if(!phaseMap[pname]){phaseMap[pname]={name:pname,sections:[],sectionMap:{}};phases.push(phaseMap[pname]);}
+      const ph=phaseMap[pname];
+      const sname=it.section||'(No section)';
+      if(!ph.sectionMap[sname]){ph.sectionMap[sname]={name:sname,items:[]};ph.sections.push(ph.sectionMap[sname]);}
+      ph.sectionMap[sname].items.push(it);
+    });
+    return{hasPhase:true,phases};
+  }
+  const sections=[],sectionMap={};
+  items.forEach(it=>{
+    const sname=it.section||'(No section)';
+    if(!sectionMap[sname]){sectionMap[sname]={name:sname,items:[]};sections.push(sectionMap[sname]);}
+    sectionMap[sname].items.push(it);
+  });
+  return{hasPhase:false,sections};
+}
+
+// ── Templates admin view ──────────────────────────
+function renderChecklistTemplates(){
+  const grid=document.getElementById('checklistTemplateGrid');
+  if(!currentUserIsAdmin){grid.innerHTML='';return;}
+  if(!checklistTemplates.length){grid.innerHTML='<div class="note-empty">No checklist templates yet</div>';return;}
+  grid.innerHTML=checklistTemplates.map(t=>{
+    const count=(t.items||[]).length;
+    return`<div class="checklist-template-card">
+      <div class="tpl-card-header">
+        <span class="tpl-card-title">${esc(t.title)}</span>
+        <span class="template-badge-admin">🔒 Admin-managed</span>
+      </div>
+      <div class="tpl-card-desc">${esc(t.description||'')}</div>
+      <div class="tpl-card-meta">${count} item${count!==1?'s':''}</div>
+      <div class="tpl-card-actions">
+        <button class="btn btn-ghost" style="font-size:11px" onclick="openTemplateModal('${escJs(t.id)}')">✎ Edit</button>
+        <button class="btn btn-danger" style="font-size:11px" onclick="confirmDeleteTemplate('${escJs(t.id)}')">✕ Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function openTemplateModal(id){
+  editingTemplateId=id||null;
+  const tpl=id?checklistTemplates.find(t=>t.id===id):null;
+  document.getElementById('templateModalTitle').textContent=tpl?'Edit Checklist Template':'New Checklist Template';
+  document.getElementById('tpl-title').value=tpl?tpl.title:'';
+  document.getElementById('tpl-desc').value=tpl?(tpl.description||''):'';
+  templateEditItems=tpl?JSON.parse(JSON.stringify(tpl.items||[])):[{phase:'',section:'',text:'',hint:''}];
+  renderTemplateItemsEditor();
+  document.getElementById('templateModalOverlay').classList.add('open');
+}
+function closeTemplateModal(){
+  document.getElementById('templateModalOverlay').classList.remove('open');
+  editingTemplateId=null;templateEditItems=[];
+}
+function addTemplateItemRow(){
+  templateEditItems.push({phase:'',section:'',text:'',hint:''});
+  renderTemplateItemsEditor();
+}
+function removeTemplateItemRow(idx){
+  templateEditItems.splice(idx,1);
+  renderTemplateItemsEditor();
+}
+function updateTplItemField(idx,field,value){
+  if(templateEditItems[idx])templateEditItems[idx][field]=value;
+}
+function renderTemplateItemsEditor(){
+  const el=document.getElementById('tplItemsEditor');
+  el.innerHTML=templateEditItems.map((it,idx)=>`
+    <div class="tpl-item-row">
+      <input class="form-input" placeholder="Phase (optional)" value="${esc(it.phase||'')}" onchange="updateTplItemField(${idx},'phase',this.value)">
+      <input class="form-input" placeholder="Section *" value="${esc(it.section||'')}" onchange="updateTplItemField(${idx},'section',this.value)">
+      <input class="form-input" placeholder="Item text *" value="${esc(it.text||'')}" onchange="updateTplItemField(${idx},'text',this.value)">
+      <input class="form-input" placeholder="Hint (optional)" value="${esc(it.hint||'')}" onchange="updateTplItemField(${idx},'hint',this.value)">
+      <button type="button" class="btn btn-danger tpl-item-remove" onclick="removeTemplateItemRow(${idx})" title="Remove item">✕</button>
+    </div>`).join('');
+}
+async function saveTemplate(){
+  const title=document.getElementById('tpl-title').value.trim();
+  const description=document.getElementById('tpl-desc').value.trim();
+  if(!title){alert('Title is required.');return;}
+  const items=templateEditItems.filter(it=>it.text&&it.text.trim()).map(it=>{
+    const clean={section:(it.section||'').trim()||'General',text:it.text.trim()};
+    if(it.phase&&it.phase.trim())clean.phase=it.phase.trim();
+    if(it.hint&&it.hint.trim())clean.hint=it.hint.trim();
+    return clean;
+  });
+  if(!items.length){alert('Add at least one item with text.');return;}
+  try{
+    if(editingTemplateId){
+      await updateTemplateDB(editingTemplateId,title,description,items);
+      const t=checklistTemplates.find(t=>t.id===editingTemplateId);
+      if(t){t.title=title;t.description=description;t.items=items;}
+    }else{
+      const row=await insertTemplateDB(title,description,items);
+      checklistTemplates.push({...row,items:row.items||items});
+    }
+    closeTemplateModal();
+    renderChecklistTemplates();
+  }catch(err){alert('Could not save template: '+(err.message||err));}
+}
+function confirmDeleteTemplate(id){
+  const t=checklistTemplates.find(t=>t.id===id);if(!t)return;
+  if(!confirm(`Delete template "${t.title}"? This cannot be undone.`))return;
+  deleteTemplateAction(id);
+}
+async function deleteTemplateAction(id){
+  await deleteTemplateDB(id);
+  checklistTemplates=checklistTemplates.filter(t=>t.id!==id);
+  renderChecklistTemplates();
+}
+
+// ── My Checklists (global hub) ────────────────────
+function renderMyChecklists(){
+  const el=document.getElementById('checklistInstanceGroups');
+  const inProgress=checklistInstances.filter(c=>c.status!=='done');
+  const done=checklistInstances.filter(c=>c.status==='done');
+  const cardHtml=c=>{
+    const items=c.items||[];
+    const total=items.length,doneCount=items.filter(i=>i.done).length;
+    const pct=total?Math.round(doneCount/total*100):0;
+    const flagged=items.filter(i=>i.note&&i.note.trim()&&!i.done).length;
+    const tpl=checklistTemplates.find(t=>t.id===c.template_id);
+    return`<div class="checklist-instance-card" onclick="openChecklistDetail('${escJs(c.id)}')">
+      <div class="ci-card-title">${esc(c.title)}</div>
+      <div class="ci-card-tpl">from: ${esc(tpl?tpl.title:'(template removed)')}</div>
+      <div class="checklist-progress-bar-outer"><div class="checklist-progress-bar-inner" style="width:${pct}%"></div></div>
+      <div class="ci-card-meta">
+        <span>${doneCount}/${total} done</span>
+        ${flagged?`<span class="checklist-flag-badge">🚩 ${flagged} flagged</span>`:''}
+      </div>
+    </div>`;
+  };
+  let html='';
+  html+=`<div class="checklist-group-label">In Progress (${inProgress.length})</div>`;
+  html+=inProgress.length?`<div class="checklist-instance-grid">${inProgress.map(cardHtml).join('')}</div>`:'<div class="note-empty">No checklists in progress</div>';
+  html+=`<div class="checklist-group-label">Done (${done.length})</div>`;
+  html+=done.length?`<div class="checklist-instance-grid">${done.map(cardHtml).join('')}</div>`:'<div class="note-empty">No completed checklists yet</div>';
+  el.innerHTML=html;
+}
+
+// ── New Checklist modal (Step 1: pick+preview template, Step 2: title) ──
+function openNewChecklistModal(){
+  newChecklistSelectedTemplateId=null;
+  templatePickerExpandedId=null;
+  document.getElementById('newChecklistModalTitle').textContent='New Checklist — Step 1: Pick a template';
+  document.getElementById('newChecklistStep1').style.display='';
+  document.getElementById('newChecklistStep2').style.display='none';
+  renderTemplatePickerList();
+  document.getElementById('newChecklistModalOverlay').classList.add('open');
+}
+function closeNewChecklistModal(){
+  document.getElementById('newChecklistModalOverlay').classList.remove('open');
+}
+function renderTemplatePickerList(){
+  const el=document.getElementById('templatePickerList');
+  if(!checklistTemplates.length){el.innerHTML='<div class="note-empty">No checklist templates available yet</div>';return;}
+  el.innerHTML=checklistTemplates.map(t=>{
+    const expanded=templatePickerExpandedId===t.id;
+    let previewHtml='';
+    if(expanded){
+      const grouped=groupChecklistItems(t.items||[]);
+      if(grouped.hasPhase){
+        previewHtml=grouped.phases.map(ph=>`
+          <div class="tpl-preview-phase">${esc(ph.name)}</div>
+          ${ph.sections.map(s=>`
+            <div class="tpl-preview-section">${esc(s.name)}</div>
+            <ul class="tpl-preview-items">${s.items.map(i=>`<li>${esc(i.text)}</li>`).join('')}</ul>
+          `).join('')}`).join('');
+      }else{
+        previewHtml=grouped.sections.map(s=>`
+          <div class="tpl-preview-section">${esc(s.name)}</div>
+          <ul class="tpl-preview-items">${s.items.map(i=>`<li>${esc(i.text)}</li>`).join('')}</ul>
+        `).join('');
+      }
+    }
+    return`<div class="template-picker-row">
+      <div class="template-picker-row-header" onclick="toggleTemplatePickerPreview('${escJs(t.id)}')">
+        <span class="tpr-chevron">${expanded?'▾':'▸'}</span>
+        <span class="tpr-title">${esc(t.title)}</span>
+        <span class="tpr-count">${(t.items||[]).length} items</span>
+      </div>
+      ${t.description?`<div class="tpr-desc">${esc(t.description)}</div>`:''}
+      ${expanded?`<div class="tpl-preview-box">${previewHtml}</div>`:''}
+      <button type="button" class="btn btn-primary tpr-use-btn" onclick="chooseTemplateForNewChecklist('${escJs(t.id)}')">Use this template</button>
+    </div>`;
+  }).join('');
+}
+function toggleTemplatePickerPreview(id){
+  templatePickerExpandedId=templatePickerExpandedId===id?null:id;
+  renderTemplatePickerList();
+}
+function chooseTemplateForNewChecklist(id){
+  newChecklistSelectedTemplateId=id;
+  const tpl=checklistTemplates.find(t=>t.id===id);
+  document.getElementById('newChecklistModalTitle').textContent='New Checklist — Step 2: Name it';
+  document.getElementById('newChecklistTplName').textContent=tpl?tpl.title:'';
+  document.getElementById('newChecklistTitle').value='';
+  document.getElementById('newChecklistStep1').style.display='none';
+  document.getElementById('newChecklistStep2').style.display='';
+  setTimeout(()=>document.getElementById('newChecklistTitle').focus(),50);
+}
+function newChecklistBackToStep1(){
+  document.getElementById('newChecklistModalTitle').textContent='New Checklist — Step 1: Pick a template';
+  document.getElementById('newChecklistStep1').style.display='';
+  document.getElementById('newChecklistStep2').style.display='none';
+}
+async function createChecklistInstance(){
+  const title=document.getElementById('newChecklistTitle').value.trim();
+  if(!title){alert('Please enter a title for this checklist.');return;}
+  const tpl=checklistTemplates.find(t=>t.id===newChecklistSelectedTemplateId);
+  if(!tpl){alert('Please pick a template.');return;}
+  const items=JSON.parse(JSON.stringify(tpl.items||[])).map(it=>({...it,done:false,note:''}));
+  try{
+    const row=await insertChecklistInstanceDB(tpl.id,title,items);
+    row.owner_id=currentUserId;
+    row.items=row.items||items;
+    checklistInstances.unshift(row);
+    closeNewChecklistModal();
+    openChecklistDetail(row.id);
+  }catch(err){alert('Could not create checklist: '+(err.message||err));}
+}
+
+// ── Checklist detail view ─────────────────────────
+function getActiveChecklistInstance(){
+  return checklistInstances.find(c=>c.id===activeChecklistInstanceId);
+}
+function openChecklistDetail(id){
+  activeChecklistInstanceId=id;
+  switchChecklistSubView('detail');
+}
+function renderChecklistItemRow(item,inst){
+  const idx=inst.items.indexOf(item);
+  const hasNote=!!(item.note&&item.note.trim());
+  return`<div class="checklist-item-row ${item.done?'is-done':''}">
+    <input type="checkbox" class="checklist-item-checkbox" ${item.done?'checked':''} onchange="toggleChecklistItemDone(${idx})">
+    <div class="checklist-item-body">
+      <div class="checklist-item-text">${esc(item.text)}${item.hint?`<span class="checklist-item-hint-toggle" onclick="toggleChecklistHint(this)" title="Show hint">ℹ</span>`:''}</div>
+      ${item.hint?`<div class="checklist-item-hint" style="display:none">${esc(item.hint).replace(/\n/g,'<br>')}</div>`:''}
+      <textarea class="checklist-item-note" placeholder="Add a note…" oninput="onChecklistNoteInput(${idx},this)" onblur="onChecklistNoteBlur(${idx},this)">${esc(item.note||'')}</textarea>
+    </div>
+    <span class="checklist-item-flag ${hasNote?'has-note':''}" title="Flagged note">🚩</span>
+  </div>`;
+}
+function toggleChecklistHint(el){
+  const hintDiv=el.parentElement.nextElementSibling;
+  if(hintDiv&&hintDiv.classList.contains('checklist-item-hint')){
+    hintDiv.style.display=hintDiv.style.display==='none'?'':'none';
+  }
+}
+function renderChecklistDetail(){
+  const el=document.getElementById('checklistDetailScroll');
+  const inst=getActiveChecklistInstance();
+  if(!inst){el.innerHTML='<div class="empty-state"><div class="icon">✅</div><p>Select a checklist to view it</p></div>';return;}
+  const items=inst.items||[];
+  const total=items.length,doneCount=items.filter(i=>i.done).length;
+  const pct=total?Math.round(doneCount/total*100):0;
+  const flagged=items.filter(i=>i.note&&i.note.trim()&&!i.done).length;
+  const tpl=checklistTemplates.find(t=>t.id===inst.template_id);
+  const grouped=groupChecklistItems(items);
+  const isDone=inst.status==='done';
+
+  let sectionsHtml='';
+  if(grouped.hasPhase){
+    sectionsHtml=grouped.phases.map((ph,phIdx)=>{
+      const phTotal=ph.sections.reduce((n,s)=>n+s.items.length,0);
+      const phDone=ph.sections.reduce((n,s)=>n+s.items.filter(i=>i.done).length,0);
+      const allDone=phTotal>0&&phDone===phTotal;
+      const phKey=inst.id+'::'+ph.name;
+      let isOpen=Object.prototype.hasOwnProperty.call(checklistPhaseOpen,phKey)?checklistPhaseOpen[phKey]:(phIdx===0&&!allDone);
+      if(allDone)isOpen=false;
+      const sectionsInner=ph.sections.map(s=>`
+        <div class="checklist-section-title">${esc(s.name)}</div>
+        <div class="checklist-item-list">${s.items.map(it=>renderChecklistItemRow(it,inst)).join('')}</div>
+      `).join('');
+      return`<details class="checklist-phase" ${isOpen?'open':''} ontoggle="onChecklistPhaseToggle('${escJs(phKey)}',this.open)">
+        <summary class="checklist-phase-summary">
+          <span class="checklist-phase-name">${esc(ph.name)}</span>
+          <span class="checklist-phase-progress">${phDone}/${phTotal} done</span>
+        </summary>
+        <div class="checklist-phase-body">${sectionsInner}</div>
+      </details>`;
+    }).join('');
+  }else{
+    sectionsHtml=grouped.sections.map(s=>`
+      <div class="checklist-section-title">${esc(s.name)}</div>
+      <div class="checklist-item-list">${s.items.map(it=>renderChecklistItemRow(it,inst)).join('')}</div>
+    `).join('');
+  }
+
+  el.innerHTML=`
+    <div class="checklist-detail-header">
+      <div class="checklist-detail-title-row">
+        <div class="checklist-detail-title">${esc(inst.title)}</div>
+        <span class="checklist-status-badge ${isDone?'is-done':'is-progress'}">${isDone?'✓ Done':'In Progress'}</span>
+      </div>
+      <div class="checklist-detail-tpl">from: ${esc(tpl?tpl.title:'(template removed)')}</div>
+      <div class="checklist-progress-bar-outer big"><div class="checklist-progress-bar-inner" style="width:${pct}%"></div></div>
+      <div class="checklist-detail-meta-row">
+        <span>${doneCount}/${total} items done (${pct}%)</span>
+        <span class="checklist-flag-badge" id="checklistDetailFlagBadge">${flagged?`🚩 ${flagged} flagged`:''}</span>
+        ${!isDone?`<button class="btn btn-primary" style="margin-left:auto" onclick="markChecklistDone()">Mark Checklist Done</button>`:''}
+      </div>
+    </div>
+    <div class="checklist-detail-body">${sectionsHtml}</div>`;
+}
+function onChecklistPhaseToggle(phKey,isOpen){
+  checklistPhaseOpen[phKey]=isOpen;
+}
+function toggleChecklistItemDone(idx){
+  const inst=getActiveChecklistInstance();if(!inst)return;
+  const item=inst.items[idx];if(!item)return;
+  item.done=!item.done;
+  saveChecklistInstanceItemsDB(inst.id,inst.items);
+  renderChecklistDetail();
+}
+// Note-field typing must NOT trigger a full re-render (would steal focus mid-keystroke,
+// same class of bug fixed earlier for the daily-note capture input). Only mutate the
+// in-memory value, patch the flag icon/badge directly in the DOM, and debounce the save.
+function onChecklistNoteInput(idx,textareaEl){
+  const inst=getActiveChecklistInstance();if(!inst)return;
+  const item=inst.items[idx];if(!item)return;
+  item.note=textareaEl.value;
+  const row=textareaEl.closest('.checklist-item-row');
+  if(row){
+    const flagEl=row.querySelector('.checklist-item-flag');
+    if(flagEl)flagEl.classList.toggle('has-note',!!(item.note&&item.note.trim()));
+  }
+  const badge=document.getElementById('checklistDetailFlagBadge');
+  if(badge){
+    const flagged=(inst.items||[]).filter(i=>i.note&&i.note.trim()&&!i.done).length;
+    badge.textContent=flagged?`🚩 ${flagged} flagged`:'';
+  }
+  clearTimeout(checklistNoteSaveTimer);
+  checklistNoteSaveTimer=setTimeout(()=>{saveChecklistInstanceItemsDB(inst.id,inst.items);},800);
+}
+function onChecklistNoteBlur(idx,textareaEl){
+  const inst=getActiveChecklistInstance();if(!inst)return;
+  clearTimeout(checklistNoteSaveTimer);
+  saveChecklistInstanceItemsDB(inst.id,inst.items);
+}
+async function markChecklistDone(){
+  const inst=getActiveChecklistInstance();if(!inst)return;
+  if(!confirm(`Mark "${inst.title}" as done?`))return;
+  await markChecklistInstanceDoneDB(inst.id);
+  inst.status='done';inst.completed_at=new Date().toISOString();
+  renderChecklistDetail();
 }
 
 // ══════════════════════════════════════════════════
@@ -1995,7 +2517,50 @@ function switchTab(tab){
   else{ actionBtn.style.display='none'; }
   if(tab==='campaigns') renderCampTable();
   if(tab==='graph') renderGraph();
-  if(tab==='team') renderTeamList();
+  if(tab==='team'){ renderTeamList(); renderTeamSubnav(); }
+}
+
+// ══════════════════════════════════════════════════
+// TEAM SHARED — SUB-NAV (Shared Notes vs Checklists)
+// ══════════════════════════════════════════════════
+function switchTeamSubTab(sub){
+  currentTeamSubTab=sub;
+  document.getElementById('teamSubTabNotes').classList.toggle('active',sub==='notes');
+  document.getElementById('teamSubTabChecklists').classList.toggle('active',sub==='checklists');
+  document.getElementById('teamNotesSubview').classList.toggle('active',sub==='notes');
+  document.getElementById('teamChecklistsSubview').classList.toggle('active',sub==='checklists');
+  if(sub==='checklists') renderTeamSubnav();
+}
+// Renders the admin-only inner pill toggle (Templates | My Checklists) and
+// makes sure non-admins land directly on My Checklists with no toggle shown.
+function renderTeamSubnav(){
+  const nav=document.getElementById('checklistInnerNav');
+  if(currentUserIsAdmin){
+    nav.style.display='';
+  }else{
+    nav.style.display='none';
+    if(currentChecklistView==='templates') currentChecklistView='mine';
+  }
+  showChecklistPage(currentChecklistView);
+}
+function switchChecklistSubView(view){
+  if(view==='templates'&&!currentUserIsAdmin) view='mine';
+  currentChecklistView=view;
+  document.getElementById('checklistTabTemplates').classList.toggle('active',view==='templates');
+  document.getElementById('checklistTabMine').classList.toggle('active',view==='mine');
+  showChecklistPage(view);
+}
+function showChecklistPage(view){
+  document.getElementById('checklistTemplatesView').classList.toggle('active',view==='templates');
+  document.getElementById('checklistMineView').classList.toggle('active',view==='mine');
+  document.getElementById('checklistDetailView').classList.toggle('active',view==='detail');
+  if(view==='templates') renderChecklistTemplates();
+  if(view==='mine') renderMyChecklists();
+  if(view==='detail') renderChecklistDetail();
+}
+function backToMyChecklists(){
+  activeChecklistInstanceId=null;
+  switchChecklistSubView('mine');
 }
 
 // ══════════════════════════════════════════════════
@@ -2369,6 +2934,11 @@ async function initApp(){
 
     msg.textContent='Loading team…'; bar.style.width='90%';
     profilesMap = await loadProfilesMap();
+    currentUserIsAdmin = await loadCurrentUserIsAdmin();
+
+    msg.textContent='Loading checklists…'; bar.style.width='95%';
+    checklistTemplates = await loadChecklistTemplates();
+    checklistInstances = await loadChecklistInstances();
 
     msg.textContent='Ready!'; bar.style.width='100%';
     await new Promise(r=>setTimeout(r,300));
