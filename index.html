@@ -32,6 +32,10 @@
     <div class="gear-wrap">
       <button class="gear-btn" onclick="toggleGearMenu()" title="Options">⚙</button>
       <div class="gear-menu" id="gearMenu">
+        <div class="gear-user-info" id="gearUserInfo">
+          <div class="gear-user-name" id="gearUserName">—</div>
+          <div class="gear-user-email" id="gearUserEmail">—</div>
+        </div>
         <div class="gear-divider"></div>
         <div class="gear-item" onclick="openImportPicker();closeGearMenu()">⬆ &nbsp;Import data</div>
         <div class="gear-item" onclick="openExportModal();closeGearMenu()">⬇ &nbsp;Export data</div>
@@ -711,13 +715,19 @@ let idx={};
 let searchScreenOpen=false;
 let popupMetaVisible=false;
 let ssResults=[],ssCursor=-1;
-let currentUserId=null,profilesMap={};
+let currentUserId=null,currentUserEmail=null,profilesMap={};
 let currentUserIsAdmin=false;
 let noteIsShared=false;
 let activeTeamNoteId=null;
 let graphIncludeShared=false;
 let noteEditOriginTab='notes';
 function authorName(ownerId){ return profilesMap[ownerId]||'Unknown'; }
+function renderGearUserInfo(){
+  const nameEl=document.getElementById('gearUserName');
+  const emailEl=document.getElementById('gearUserEmail');
+  if(nameEl) nameEl.textContent=profilesMap[currentUserId]||'Unknown';
+  if(emailEl) emailEl.textContent=currentUserEmail||'';
+}
 
 // ── CHECKLIST STATE ───────────────────────────────
 let checklistTemplates=[], checklistInstances=[];
@@ -3131,6 +3141,7 @@ async function initApp(){
     msg.textContent='Loading team…'; bar.style.width='90%';
     profilesMap = await loadProfilesMap();
     currentUserIsAdmin = await loadCurrentUserIsAdmin();
+    renderGearUserInfo();
 
     msg.textContent='Loading checklists…'; bar.style.width='95%';
     checklistTemplates = await loadChecklistTemplates();
@@ -3177,7 +3188,7 @@ async function submitLoginJob(){
   ]);
 
   const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
-  if(data&&data.user) currentUserId = data.user.id;
+  if(data&&data.user){ currentUserId = data.user.id; currentUserEmail = data.user.email; }
 
   if(error){
     appendLoginLog(panel,[
@@ -3197,6 +3208,7 @@ async function checkAuthAndInit(){
   const {data:{session}} = await sb.auth.getSession();
   if(session){
     currentUserId = session.user.id;
+    currentUserEmail = session.user.email;
     initApp();
   } else {
     document.getElementById('connectGate').style.display='none';
