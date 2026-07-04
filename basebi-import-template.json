@@ -1,0 +1,46 @@
+{
+  "version": 2,
+  "folders": ["Business"],
+  "notes": [
+    {
+      "id": 1,
+      "title": "Sample plain note",
+      "folder": "Business",
+      "type": "plain",
+      "tags": ["sample"],
+      "links": [],
+      "body": "This is an example plain note. Replace this text with your own content.",
+      "code": null,
+      "created": "2026-01-01",
+      "modified": "2026-01-01"
+    },
+    {
+      "id": 2,
+      "title": "Sample code note",
+      "folder": "Business",
+      "type": "code",
+      "tags": ["sample", "sql"],
+      "links": ["Sample plain note"],
+      "body": "Short description of what this code snippet does.",
+      "code": "SELECT * FROM some_table WHERE 1=1;",
+      "created": "2026-01-01",
+      "modified": "2026-01-01"
+    }
+  ],
+  "campaigns": [
+    {
+      "id": 1,
+      "campaign_cd": "CAMP0001",
+      "campaign_nm": "SAMPLE_CAMPAIGN_NAME",
+      "event_name": "SAMPLE_EVENT",
+      "type": "BAU",
+      "trigger_type": "Batch",
+      "status": "Active",
+      "date": "2026-01-01",
+      "note": "",
+      "extra": {},
+      "created": "2026-01-01",
+      "modified": "2026-01-01"
+    }
+  ]
+}
