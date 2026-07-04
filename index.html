@@ -37,7 +37,7 @@
           <div class="gear-user-email" id="gearUserEmail">—</div>
         </div>
         <div class="gear-divider"></div>
-        <div class="gear-item" onclick="openImportPicker();closeGearMenu()">⬆ &nbsp;Import data</div>
+        <div class="gear-item" onclick="openImportModal();closeGearMenu()">⬆ &nbsp;Import data</div>
         <div class="gear-item" onclick="openExportModal();closeGearMenu()">⬇ &nbsp;Export data</div>
         <div class="gear-divider"></div>
         <div class="gear-item" id="themeToggleItem" onclick="toggleTheme();closeGearMenu()">☀ &nbsp;Switch to Light</div>
@@ -423,6 +423,26 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeTagModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveTagRename()">Rename</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT MODAL -->
+<div class="modal-overlay" id="importOverlay">
+  <div class="modal modal-sm">
+    <div class="modal-title">
+      <span>Import Data</span>
+      <button class="modal-close" onclick="closeImportModal()">×</button>
+    </div>
+    <div class="info-box">
+      Notes, folders, and campaigns from the file are <strong>merged</strong>
+      into your workspace — existing data is never deleted or overwritten.
+      Imported notes get a fresh id and are owned by you.<br><br>
+      Not sure of the format? <a href="basebi-import-template.json" download>Download sample format</a>.
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeImportModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="openImportPicker()">⬆ &nbsp;Choose File to Import</button>
     </div>
   </div>
 </div>
@@ -2329,18 +2349,38 @@ async function submitPasswordChange(){
   if(error){errEl.textContent=error.message||'Failed to update password.';errEl.style.display='';return;}
   closePasswordModal();
 }
-function openImportPicker(){document.getElementById('importFilePicker').click();}
+function openImportModal(){document.getElementById('importOverlay').classList.add('open');}
+function closeImportModal(){document.getElementById('importOverlay').classList.remove('open');}
+function openImportPicker(){closeImportModal();document.getElementById('importFilePicker').click();}
+
+const REQUIRED_NOTE_FIELDS=['title','folder','type','tags','links','body','code','created','modified'];
+function validateImportData(data){
+  if(!data||typeof data!=='object') throw new Error('Invalid file: not a valid JSON object.');
+  if(typeof data.version!=='number') throw new Error("Missing or invalid 'version' field.");
+  if(!Array.isArray(data.folders)) throw new Error("Missing or invalid 'folders' array.");
+  if(!Array.isArray(data.notes)) throw new Error("Missing or invalid 'notes' array.");
+  if(data.campaigns!==undefined&&!Array.isArray(data.campaigns)) throw new Error("'campaigns' must be an array.");
+  data.notes.forEach((n,i)=>{
+    REQUIRED_NOTE_FIELDS.forEach(f=>{
+      if(n[f]===undefined) throw new Error(`Missing '${f}' field on note at index ${i}.`);
+    });
+    if(!Array.isArray(n.tags)) throw new Error(`'tags' must be an array on note at index ${i}.`);
+    if(!Array.isArray(n.links)) throw new Error(`'links' must be an array on note at index ${i}.`);
+    if(n.type==='sql') n.type='code';
+  });
+}
+
 async function handleImport(e){
   const file=e.target.files[0];if(!file)return;
   const reader=new FileReader();
   reader.onload=async ev=>{
     try{
       const data=JSON.parse(ev.target.result);
-      if(!data.notes||!Array.isArray(data.notes))throw new Error('Invalid format');
-      if(!confirm(`Import ${data.notes.length} notes and ${(data.folders||[]).length} folders?\n\nThis will REPLACE your current data.`))return;
-      notes=data.notes||[];folders=data.folders||SEED_FOLDERS;
-      campaigns=data.campaigns||[];
-      notes.forEach(n=>{if(n.type==='sql')n.type='code';});
+      validateImportData(data);
+
+      const newFolderNames=data.folders.filter(name=>!folders.includes(name));
+      const importCampaigns=data.campaigns||[];
+      if(!confirm(`Import ${data.notes.length} note(s), ${newFolderNames.length} new folder(s), and ${importCampaigns.length} campaign(s)?\n\nExisting data will not be deleted or overwritten.`))return;
 
       // show loading screen
       const ls=document.getElementById('loadingScreen');
@@ -2350,42 +2390,56 @@ async function handleImport(e){
       if(lm) lm.textContent='Importing notes to Supabase…';
       if(lb) lb.style.width='20%';
 
-      // upsert notes in batches of 50 to avoid payload limits
+      // insert notes with freshly generated ids — never reuse ids from the file,
+      // so an id that collides with an existing note can't silently overwrite it
+      let noteIdSeq=Date.now();
+      const newNotes=data.notes.map(n=>({
+        id:noteIdSeq++,title:n.title,folder:n.folder,type:n.type,
+        tags:n.tags,links:n.links,body:n.body,
+        code:n.code,pinned:false,
+        created:n.created,modified:n.modified,owner_id:currentUserId
+      }));
       const NOTE_BATCH=50;
-      for(let i=0;i<notes.length;i+=NOTE_BATCH){
-        const batch=notes.slice(i,i+NOTE_BATCH);
-        const{error}=await sb.from('notes').upsert(batch.map(n=>({
-          id:n.id,title:n.title,folder:n.folder,type:n.type,
-          tags:n.tags||[],links:n.links||[],body:n.body||null,
-          code:n.code||null,pinned:n.pinned||false,
-          created:n.created,modified:n.modified
-        })),{onConflict:'id'});
-        if(error) throw new Error('Notes upsert failed: '+error.message);
-        if(lb) lb.style.width=Math.round(20+(i/notes.length)*40)+'%';
+      for(let i=0;i<newNotes.length;i+=NOTE_BATCH){
+        const batch=newNotes.slice(i,i+NOTE_BATCH);
+        const{error}=await sb.from('notes').insert(batch);
+        if(error) throw new Error('Notes import failed: '+error.message);
+        if(lb) lb.style.width=Math.round(20+(i/Math.max(newNotes.length,1))*40)+'%';
       }
+
       if(lm) lm.textContent='Importing folders…';
       if(lb) lb.style.width='65%';
 
-      // upsert folders
-      const fRows=folders.map((name,i)=>({name,sort_order:i}));
-      const{error:fErr}=await sb.from('folders').upsert(fRows,{onConflict:'name'});
-      if(fErr) throw new Error('Folders upsert failed: '+fErr.message);
+      // insert only genuinely new folder names — never touch existing folder rows
+      if(newFolderNames.length){
+        const fRows=newFolderNames.map((name,i)=>({name,sort_order:folders.length+i,owner_id:currentUserId}));
+        const{error:fErr}=await sb.from('folders').insert(fRows);
+        if(fErr) throw new Error('Folders import failed: '+fErr.message);
+      }
       if(lb) lb.style.width='75%';
 
-      // upsert campaigns in batches
+      // insert campaigns with freshly generated ids
       if(lm) lm.textContent='Importing campaigns…';
+      let campIdSeq=Date.now();
+      const newCampaigns=importCampaigns.map(cc=>({
+        id:campIdSeq++,campaign_cd:cc.campaign_cd,campaign_nm:cc.campaign_nm,
+        event_name:cc.event_name||null,type:cc.type,trigger_type:cc.trigger_type,
+        status:cc.status,date:cc.date||null,note:cc.note||null,
+        extra:cc.extra||{},created:cc.created,modified:cc.modified,owner_id:currentUserId
+      }));
       const CAMP_BATCH=50;
-      for(let i=0;i<campaigns.length;i+=CAMP_BATCH){
-        const batch=campaigns.slice(i,i+CAMP_BATCH);
-        const{error}=await sb.from('campaigns').upsert(batch.map(cc=>({
-          id:cc.id,campaign_cd:cc.campaign_cd,campaign_nm:cc.campaign_nm,
-          event_name:cc.event_name||null,type:cc.type,trigger_type:cc.trigger_type,
-          status:cc.status,date:cc.date||null,note:cc.note||null,
-          extra:cc.extra||{},created:cc.created,modified:cc.modified
-        })),{onConflict:'id'});
-        if(error) throw new Error('Campaigns upsert failed: '+error.message);
-        if(lb) lb.style.width=Math.round(75+(i/Math.max(campaigns.length,1))*20)+'%';
+      for(let i=0;i<newCampaigns.length;i+=CAMP_BATCH){
+        const batch=newCampaigns.slice(i,i+CAMP_BATCH);
+        const{error}=await sb.from('campaigns').insert(batch);
+        if(error) throw new Error('Campaigns import failed: '+error.message);
+        if(lb) lb.style.width=Math.round(75+(i/Math.max(newCampaigns.length,1))*20)+'%';
       }
+
+      if(lm) lm.textContent='Refreshing workspace…';
+      if(lb) lb.style.width='95%';
+      notes=await loadNotes();
+      folders=await loadFolders();
+      campaigns=await loadCampaignsDB();
 
       if(lm) lm.textContent='Done! ✓';
       if(lb) lb.style.width='100%';
@@ -2398,8 +2452,9 @@ async function handleImport(e){
       if(currentTab==='campaigns')renderCampTable();
     }catch(err){
       console.error('Import error:', err);
+      const ls2=document.getElementById('loadingScreen');
       const lm2=document.getElementById('loadingMsg');
-      if(lm2){ lm2.textContent='Import failed: '+err.message; lm2.style.color='#f87171'; }
+      if(ls2&&ls2.style.display==='flex'&&lm2){ lm2.textContent='Import failed: '+err.message; lm2.style.color='#f87171'; }
       else { alert('Import failed: '+err.message); }
     }
   };
