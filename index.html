@@ -808,6 +808,8 @@ let orgMembers=[];
 let checklistSharePanelOpen={};                // { [instanceId]: bool } — mirrors checklistPhaseOpen pattern
 let shareModalInstanceId=null;
 let activeReviewShareId=null;
+let reviewerCommentEditing=false;              // false=locked display (if a comment exists), true=textarea open
+let reviewerCommentError=null;
 
 // ══════════════════════════════════════════════════
 // INDEX
@@ -1764,7 +1766,6 @@ function renderMyChecklists(){
         <div class="ci-card-title">${esc(c.title)}</div>
         <div class="ci-card-share-wrap" onclick="event.stopPropagation()">
           ${shareControl}
-          ${panelOpen?renderSharePanel(c,shares):''}
         </div>
       </div>
       <div class="ci-card-tpl">from: ${esc(tpl?tpl.title:'(template removed)')}</div>
@@ -1773,6 +1774,7 @@ function renderMyChecklists(){
         <span>${doneCount}/${total} done</span>
         ${flagged?`<span class="checklist-flag-badge">🚩 ${flagged} flagged</span>`:''}
       </div>
+      ${panelOpen?`<div onclick="event.stopPropagation()">${renderSharePanel(c,shares)}</div>`:''}
     </div>`;
   };
   let html='';
@@ -1786,10 +1788,14 @@ function renderSharePanel(inst,shares){
   const rows=shares.map(s=>{
     const unack=!!(s.comment&&s.comment.trim()&&(!s.owner_ack_at||(s.comment_updated_at&&s.comment_updated_at>s.owner_ack_at)));
     return`<div class="share-panel-row">
-      <span class="share-panel-name">${esc(authorName(s.shared_with))}</span>
-      <span class="share-panel-comment">${s.comment&&s.comment.trim()?esc(s.comment):'no comment yet'}${unack?'<span class="unseen-dot" title="Unacknowledged comment"></span>':''}</span>
-      ${unack?`<button class="btn btn-ghost" style="font-size:11px" onclick="ackShareComment('${escJs(s.id)}')">Mark seen</button>`:''}
-      <button class="btn btn-danger" style="font-size:11px" onclick="confirmUnshare(this,'${escJs(s.id)}')">Unshare</button>
+      <div class="share-panel-info">
+        <div class="share-panel-name">${esc(authorName(s.shared_with))}</div>
+        <div class="share-panel-comment">${s.comment&&s.comment.trim()?esc(s.comment):'no comment yet'}${unack?'<span class="unseen-dot" title="Unacknowledged comment"></span>':''}</div>
+      </div>
+      <div class="share-panel-actions">
+        ${unack?`<button class="btn btn-ghost" style="font-size:11px" onclick="ackShareComment('${escJs(s.id)}')">Mark seen</button>`:''}
+        <button class="share-panel-unshare" onclick="confirmUnshare(this,'${escJs(s.id)}')">Unshare</button>
+      </div>
     </div>`;
   }).join('');
   return`<div class="share-panel">${rows}
@@ -2097,6 +2103,8 @@ function renderSharedWithMeList(){
 function getReviewShare(){ return checklistShares.find(s=>s.id===activeReviewShareId); }
 function openReviewerChecklist(shareId){
   activeReviewShareId=shareId;
+  reviewerCommentEditing=false;
+  reviewerCommentError=null;
   markShareSeen(shareId);
   switchChecklistSubView('reviewer');
 }
@@ -2115,22 +2123,52 @@ function renderReviewerChecklist(){
   if(!share||!inst){el.innerHTML='<div class="empty-state"><p>Checklist not found</p></div>';return;}
   const grouped=groupChecklistItems(inst.items||[]);
   const sectionsHtml=renderChecklistSections(inst,grouped,true);
+  const hasComment=!!(share.comment&&share.comment.trim());
+  const editing=reviewerCommentEditing||!hasComment;
+  const commentBoxHtml=editing
+    ?`<div class="reviewer-comment-box">
+        <label class="form-label">Leave a comment for ${esc(authorName(share.shared_by))}</label>
+        <textarea class="form-input" id="reviewerCommentInput" rows="3">${esc(share.comment||'')}</textarea>
+        <div class="reviewer-comment-error" id="reviewerCommentError" style="display:${reviewerCommentError?'':'none'}">${esc(reviewerCommentError||'')}</div>
+        <button class="btn btn-primary" id="reviewerCommentSaveBtn" onclick="saveShareComment('${escJs(share.id)}')">Save comment</button>
+      </div>`
+    :`<div class="reviewer-comment-box">
+        <label class="form-label">Your comment for ${esc(authorName(share.shared_by))}</label>
+        <div class="reviewer-comment-locked-text">${esc(share.comment)}</div>
+        <button type="button" class="reviewer-comment-edit-link" onclick="editShareComment()">✏️ Edit</button>
+      </div>`;
   el.innerHTML=`
     <div class="reviewer-banner">Reviewing "<strong>${esc(inst.title)}</strong>" — shared by ${esc(authorName(share.shared_by))}</div>
-    <div class="reviewer-comment-box">
-      <label class="form-label">Leave a comment for ${esc(authorName(share.shared_by))}</label>
-      <textarea class="form-input" id="reviewerCommentInput" rows="3">${esc(share.comment||'')}</textarea>
-      <button class="btn btn-primary" onclick="saveShareComment('${escJs(share.id)}')">Save comment</button>
-    </div>
+    ${commentBoxHtml}
     <div class="checklist-detail-body">${sectionsHtml}</div>
     <div class="checklist-readonly-note">🔒 Items are locked — this is a read-only view</div>`;
 }
+function editShareComment(){
+  reviewerCommentEditing=true;
+  reviewerCommentError=null;
+  renderReviewerChecklist();
+}
 async function saveShareComment(shareId){
   const share=checklistShares.find(s=>s.id===shareId);if(!share)return;
-  const text=document.getElementById('reviewerCommentInput').value;
+  const textarea=document.getElementById('reviewerCommentInput');
+  const text=textarea.value;
   const now=new Date().toISOString();
+  const btn=document.getElementById('reviewerCommentSaveBtn');
+  const errEl=document.getElementById('reviewerCommentError');
+  if(btn){btn.disabled=true;btn.textContent='Saving…';}
+  const{error}=await sb.from('checklist_shares').update({comment:text,comment_updated_at:now}).eq('id',shareId);
+  if(error){
+    // Keep the textarea open with the user's unsaved text intact — a full re-render
+    // here would revert to the last-saved share.comment and silently discard their edit.
+    reviewerCommentError='Could not save your comment. Please try again.';
+    if(errEl){errEl.textContent=reviewerCommentError;errEl.style.display='';}
+    if(btn){btn.disabled=false;btn.textContent='Save comment';}
+    return;
+  }
   share.comment=text;share.comment_updated_at=now;
-  await sb.from('checklist_shares').update({comment:text,comment_updated_at:now}).eq('id',shareId);
+  reviewerCommentEditing=false;
+  reviewerCommentError=null;
+  renderReviewerChecklist();
 }
 
 // ══════════════════════════════════════════════════

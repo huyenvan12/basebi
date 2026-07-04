@@ -499,7 +499,7 @@ pre.popup-code-body{padding:12px;font-family:'JetBrains Mono',monospace;font-siz
 .checklist-instance-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
 .checklist-instance-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;display:flex;flex-direction:column;gap:7px;transition:border-color .15s}
 .checklist-instance-card:hover{border-color:var(--accent)}
-.ci-card-title{font-weight:600;font-size:13px;color:var(--text)}
+.ci-card-title{font-weight:600;font-size:13px;color:var(--text);min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ci-card-tpl{font-size:10px;color:var(--text-dim)}
 .ci-card-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10px;color:var(--text-muted)}
 .ci-card-header-row{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
@@ -509,12 +509,16 @@ pre.popup-code-body{padding:12px;font-family:'JetBrains Mono',monospace;font-siz
 .ci-share-badge-btn{font-size:10px;padding:3px 8px;border-radius:6px;background:var(--tag-bg);color:var(--text-muted);border:1px solid var(--border);cursor:pointer;white-space:nowrap}
 .ci-share-badge-btn:hover{border-color:var(--accent);color:var(--text)}
 .ci-new-tag{font-size:9px;font-weight:600;color:var(--accent);background:var(--accent-dim);padding:2px 7px;border-radius:4px;white-space:nowrap}
-.share-panel{margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);display:flex;flex-direction:column;gap:8px;cursor:default}
-.share-panel-row{display:flex;align-items:center;gap:8px;font-size:11px;flex-wrap:wrap}
-.share-panel-name{font-weight:600;color:var(--text);flex-shrink:0}
-.share-panel-comment{flex:1;color:var(--text-muted);min-width:0;display:flex;align-items:center;gap:6px}
+.share-panel{margin-top:14px;padding-top:12px;border-top:1px dashed var(--border);display:flex;flex-direction:column;gap:10px;cursor:default}
+.share-panel-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;font-size:11px}
+.share-panel-info{min-width:0;flex:1}
+.share-panel-name{font-weight:600;color:var(--text)}
+.share-panel-comment{color:var(--text-muted);margin-top:3px;display:flex;align-items:center;gap:6px}
 .share-panel-add{color:var(--accent);cursor:pointer;font-size:11px}
 .share-panel-add:hover{text-decoration:underline}
+.share-panel-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.share-panel-unshare{background:none;border:none;padding:0;font-family:inherit;font-size:11px;color:var(--text-dim);cursor:pointer;flex-shrink:0}
+.share-panel-unshare:hover{color:var(--danger);text-decoration:underline}
 .unseen-dot{width:6px;height:6px;border-radius:50%;background:var(--danger);flex-shrink:0;display:inline-block}
 
 /* Progress bars (shared by hub cards + detail header) */
@@ -562,6 +566,10 @@ pre.popup-code-body{padding:12px;font-family:'JetBrains Mono',monospace;font-siz
 /* Reviewer (read-only shared checklist) view */
 .reviewer-banner{font-size:12px;color:var(--text-muted);background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px}
 .reviewer-comment-box{display:flex;flex-direction:column;gap:8px;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.reviewer-comment-locked-text{font-size:12px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;white-space:pre-wrap;line-height:1.5}
+.reviewer-comment-edit-link{align-self:flex-start;background:none;border:none;padding:0;font-family:inherit;font-size:11px;color:var(--accent);cursor:pointer}
+.reviewer-comment-edit-link:hover{text-decoration:underline}
+.reviewer-comment-error{font-size:11px;color:var(--danger)}
 .checklist-readonly-note{margin-top:16px;font-size:11px;color:var(--text-dim);text-align:center}
 
 /* Admin template editor (simple rows, not a fancy builder) */
