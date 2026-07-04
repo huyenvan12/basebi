@@ -10,6 +10,24 @@
   --sql:#f59e0b;--danger:#f87171;--danger-dim:#3d1515;--success:#4ade80;
   --search-bg:#0f1117;--search-text:#e2e8f0;--search-border:#5b8dee;
   --search-card:#181c27;--search-card-border:#2a3047;--search-muted:#7a8599;
+
+  /* ===== Graph View: color tokens (dark) ===== */
+  --graph-node-stroke:#0f172a;
+  --graph-label-color:#cbd5e1;
+  --graph-label-color-hub:#f1f5f9;
+  --graph-edge-link-color:#60a5fa;
+  --graph-edge-tag-color:#fbbf24;
+  --graph-edge-opacity:.3;
+  --graph-folder-palette-1:#f87171;
+  --graph-folder-palette-2:#fb923c;
+  --graph-folder-palette-3:#fbbf24;
+  --graph-folder-palette-4:#a3e635;
+  --graph-folder-palette-5:#34d399;
+  --graph-folder-palette-6:#22d3ee;
+  --graph-folder-palette-7:#60a5fa;
+  --graph-folder-palette-8:#818cf8;
+  --graph-folder-palette-9:#c084fc;
+  --graph-folder-palette-10:#f472b6;
 }
 
 /* ── LIGHT THEME ── */
@@ -22,6 +40,24 @@
   --sql:#c47d0e;--danger:#dc2626;--danger-dim:#fee2e2;--success:#16a34a;
   --search-bg:#f2f3f7;--search-text:#1a1d2e;--search-border:#3b6fe0;
   --search-card:#ffffff;--search-card-border:#d4d8e8;--search-muted:#5a6380;
+
+  /* ===== Graph View: color tokens (light) ===== */
+  --graph-node-stroke:#ffffff;
+  --graph-label-color:#1f2937;
+  --graph-label-color-hub:#0f172a;
+  --graph-edge-link-color:#3b82f6;
+  --graph-edge-tag-color:#d97706;
+  --graph-edge-opacity:.35;
+  --graph-folder-palette-1:#ef4444;
+  --graph-folder-palette-2:#f97316;
+  --graph-folder-palette-3:#ca8a04;
+  --graph-folder-palette-4:#65a30d;
+  --graph-folder-palette-5:#10b981;
+  --graph-folder-palette-6:#0891b2;
+  --graph-folder-palette-7:#3b82f6;
+  --graph-folder-palette-8:#6366f1;
+  --graph-folder-palette-9:#a855f7;
+  --graph-folder-palette-10:#db2777;
 }
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;font-size:13px}
 
@@ -643,18 +679,22 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
 .graph-legend{position:absolute;bottom:12px;left:12px;z-index:3;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:9px 11px;display:flex;flex-direction:column;gap:6px}
 .graph-legend-row{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-dim)}
 .graph-legend-swatch{width:18px;height:2px;display:inline-block}
-.graph-legend-link{background:var(--accent)}
-.graph-legend-tag{background:var(--sql);opacity:.7;border-top:2px dashed var(--sql);height:0}
+.graph-legend-link{background:var(--graph-edge-link-color)}
+.graph-legend-tag{background:var(--graph-edge-tag-color);opacity:.7;border-top:2px dashed var(--graph-edge-tag-color);height:0}
 
-.graph-node{fill:var(--surface2);stroke:var(--border);stroke-width:1.4;cursor:pointer;transition:opacity .15s}
+.graph-node{fill:var(--graph-node-fill,var(--surface2));stroke:var(--graph-node-stroke);stroke-width:1.4;cursor:pointer;transition:opacity .15s}
 .graph-node:hover{stroke:var(--accent)}
 .graph-node.is-active{stroke:var(--accent);stroke-width:2.4}
 .graph-node.is-dim{opacity:.2}
 .graph-label-g{transition:opacity .15s}
 .graph-label-g.is-dim{opacity:.15}
-.graph-node-label{font-family:'Inter',sans-serif;font-size:12px;fill:var(--text-dim);pointer-events:none}
-.graph-edge{stroke:var(--accent);stroke-opacity:.45;transition:opacity .15s}
-.graph-edge-tag{stroke:var(--sql);stroke-opacity:.35;stroke-dasharray:3,3}
+.graph-node-label{font-family:'Inter',sans-serif;pointer-events:none}
+.graph-node-label.tier-hub{font-size:15px;font-weight:600;fill:var(--graph-label-color-hub)}
+.graph-node-label.tier-large{font-size:13px;font-weight:500;fill:var(--graph-label-color)}
+.graph-node-label.tier-medium{font-size:12px;font-weight:400;fill:var(--graph-label-color)}
+.graph-node-label.tier-small{font-size:11px;font-weight:400;fill:var(--graph-label-color);opacity:.85}
+.graph-edge{stroke:var(--graph-edge-link-color);stroke-opacity:var(--graph-edge-opacity);transition:opacity .15s}
+.graph-edge-tag{stroke:var(--graph-edge-tag-color);stroke-opacity:var(--graph-edge-opacity);stroke-dasharray:3,3}
 .graph-edge.is-dim{opacity:.08}
 
 .graph-side-panel{width:260px;flex-shrink:0;background:var(--surface);border-left:1px solid var(--border);padding:16px;display:flex;flex-direction:column;gap:12px;overflow-y:auto}
