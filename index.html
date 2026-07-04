@@ -839,26 +839,61 @@ function getIncomingLinks(noteId){
 }
 
 // ══════════════════════════════════════════════════
-// GRAPH VIEW
+// GRAPH VIEW — force-directed layout
 // ══════════════════════════════════════════════════
-let graphNodePositions={}; // noteId -> {x,y}
+let graphNodePositions={}; // noteId -> {x,y} — persists across renders so the sim can warm-restart
+let graphVelocities={};    // noteId -> {vx,vy}
 let graphActiveNodeId=null;
 let graphDefaultW=1400, graphDefaultH=880;
 let graphViewBox={x:0,y:0,w:graphDefaultW,h:graphDefaultH};
 let graphInteractionsBound=false;
-const GRAPH_LABEL_ZOOM_THRESHOLD=1.7; // once zoomed in past this factor, show all labels regardless of hover
+let graphLabelK=1;       // viewBox-units-per-CSS-pixel; used to counter-scale labels to a constant screen size
+let graphAnimFrameId=null;
+let graphUserAdjustedView=false; // once the user manually zooms/pans, stop auto-fitting the view to the sim
+
+// Force constants — tuned numerically (repulsion/spring/centering integrated with damping)
+// for: no NaN/blowup, hub nodes visibly pulled toward center, settle within ~2-3s at 60fps.
+const GRAPH_REPULSION=4200;       // node-node push apart, force = REPULSION/distance
+const GRAPH_MIN_DIST=24;          // clamp distance to avoid a divide-by-near-zero singularity
+const GRAPH_SPRING_LENGTH=110;    // ideal length for link/tag edges
+const GRAPH_SPRING_STRENGTH=0.14; // link/tag edge stiffness (Hooke's law)
+const GRAPH_FOLDER_LENGTH=150;    // ideal "distance" for same-folder note pairs
+const GRAPH_FOLDER_STRENGTH=0.02; // folder clustering pull — weaker than GRAPH_SPRING_STRENGTH, independently tunable
+const GRAPH_CENTER_STRENGTH=0.1;  // weak pull toward canvas centroid, keeps the whole graph on-screen
+const GRAPH_DAMPING=0.78;         // velocity retained per frame (friction)
+const GRAPH_MAX_VEL=36;           // per-frame velocity clamp, prevents jitter/overshoot from initial overlap
+const GRAPH_REST_KE=0.05;         // avg per-node kinetic energy below which the sim is considered settled
+const GRAPH_MAX_SIM_FRAMES=900;   // safety cap (~15s at 60fps) so a non-converging graph can't spin forever
 
 function graphApplyViewBox(){
   document.getElementById('graphSvg').setAttribute('viewBox',
     `${graphViewBox.x} ${graphViewBox.y} ${graphViewBox.w} ${graphViewBox.h}`);
-  graphSetLabelVisibility(graphActiveNodeId);
+  graphRecalcLabelK();
+  graphUpdateLabelTransforms();
+}
+// Fits the viewBox to the current bounding box of all nodes (with padding), so orphans/hubs
+// pushed far out by the physics are never clipped off-screen — used for reset and, while the
+// sim is still settling, re-applied every frame until the user manually zooms/pans (see
+// graphUserAdjustedView) so the camera follows nodes spreading out from their initial seed.
+function graphFitToBounds(){
+  const pts=Object.values(graphNodePositions);
+  if(!pts.length){ graphViewBox={x:0,y:0,w:graphDefaultW,h:graphDefaultH}; graphApplyViewBox(); return; }
+  let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+  pts.forEach(p=>{ minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y); });
+  const pad=100;
+  const w=Math.max(maxX-minX+pad*2, graphDefaultW*0.25);
+  const h=Math.max(maxY-minY+pad*2, graphDefaultH*0.25);
+  const cx=(minX+maxX)/2, cy=(minY+maxY)/2;
+  graphViewBox={x:cx-w/2, y:cy-h/2, w, h};
+  graphApplyViewBox();
 }
 function graphResetView(){
-  graphViewBox={x:0,y:0,w:graphDefaultW,h:graphDefaultH};
-  graphApplyViewBox();
+  graphUserAdjustedView=false;
+  graphFitToBounds();
 }
 // zoom keeping a given SVG-space point fixed (used by wheel, anchored at cursor)
 function graphZoomAt(factor,px,py){
+  graphUserAdjustedView=true;
   const minW=160,maxW=2800;
   let newW=graphViewBox.w*factor; newW=Math.max(minW,Math.min(maxW,newW));
   const actualFactor=newW/graphViewBox.w;
@@ -881,16 +916,24 @@ function graphClientToSvg(clientX,clientY){
     y:graphViewBox.y+(clientY-rect.top)/rect.height*graphViewBox.h
   };
 }
-// Labels are hidden by default and only reveal on hover/select, or once zoomed in
-// past GRAPH_LABEL_ZOOM_THRESHOLD — with 20-30+ real notes, showing every title at
-// once made the canvas unreadable regardless of zoom level.
-function graphSetLabelVisibility(focusId){
-  const scale=graphDefaultW/graphViewBox.w;
-  const showAll=scale>=GRAPH_LABEL_ZOOM_THRESHOLD;
-  const keep=focusId!=null?new Set([...graphNeighbors(focusId),focusId]):null;
-  document.querySelectorAll('#graphSvg .graph-node-label').forEach(t=>{
-    const id=+t.dataset.id;
-    t.style.display=(showAll||(keep&&keep.has(id)))?'':'none';
+// Counter-scale factor so labels render at a constant CSS pixel size regardless of
+// viewBox zoom or the SVG element's actual rendered size on screen.
+function graphRecalcLabelK(){
+  const svg=document.getElementById('graphSvg');
+  const rect=svg.getBoundingClientRect();
+  graphLabelK = rect.width ? graphViewBox.w/rect.width : 1;
+}
+// Each label is a <g transform="translate(x,y) scale(graphLabelK)"> wrapping a fixed-size
+// <text>. Since 1 local unit inside that g == 1 CSS px on screen (the scale cancels the
+// viewBox->viewport ratio), a constant font-size/offset in the <text> stays visually constant.
+function graphUpdateLabelTransforms(){
+  document.querySelectorAll('#graphSvg .graph-label-g').forEach(g=>{
+    const id=+g.dataset.id, p=graphNodePositions[id];
+    if(!p)return;
+    g.setAttribute('transform',`translate(${p.x},${p.y}) scale(${graphLabelK})`);
+    const r=+g.dataset.r||0;
+    const t=g.querySelector('text');
+    if(t) t.setAttribute('x',(r/graphLabelK+6).toFixed(2));
   });
 }
 function graphDeselect(){
@@ -917,6 +960,7 @@ function graphBindInteractions(){
   document.addEventListener('mousemove',e=>{
     if(!panState)return;
     if(Math.abs(e.clientX-panState.startX)>3||Math.abs(e.clientY-panState.startY)>3)panMoved=true;
+    graphUserAdjustedView=true;
     const rect=svg.getBoundingClientRect();
     const dx=(e.clientX-panState.startX)/rect.width*panState.vb.w;
     const dy=(e.clientY-panState.startY)/rect.height*panState.vb.h;
@@ -930,6 +974,7 @@ function graphBindInteractions(){
   svg.addEventListener('click',e=>{
     if(e.target.id==='graphSvg'&&!panMoved)graphDeselect();
   });
+  window.addEventListener('resize',()=>{ graphRecalcLabelK(); graphUpdateLabelTransforms(); });
 }
 
 function toggleGraphShared(checked){
@@ -939,29 +984,131 @@ function toggleGraphShared(checked){
 function graphNotes(){
   return notes.filter(n=>n.owner_id===currentUserId||(graphIncludeShared&&n.is_shared));
 }
-function computeGraphLayout(){
-  const W=graphDefaultW,H=graphDefaultH;
-  graphNodePositions={};
-  const folderGroups={};
-  graphNotes().forEach(n=>{
-    const f=n.folder||'Unfiled';
-    if(!folderGroups[f])folderGroups[f]=[];
-    folderGroups[f].push(n);
+// Reconciles graphNodePositions/graphVelocities with the current notes list: drops entries for
+// deleted notes and seeds new notes near the existing graph's centroid (not folder-anchored, not
+// from scratch) so a warm-started simulation settles smoothly instead of jumping (Task 4).
+function graphSyncNodePositions(){
+  const currentIds=new Set(notes.map(n=>n.id));
+  Object.keys(graphNodePositions).forEach(k=>{
+    const id=+k;
+    if(!currentIds.has(id)){ delete graphNodePositions[id]; delete graphVelocities[id]; }
   });
-  const folderNames=Object.keys(folderGroups);
-  const cx=W/2, cy=H/2;
-  const clusterR=Math.min(W,H)*0.36;
-  folderNames.forEach((f,fi)=>{
-    const angle=(fi/folderNames.length)*Math.PI*2 - Math.PI/2;
-    const fcx=cx+Math.cos(angle)*clusterR;
-    const fcy=cy+Math.sin(angle)*clusterR;
-    const group=folderGroups[f];
-    group.forEach((n,ni)=>{
-      const a=ni*137.508*Math.PI/180; // golden-angle spiral — spreads continuously outward, no repeated radii
-      const r=20+Math.sqrt(ni)*34;
-      graphNodePositions[n.id]={x:fcx+Math.cos(a)*r, y:fcy+Math.sin(a)*r};
-    });
+  const existing=Object.values(graphNodePositions);
+  const cx=existing.length?existing.reduce((s,p)=>s+p.x,0)/existing.length:graphDefaultW/2;
+  const cy=existing.length?existing.reduce((s,p)=>s+p.y,0)/existing.length:graphDefaultH/2;
+  notes.forEach(n=>{
+    if(!graphNodePositions[n.id]){
+      graphNodePositions[n.id]={x:cx+(Math.random()-0.5)*120, y:cy+(Math.random()-0.5)*120};
+      graphVelocities[n.id]={vx:0,vy:0};
+    }
   });
+}
+
+// One physics tick: repulsion (all pairs) + spring attraction (link/tag edges) + weak folder
+// clustering + weak centering. Mutates graphNodePositions/graphVelocities in place and returns
+// the average per-node kinetic energy, used as the convergence signal.
+function graphSimulationStep(){
+  const ids=notes.map(n=>n.id);
+  const n=ids.length;
+  if(!n)return 0;
+  const fx={},fy={};
+  ids.forEach(id=>{fx[id]=0;fy[id]=0;});
+
+  for(let i=0;i<n;i++){
+    for(let j=i+1;j<n;j++){
+      const idA=ids[i],idB=ids[j];
+      const A=graphNodePositions[idA],B=graphNodePositions[idB];
+      if(!A||!B)continue;
+      const dx=A.x-B.x,dy=A.y-B.y;
+      let d=Math.sqrt(dx*dx+dy*dy)||0.0001;
+      if(d<GRAPH_MIN_DIST)d=GRAPH_MIN_DIST;
+      const f=GRAPH_REPULSION/d, ux=dx/d, uy=dy/d;
+      fx[idA]+=ux*f; fy[idA]+=uy*f;
+      fx[idB]-=ux*f; fy[idB]-=uy*f;
+    }
+  }
+
+  linkEdges.concat(tagEdges).forEach(({a,b})=>{
+    const A=graphNodePositions[a],B=graphNodePositions[b];
+    if(!A||!B)return;
+    const dx=A.x-B.x,dy=A.y-B.y;
+    const d=Math.sqrt(dx*dx+dy*dy)||0.0001;
+    const f=GRAPH_SPRING_STRENGTH*(d-GRAPH_SPRING_LENGTH), ux=dx/d, uy=dy/d;
+    fx[a]-=ux*f; fy[a]-=uy*f;
+    fx[b]+=ux*f; fy[b]+=uy*f;
+  });
+
+  const byFolder={};
+  notes.forEach(nn=>{const f=nn.folder||'Unfiled';(byFolder[f]=byFolder[f]||[]).push(nn.id);});
+  Object.values(byFolder).forEach(group=>{
+    if(group.length<2)return;
+    for(let i=0;i<group.length;i++){
+      for(let j=i+1;j<group.length;j++){
+        const idA=group[i],idB=group[j];
+        const A=graphNodePositions[idA],B=graphNodePositions[idB];
+        if(!A||!B)continue;
+        const dx=A.x-B.x,dy=A.y-B.y;
+        const d=Math.sqrt(dx*dx+dy*dy)||0.0001;
+        const f=GRAPH_FOLDER_STRENGTH*(d-GRAPH_FOLDER_LENGTH), ux=dx/d, uy=dy/d;
+        fx[idA]-=ux*f; fy[idA]-=uy*f;
+        fx[idB]+=ux*f; fy[idB]+=uy*f;
+      }
+    }
+  });
+
+  const ccx=graphDefaultW/2, ccy=graphDefaultH/2;
+  ids.forEach(id=>{
+    const p=graphNodePositions[id]; if(!p)return;
+    fx[id]+=(ccx-p.x)*GRAPH_CENTER_STRENGTH;
+    fy[id]+=(ccy-p.y)*GRAPH_CENTER_STRENGTH;
+  });
+
+  let totalKE=0;
+  ids.forEach(id=>{
+    const p=graphNodePositions[id]; if(!p)return;
+    const v=graphVelocities[id]||(graphVelocities[id]={vx:0,vy:0});
+    v.vx=(v.vx+fx[id])*GRAPH_DAMPING;
+    v.vy=(v.vy+fy[id])*GRAPH_DAMPING;
+    const speed=Math.sqrt(v.vx*v.vx+v.vy*v.vy);
+    if(speed>GRAPH_MAX_VEL){ v.vx=v.vx/speed*GRAPH_MAX_VEL; v.vy=v.vy/speed*GRAPH_MAX_VEL; }
+    p.x+=v.vx; p.y+=v.vy;
+    totalKE+=v.vx*v.vx+v.vy*v.vy;
+  });
+  return totalKE/n;
+}
+
+function graphUpdatePositions(){
+  document.querySelectorAll('#graphSvg .graph-node').forEach(c=>{
+    const p=graphNodePositions[+c.dataset.id]; if(!p)return;
+    c.setAttribute('cx',p.x); c.setAttribute('cy',p.y);
+  });
+  document.querySelectorAll('#graphSvg .graph-edge').forEach(e=>{
+    const A=graphNodePositions[+e.dataset.a],B=graphNodePositions[+e.dataset.b];
+    if(!A||!B)return;
+    e.setAttribute('x1',A.x);e.setAttribute('y1',A.y);e.setAttribute('x2',B.x);e.setAttribute('y2',B.y);
+  });
+  graphUpdateLabelTransforms();
+}
+function graphStopSimulation(){
+  if(graphAnimFrameId!=null){ cancelAnimationFrame(graphAnimFrameId); graphAnimFrameId=null; }
+}
+// Runs the physics loop from the CURRENT graphNodePositions/graphVelocities (a warm start, not
+// a reset) each animation frame until settled, then stops — no indefinite ticking on a rested graph.
+function graphRunSimulation(){
+  graphStopSimulation();
+  let frame=0;
+  function tick(){
+    const avgKE=graphSimulationStep();
+    graphUpdatePositions();
+    if(!graphUserAdjustedView)graphFitToBounds();
+    frame++;
+    if(avgKE>GRAPH_REST_KE && frame<GRAPH_MAX_SIM_FRAMES){
+      graphAnimFrameId=requestAnimationFrame(tick);
+    } else {
+      graphAnimFrameId=null;
+    }
+  }
+  graphAnimFrameId=requestAnimationFrame(tick);
 }
 
 function graphNeighbors(id){
@@ -973,7 +1120,7 @@ function graphTruncateTitle(title){
 
 function renderGraph(){
   buildLinkIndex();
-  computeGraphLayout();
+  graphSyncNodePositions();
   graphActiveNodeId=null;
   document.getElementById('graphEmptyState').style.display='';
   document.getElementById('graphNodeDetail').classList.remove('show');
@@ -983,36 +1130,54 @@ function renderGraph(){
   graphResetView();
   graphBindInteractions();
   const gNotes=graphNotes();
-  document.getElementById('graphCount').textContent=`${gNotes.length} notes · ${linkEdges.length} links`;
+  const gNoteIds=new Set(gNotes.map(n=>n.id));
+  // linkEdges/tagEdges are scoped to visibleNotes() (all org-shared notes), which is broader
+  // than gNotes (org-shared notes AND the graph's own "include team-shared" toggle) — filter
+  // again here so an edge is never drawn to a note whose circle isn't actually rendered below.
+  const visibleLinkEdges=linkEdges.filter(({a,b})=>gNoteIds.has(a)&&gNoteIds.has(b));
+  const visibleTagEdges=tagEdges.filter(({a,b})=>gNoteIds.has(a)&&gNoteIds.has(b));
+  document.getElementById('graphCount').textContent=`${gNotes.length} notes · ${visibleLinkEdges.length} links`;
 
   const ns='http://www.w3.org/2000/svg';
   function mk(tag,attrs){const e=document.createElementNS(ns,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);return e;}
 
-  linkEdges.forEach(({a,b})=>{
-    const A=graphNodePositions[a],B=graphNodePositions[b];
-    if(!A||!B)return;
-    svg.appendChild(mk('line',{x1:A.x,y1:A.y,x2:B.x,y2:B.y,class:'graph-edge graph-edge-link','data-a':a,'data-b':b}));
+  visibleLinkEdges.forEach(({a,b})=>{
+    if(!graphNodePositions[a]||!graphNodePositions[b])return;
+    svg.appendChild(mk('line',{class:'graph-edge graph-edge-link','data-a':a,'data-b':b}));
   });
-  tagEdges.forEach(({a,b})=>{
-    const A=graphNodePositions[a],B=graphNodePositions[b];
-    if(!A||!B)return;
-    svg.appendChild(mk('line',{x1:A.x,y1:A.y,x2:B.x,y2:B.y,class:'graph-edge graph-edge-tag','data-a':a,'data-b':b}));
+  visibleTagEdges.forEach(({a,b})=>{
+    if(!graphNodePositions[a]||!graphNodePositions[b])return;
+    svg.appendChild(mk('line',{class:'graph-edge graph-edge-tag','data-a':a,'data-b':b}));
+  });
+
+  // Degree for node sizing must come from the same visibility-filtered edges as what's actually
+  // drawn above — graphNeighbors()/backlinks is scoped to visibleNotes(), so a node's radius must
+  // not count connections to notes hidden by the graph's own include-shared toggle.
+  const visibleNeighbors={};
+  gNotes.forEach(n=>{visibleNeighbors[n.id]=new Set();});
+  visibleLinkEdges.concat(visibleTagEdges).forEach(({a,b})=>{
+    visibleNeighbors[a].add(b); visibleNeighbors[b].add(a);
   });
 
   gNotes.forEach(n=>{
     const p=graphNodePositions[n.id];
     if(!p)return;
-    const connCount=graphNeighbors(n.id).size;
+    const connCount=visibleNeighbors[n.id].size;
     const r=5+Math.min(6,connCount*1.3);
-    const c=mk('circle',{cx:p.x,cy:p.y,r:r,class:'graph-node','data-id':n.id});
-    const t=mk('text',{x:p.x+r+4,y:p.y+3,class:'graph-node-label','data-id':n.id});
+    const c=mk('circle',{r:r,class:'graph-node','data-id':n.id});
+    const g=mk('g',{class:'graph-label-g','data-id':n.id,'data-r':r});
+    const t=mk('text',{x:r+6,y:4,class:'graph-node-label'});
     t.textContent=graphTruncateTitle(n.title);
-    svg.appendChild(c); svg.appendChild(t);
+    g.appendChild(t);
+    svg.appendChild(c); svg.appendChild(g);
     c.addEventListener('mouseenter',()=>graphHighlight(n.id));
     c.addEventListener('mouseleave',()=>{ if(graphActiveNodeId==null) graphClearHighlight(); else graphHighlight(graphActiveNodeId); });
     c.addEventListener('click',e=>{e.stopPropagation();graphShowDetail(n.id);});
   });
-  graphSetLabelVisibility(null);
+
+  graphRecalcLabelK();
+  graphUpdatePositions();
+  graphRunSimulation();
 }
 
 function graphHighlight(id){
@@ -1026,12 +1191,13 @@ function graphHighlight(id){
     const a=+e.dataset.a,b=+e.dataset.b;
     e.classList.toggle('is-dim', !(a===id||b===id));
   });
-  graphSetLabelVisibility(id);
+  document.querySelectorAll('#graphSvg .graph-label-g').forEach(g=>{
+    g.classList.toggle('is-dim', !keep.has(+g.dataset.id));
+  });
 }
 function graphClearHighlight(){
-  document.querySelectorAll('#graphSvg .graph-node,#graphSvg .graph-edge')
+  document.querySelectorAll('#graphSvg .graph-node,#graphSvg .graph-edge,#graphSvg .graph-label-g')
     .forEach(e=>e.classList.remove('is-dim','is-active'));
-  graphSetLabelVisibility(graphActiveNodeId);
 }
 
 function graphShowDetail(id){
@@ -1043,10 +1209,14 @@ function graphShowDetail(id){
   const detail=document.getElementById('graphNodeDetail');
   detail.classList.add('show');
   document.getElementById('gnTitle').textContent=n.title;
-  const conns=graphNeighbors(id).size;
+  // Scope neighbor count + linked-note list to the graph's own currently-visible note set
+  // (graphNotes()), not the broader visibleNotes()-scoped global backlinks map — a note hidden
+  // by the include-shared toggle must never surface here, even as just a title or a count.
+  const gNoteIds=new Set(graphNotes().map(gn=>gn.id));
+  const conns=[...graphNeighbors(id)].filter(nid=>gNoteIds.has(nid)).length;
   document.getElementById('gnMeta').textContent=`${n.folder||'Unfiled'} · ${conns} connection${conns===1?'':'s'}`;
   document.getElementById('gnTags').innerHTML=(n.tags||[]).map(t=>`<span class="graph-chip">#${esc(t)}</span>`).join('')||'';
-  const linked=getBacklinks(id);
+  const linked=getBacklinks(id).filter(ln=>gNoteIds.has(ln.id));
   document.getElementById('gnLinks').innerHTML=linked.length
     ? linked.map(ln=>`<div class="graph-link-item" onclick="graphShowDetail(${ln.id})">${esc(ln.title)}</div>`).join('')
     : '<div class="graph-node-meta">No connections yet</div>';

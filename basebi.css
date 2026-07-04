@@ -650,7 +650,9 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
 .graph-node:hover{stroke:var(--accent)}
 .graph-node.is-active{stroke:var(--accent);stroke-width:2.4}
 .graph-node.is-dim{opacity:.2}
-.graph-node-label{font-family:'Inter',sans-serif;font-size:10.5px;fill:var(--text-dim);pointer-events:none;transition:opacity .15s}
+.graph-label-g{transition:opacity .15s}
+.graph-label-g.is-dim{opacity:.15}
+.graph-node-label{font-family:'Inter',sans-serif;font-size:12px;fill:var(--text-dim);pointer-events:none}
 .graph-edge{stroke:var(--accent);stroke-opacity:.45;transition:opacity .15s}
 .graph-edge-tag{stroke:var(--sql);stroke-opacity:.35;stroke-dasharray:3,3}
 .graph-edge.is-dim{opacity:.08}
