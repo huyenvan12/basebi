@@ -219,15 +219,11 @@ textarea.code-input{font-family:'JetBrains Mono',monospace;font-size:12px;min-he
 .dropdown-item.new-item{color:var(--accent);font-style:italic}
 .dropdown-empty{padding:10px;font-size:11px;color:var(--text-dim);text-align:center}
 
-/* EXPORT MODAL */
-.export-modal{width:460px}
-.commit-preview{background:var(--code-bg);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#86efac;line-height:1.6;white-space:pre-wrap;word-break:break-all}
-.copy-row{display:flex;align-items:center;gap:8px}
-.copy-row .commit-preview{flex:1}
-.copy-success{font-size:11px;color:var(--success);display:none}
-.copy-success.show{display:inline}
+/* INFO BOX / CHECKBOX ROW (import/export modals) */
 .info-box{background:var(--surface2);border-radius:6px;padding:10px 12px;font-size:11px;color:var(--text-dim);line-height:1.7}
 .info-box strong{color:var(--text-muted)}
+.checkbox-row{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text-muted);user-select:none}
+.checkbox-row input{cursor:pointer}
 
 /* CONFIRM */
 .confirm-box{background:var(--surface2);border:1px solid var(--danger);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px;margin:0 20px}

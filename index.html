@@ -449,33 +449,25 @@
 
 <!-- EXPORT MODAL -->
 <div class="modal-overlay" id="exportOverlay">
-  <div class="modal export-modal">
+  <div class="modal modal-sm">
     <div class="modal-title">
-      <span>Export base·bi</span>
+      <span>Export My Data</span>
       <button class="modal-close" onclick="closeExportModal()">×</button>
     </div>
     <div class="form-row">
-      <label class="form-label">Commit message</label>
-      <input class="form-input" id="e-msg" placeholder="e.g. add: DuPont note">
-      <div class="form-hint">Prefixes: <code>add:</code> <code>edit:</code> <code>delete:</code> <code>fix:</code></div>
-    </div>
-    <div class="form-row">
-      <label class="form-label">Git command — paste in terminal after saving file</label>
-      <div class="copy-row">
-        <div class="commit-preview" id="e-preview"></div>
-        <button class="btn btn-ghost" onclick="copyGitCmd()">Copy</button>
-      </div>
-      <span class="copy-success" id="copySuccess">✓ Copied!</span>
+      <label class="form-label">Include</label>
+      <label class="checkbox-row"><input type="checkbox" id="export-notes-check" checked onchange="updateExportButtonState()"> Notes (yours only)</label>
+      <label class="checkbox-row"><input type="checkbox" id="export-campaigns-check" checked onchange="updateExportButtonState()"> Campaigns (visible to you)</label>
+      <label class="checkbox-row"><input type="checkbox" id="export-checklists-check" checked onchange="updateExportButtonState()"> Checklist instances (yours only)</label>
     </div>
     <div class="info-box">
-      <strong>Workflow</strong><br>
-      1. Click Export below → downloads <code>basebi-data.json</code><br>
-      2. Move it to <code>C:\notes\basebi\</code> (overwrite old one)<br>
-      3. Paste the git command above in Command Prompt
+      Downloads a JSON file of your own data. Notes and checklist
+      instances are scoped to you; campaigns are org-wide and export
+      whatever you can currently see.
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeExportModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="doExport()">⬇ Export Data</button>
+      <button class="btn btn-primary" id="exportConfirmBtn" onclick="doExport()">⬇ Export Data</button>
     </div>
   </div>
 </div>
@@ -2252,7 +2244,7 @@ function saveNote(){
     note.body=type==='code'?document.getElementById('f-desc').value.trim():document.getElementById('f-body').value.trim();
     note.code=type==='code'?document.getElementById('f-code').value.trim():null;
     note.modified=now;note.is_shared=noteIsShared;
-    saveOneNote(note);buildIndex();incrementEdits();closeNoteModal();
+    saveOneNote(note);buildIndex();closeNoteModal();
     if(noteEditOriginTab==='team'){renderTeamList();renderTeamDetail(note);}
     else{renderAll();selectNote(editingNoteId);}
   }else{
@@ -2263,7 +2255,7 @@ function saveNote(){
       is_shared:noteIsShared,owner_id:currentUserId,
       created:now,modified:now};
     notes.unshift(note);
-    saveOneNote(note);buildIndex();incrementEdits();closeNoteModal();renderAll();selectNote(note.id);
+    saveOneNote(note);buildIndex();closeNoteModal();renderAll();selectNote(note.id);
   }
 }
 
@@ -2287,7 +2279,7 @@ function deleteNote(id,targetId){
   notes=notes.filter(n=>n.id!==id);
   if(activeNoteId===id)activeNoteId=null;
   if(activeTeamNoteId===id)activeTeamNoteId=null;
-  saveNotes(notes);buildIndex();incrementEdits();
+  saveNotes(notes);buildIndex();
   if(targetId==='teamDetail'){renderTeamList();renderTeamDetail(notes.find(n=>n.id===activeTeamNoteId)||null);}
   else{renderAll();renderDetail(notes.find(n=>n.id===activeNoteId)||null);}
 }
@@ -2296,35 +2288,40 @@ function deleteNote(id,targetId){
 // EXPORT / IMPORT
 // ══════════════════════════════════════════════════
 function openExportModal(){
-  const latest=[...notes].sort((a,b)=>new Date(b.modified||b.created||0)-new Date(a.modified||a.created||0))[0];
-  let suggestion='chore: export base·bi';
-  if(latest){const prefix=latest.modified===latest.created?'add':'edit';suggestion=`${prefix}: ${latest.title.slice(0,40)}`;}
-  document.getElementById('e-msg').value=suggestion;updatePreview();
+  document.getElementById('export-notes-check').checked=true;
+  document.getElementById('export-campaigns-check').checked=true;
+  document.getElementById('export-checklists-check').checked=true;
+  updateExportButtonState();
   document.getElementById('exportOverlay').classList.add('open');
-  setTimeout(()=>{const el=document.getElementById('e-msg');el.focus();el.select();},50);
 }
-function closeExportModal(){document.getElementById('exportOverlay').classList.remove('open');document.getElementById('copySuccess').classList.remove('show');}
-function updatePreview(){
-  const msg=document.getElementById('e-msg').value.trim()||'update notes';
-  document.getElementById('e-preview').textContent=`git add basebi-data.json && git commit -m "${msg}"`;
-}
-function copyGitCmd(){
-  const text=document.getElementById('e-preview').textContent;
-  const doFeedback=()=>{
-    const el=document.getElementById('copySuccess');el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2000);
-  };
-  if(navigator.clipboard && window.isSecureContext){
-    navigator.clipboard.writeText(text).then(doFeedback).catch(()=>fallbackCopy(text,doFeedback));
-  } else {
-    fallbackCopy(text,doFeedback);
-  }
+function closeExportModal(){document.getElementById('exportOverlay').classList.remove('open');}
+function updateExportButtonState(){
+  const anyChecked=document.getElementById('export-notes-check').checked
+    ||document.getElementById('export-campaigns-check').checked
+    ||document.getElementById('export-checklists-check').checked;
+  document.getElementById('exportConfirmBtn').disabled=!anyChecked;
 }
 function doExport(){
-  // export current in-memory state
-  const payload={version:2,exported:new Date().toISOString(),folders,notes,campaigns};
+  const includeNotes=document.getElementById('export-notes-check').checked;
+  const includeCampaigns=document.getElementById('export-campaigns-check').checked;
+  const includeChecklists=document.getElementById('export-checklists-check').checked;
+  if(!includeNotes&&!includeCampaigns&&!includeChecklists) return;
+
+  const exportedNotes=includeNotes?myNotes():[];
+  const payload={
+    version:2,
+    exported:new Date().toISOString(),
+    folders:includeNotes?[...new Set(exportedNotes.map(n=>n.folder))]:[],
+    notes:exportedNotes,
+    campaigns:includeCampaigns?campaigns:[]
+  };
+  if(includeChecklists) payload.checklistInstances=checklistInstances;
+
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='basebi-data.json';a.click();
-  resetBackupTracking();
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`basebi-export-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
   closeExportModal();
 }
 // ══════════════════════════════════════════════════
@@ -2494,7 +2491,6 @@ document.addEventListener('keydown',e=>{
     document.getElementById('linkDropdown').classList.remove('open');
   }
 });
-document.addEventListener('input',e=>{if(e.target.id==='e-msg')updatePreview();});
 document.addEventListener('click',e=>{
   if(!e.target.closest('.gear-wrap')) closeGearMenu();
   if(!document.getElementById('tagSelectorWrap').contains(e.target))document.getElementById('tagDropdown').classList.remove('open');
@@ -2621,7 +2617,7 @@ function appendDailyEntry(id){
   const hh=String(now.getHours()).padStart(2,'0'), mm=String(now.getMinutes()).padStart(2,'0');
   note.body=(note.body?note.body+'\n':'')+`[${hh}:${mm}] ${val}`;
   note.modified=today();
-  saveOneNote(note);buildIndex();incrementEdits();renderDetail(note);focusDailyCapture();renderAll();
+  saveOneNote(note);buildIndex();renderDetail(note);focusDailyCapture();renderAll();
 }
 
 // ══════════════════════════════════════════════════
@@ -2722,18 +2718,6 @@ function renderBodyWithLinks(text,q){
   });
 }
 
-
-// ══════════════════════════════════════════════════
-// BACKUP TRACKING (edit counter for export reminder)
-// ══════════════════════════════════════════════════
-function incrementEdits(){
-  const n = (parseInt(localStorage.getItem('basebi_edits_since')||'0'))+1;
-  localStorage.setItem('basebi_edits_since', String(n));
-}
-function resetBackupTracking(){
-  localStorage.setItem('basebi_last_export', new Date().toISOString());
-  localStorage.setItem('basebi_edits_since', '0');
-}
 
 
 // ══════════════════════════════════════════════════
@@ -2951,7 +2935,6 @@ function saveInlinecamp(){
   };
   campaigns.unshift(camp);
   saveOneCamp(camp); hideInlineCampRow(); renderCampTable(); selectCamp(camp.id);
-  incrementEdits();
 }
 
 function showInlineCampRow(){
@@ -3111,7 +3094,6 @@ function saveCampaign(){
   camp.note=document.getElementById('ca-note').value.trim();
   camp.modified=today();
   saveOneCamp(camp); hideInlineCampRow(); editingCampId=null; renderCampTable(); selectCamp(camp.id);
-  incrementEdits();
 }
 
 function confirmDeleteCamp(){
