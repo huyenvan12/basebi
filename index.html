@@ -2409,7 +2409,7 @@ async function handleImport(e){
 
       // insert only genuinely new folder names — never touch existing folder rows
       if(newFolderNames.length){
-        const fRows=newFolderNames.map((name,i)=>({name,sort_order:folders.length+i,owner_id:currentUserId}));
+        const fRows=newFolderNames.map((name,i)=>({name,sort_order:folders.length+i}));
         const{error:fErr}=await sb.from('folders').insert(fRows);
         if(fErr) throw new Error('Folders import failed: '+fErr.message);
       }
@@ -2422,7 +2422,7 @@ async function handleImport(e){
         id:campIdSeq++,campaign_cd:cc.campaign_cd,campaign_nm:cc.campaign_nm,
         event_name:cc.event_name||null,type:cc.type,trigger_type:cc.trigger_type,
         status:cc.status,date:cc.date||null,note:cc.note||null,
-        extra:cc.extra||{},created:cc.created,modified:cc.modified,owner_id:currentUserId
+        extra:cc.extra||{},created:cc.created,modified:cc.modified
       }));
       const CAMP_BATCH=50;
       for(let i=0;i<newCampaigns.length;i+=CAMP_BATCH){
