@@ -24,7 +24,7 @@
   </div>
   <div class="search-wrap" id="notesSearchWrap">
     <span class="search-icon">⌕</span>
-    <input type="text" id="searchInput" placeholder="Search notes, code, tags… (Ctrl+K)" oninput="handleSearch()">
+    <input type="text" id="searchInput" placeholder="Search notes, code, tags… (Ctrl+K)" autocomplete="off" oninput="handleSearch()">
   </div>
   <div class="topbar-actions">
     <button class="gear-btn" id="dailyNoteBtn" onclick="openDailyNote()" title="Today's note (Ctrl+Alt+D)">📅</button>
@@ -120,9 +120,9 @@
     <!-- FILTER BAR -->
     <div class="camp-filter-bar">
       <span class="camp-filter-label">Filter</span>
-      <input class="camp-filter-input" id="cf-cd" placeholder="CAMPAIGN_CD…" oninput="renderCampTable()">
-      <input class="camp-filter-input" id="cf-nm" placeholder="CAMPAIGN_NM…" oninput="renderCampTable()">
-      <input class="camp-filter-input" id="cf-event" placeholder="EVENT_NAME…" style="width:100px" oninput="renderCampTable()">
+      <input class="camp-filter-input" id="cf-cd" placeholder="CAMPAIGN_CD…" autocomplete="off" oninput="renderCampTable()">
+      <input class="camp-filter-input" id="cf-nm" placeholder="CAMPAIGN_NM…" autocomplete="off" oninput="renderCampTable()">
+      <input class="camp-filter-input" id="cf-event" placeholder="EVENT_NAME…" style="width:100px" autocomplete="off" oninput="renderCampTable()">
       <select class="camp-filter-select" id="cf-type" onchange="renderCampTable()">
         <option value="">All types</option>
         <option value="BAU">BAU</option>
@@ -303,7 +303,7 @@
 <div class="search-screen" id="searchScreen">
   <div class="search-screen-bar-wrap">
     <span class="search-screen-icon">⌕</span>
-    <input type="text" class="search-screen-input" id="searchScreenInput"
+    <input type="text" class="search-screen-input" id="searchScreenInput" autocomplete="off"
       placeholder="Search notes…" oninput="handleSearchScreen()" onkeydown="searchScreenKey(event)">
   </div>
   <div class="search-screen-results" id="searchScreenResults"></div>
@@ -1426,7 +1426,7 @@ function renderDetail(note){
   </div>`:'';
   const modLine=note.modified&&note.modified!==note.created?`<span>modified ${fmtDate(note.modified)}</span>`:'';
   const captureBar=note.daily_date?`<div class="capture-bar">
-      <input type="text" id="dailyCaptureInput" placeholder="Log a timestamped entry…" onkeydown="if(event.key==='Enter')appendDailyEntry(${note.id})">
+      <input type="text" id="dailyCaptureInput" placeholder="Log a timestamped entry…" autocomplete="off" onkeydown="if(event.key==='Enter')appendDailyEntry(${note.id})">
       <span class="capture-hint">Enter to append</span>
     </div>`:'';
   el.innerHTML=`
