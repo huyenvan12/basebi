@@ -1760,11 +1760,14 @@ function renderMyChecklists(){
     const panelOpen=!!checklistSharePanelOpen[c.id];
     const shareControl=shares.length===0
       ?`<button class="ci-share-btn" onclick="openShareModal('${escJs(c.id)}')">+ Share</button>`
-      :`<button class="ci-share-badge-btn" onclick="toggleSharePanel('${escJs(c.id)}')">🔗 ${shares.length}${unackCount?` 💬 ${unackCount}`:''}</button>`;
-    return`<div class="checklist-instance-card" onclick="openChecklistDetail('${escJs(c.id)}')">
+      :`<button class="ci-share-badge-btn" onclick="toggleSharePanel('${escJs(c.id)}')">
+          <span class="ci-share-badge-seg">🔗 ${shares.length}</span>${unackCount?`<span class="ci-share-badge-divider"></span><span class="ci-share-badge-seg ci-share-badge-comment">💬 ${unackCount}</span>`:''}
+          <span class="ci-share-badge-chevron">${panelOpen?'▴':'▾'}</span>
+        </button>`;
+    return`<div class="checklist-instance-card">
       <div class="ci-card-header-row">
         <div class="ci-card-title">${esc(c.title)}</div>
-        <div class="ci-card-share-wrap" onclick="event.stopPropagation()">
+        <div class="ci-card-share-wrap">
           ${shareControl}
         </div>
       </div>
@@ -1774,7 +1777,10 @@ function renderMyChecklists(){
         <span>${doneCount}/${total} done</span>
         ${flagged?`<span class="checklist-flag-badge">🚩 ${flagged} flagged</span>`:''}
       </div>
-      ${panelOpen?`<div onclick="event.stopPropagation()">${renderSharePanel(c,shares)}</div>`:''}
+      ${panelOpen?renderSharePanel(c,shares):''}
+      <div class="ci-card-footer">
+        <button class="ci-view-detail-btn" onclick="openChecklistDetail('${escJs(c.id)}')">View details →</button>
+      </div>
     </div>`;
   };
   let html='';
@@ -1786,20 +1792,20 @@ function renderMyChecklists(){
 }
 function renderSharePanel(inst,shares){
   const rows=shares.map(s=>{
-    const unack=!!(s.comment&&s.comment.trim()&&(!s.owner_ack_at||(s.comment_updated_at&&s.comment_updated_at>s.owner_ack_at)));
+    const hasComment=!!(s.comment&&s.comment.trim());
+    const unack=!!(hasComment&&(!s.owner_ack_at||(s.comment_updated_at&&s.comment_updated_at>s.owner_ack_at)));
+    const commentClass=hasComment?(unack?' share-panel-comment-unseen':''):' share-panel-comment-empty';
     return`<div class="share-panel-row">
-      <div class="share-panel-info">
-        <div class="share-panel-name">${esc(authorName(s.shared_with))}</div>
-        <div class="share-panel-comment">${s.comment&&s.comment.trim()?esc(s.comment):'no comment yet'}${unack?'<span class="unseen-dot" title="Unacknowledged comment"></span>':''}</div>
-      </div>
-      <div class="share-panel-actions">
-        ${unack?`<button class="btn btn-ghost" style="font-size:11px" onclick="ackShareComment('${escJs(s.id)}')">Mark seen</button>`:''}
-        <button class="share-panel-unshare" onclick="confirmUnshare(this,'${escJs(s.id)}')">Unshare</button>
+      <div class="share-panel-name-line">${unack?'<span class="unseen-dot" title="Unacknowledged comment"></span>':''}<span class="share-panel-name">${esc(authorName(s.shared_with))}</span></div>
+      <div class="share-panel-comment${commentClass}">${hasComment?esc(s.comment):'no comment yet'}</div>
+      <div class="share-panel-links">
+        ${unack?`<button class="share-panel-link share-panel-link-seen" onclick="ackShareComment('${escJs(s.id)}')">Mark seen</button>`:''}
+        <button class="share-panel-link share-panel-link-unshare" onclick="confirmUnshare(this,'${escJs(s.id)}')">Unshare</button>
       </div>
     </div>`;
   }).join('');
   return`<div class="share-panel">${rows}
-    <div class="share-panel-row share-panel-add" onclick="openShareModal('${escJs(inst.id)}')">+ Add another person</div>
+    <div class="share-panel-add" onclick="openShareModal('${escJs(inst.id)}')">+ Add another person</div>
   </div>`;
 }
 function toggleSharePanel(instanceId){
@@ -2089,7 +2095,7 @@ function renderSharedWithMeList(){
     const items=inst.items||[];
     const total=items.length,doneCount=items.filter(i=>i.done).length;
     const pct=total?Math.round(doneCount/total*100):0;
-    return`<div class="checklist-instance-card" onclick="openReviewerChecklist('${escJs(s.id)}')">
+    return`<div class="checklist-instance-card">
       <div class="ci-card-header-row">
         <div class="ci-card-title">${esc(inst.title)}</div>
         ${!s.viewer_seen_at?'<span class="ci-new-tag">new</span>':''}
@@ -2097,6 +2103,9 @@ function renderSharedWithMeList(){
       <div class="ci-card-tpl">shared by ${esc(authorName(s.shared_by))} · view only</div>
       <div class="checklist-progress-bar-outer"><div class="checklist-progress-bar-inner" style="width:${pct}%"></div></div>
       <div class="ci-card-meta"><span>${doneCount}/${total} done</span></div>
+      <div class="ci-card-footer">
+        <button class="ci-view-detail-btn" onclick="openReviewerChecklist('${escJs(s.id)}')">View details →</button>
+      </div>
     </div>`;
   }).join('')}</div>`;
 }

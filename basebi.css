@@ -497,28 +497,39 @@ pre.popup-code-body{padding:12px;font-family:'JetBrains Mono',monospace;font-siz
 .checklist-group-label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin:16px 0 8px}
 .checklist-group-label:first-child{margin-top:0}
 .checklist-instance-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
-.checklist-instance-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;display:flex;flex-direction:column;gap:7px;transition:border-color .15s}
-.checklist-instance-card:hover{border-color:var(--accent)}
+.checklist-instance-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:7px}
 .ci-card-title{font-weight:600;font-size:13px;color:var(--text);min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ci-card-tpl{font-size:10px;color:var(--text-dim)}
 .ci-card-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10px;color:var(--text-muted)}
 .ci-card-header-row{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
 .ci-card-share-wrap{position:relative;flex-shrink:0}
+.ci-card-footer{display:flex;justify-content:flex-end;margin-top:2px}
+.ci-view-detail-btn{background:none;border:none;padding:0;font-family:inherit;font-size:11px;font-weight:600;color:var(--accent);cursor:pointer}
+.ci-view-detail-btn:hover{text-decoration:underline}
 .ci-share-btn{font-size:10px;padding:3px 8px;border-radius:6px;background:transparent;color:var(--accent);border:1px solid var(--accent-dim);cursor:pointer}
 .ci-share-btn:hover{background:var(--accent-dim)}
-.ci-share-badge-btn{font-size:10px;padding:3px 8px;border-radius:6px;background:var(--tag-bg);color:var(--text-muted);border:1px solid var(--border);cursor:pointer;white-space:nowrap}
-.ci-share-badge-btn:hover{border-color:var(--accent);color:var(--text)}
+.ci-share-badge-btn{display:inline-flex;align-items:center;gap:6px;font-size:10px;padding:4px 9px;border-radius:8px;background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-dim);cursor:pointer;white-space:nowrap;transition:background-color .15s,border-color .15s,transform .15s,box-shadow .15s}
+.ci-share-badge-btn:hover{border-color:var(--accent);transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.ci-share-badge-seg{display:inline-flex;align-items:center;gap:3px}
+.ci-share-badge-comment{color:var(--sql)}
+.ci-share-badge-divider{width:1px;height:11px;background:currentColor;opacity:.3;display:inline-block}
+.ci-share-badge-chevron{font-size:8px;color:var(--text-dim);line-height:1}
 .ci-new-tag{font-size:9px;font-weight:600;color:var(--accent);background:var(--accent-dim);padding:2px 7px;border-radius:4px;white-space:nowrap}
-.share-panel{margin-top:14px;padding-top:12px;border-top:1px dashed var(--border);display:flex;flex-direction:column;gap:10px;cursor:default}
-.share-panel-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;font-size:11px}
-.share-panel-info{min-width:0;flex:1}
+.share-panel{margin-top:14px;padding-top:12px;border-top:1px dashed var(--border);display:flex;flex-direction:column;gap:14px;cursor:default}
+.share-panel-row{display:flex;flex-direction:column;gap:4px;font-size:11px}
+.share-panel-name-line{display:flex;align-items:center;gap:6px}
 .share-panel-name{font-weight:600;color:var(--text)}
-.share-panel-comment{color:var(--text-muted);margin-top:3px;display:flex;align-items:center;gap:6px}
-.share-panel-add{color:var(--accent);cursor:pointer;font-size:11px}
+.share-panel-comment{font-size:11px;line-height:1.4;color:var(--text-muted)}
+.share-panel-comment-empty{color:var(--text-dim);font-style:italic}
+.share-panel-comment-unseen{color:var(--text);font-style:normal}
+.share-panel-links{display:flex;align-items:center;gap:14px;margin-top:2px}
+.share-panel-link{background:none;border:none;padding:0;font-family:inherit;font-size:11px;font-weight:500;cursor:pointer}
+.share-panel-link-seen{color:var(--success)}
+.share-panel-link-seen:hover{text-decoration:underline}
+.share-panel-link-unshare{color:var(--text-dim)}
+.share-panel-link-unshare:hover{color:var(--danger);text-decoration:underline}
+.share-panel-add{color:var(--accent);cursor:pointer;font-size:11px;padding-top:12px;border-top:1px solid var(--border)}
 .share-panel-add:hover{text-decoration:underline}
-.share-panel-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
-.share-panel-unshare{background:none;border:none;padding:0;font-family:inherit;font-size:11px;color:var(--text-dim);cursor:pointer;flex-shrink:0}
-.share-panel-unshare:hover{color:var(--danger);text-decoration:underline}
 .unseen-dot{width:6px;height:6px;border-radius:50%;background:var(--danger);flex-shrink:0;display:inline-block}
 
 /* Progress bars (shared by hub cards + detail header) */
