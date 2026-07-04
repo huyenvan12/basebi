@@ -2141,7 +2141,7 @@ function renderReviewerChecklist(){
     <div class="reviewer-banner">Reviewing "<strong>${esc(inst.title)}</strong>" — shared by ${esc(authorName(share.shared_by))}</div>
     ${commentBoxHtml}
     <div class="checklist-detail-body">${sectionsHtml}</div>
-    <div class="checklist-readonly-note">🔒 Items are locked — this is a read-only view</div>`;
+    <div class="checklist-readonly-bar">🔒 Items are locked — this is a read-only view</div>`;
 }
 function editShareComment(){
   reviewerCommentEditing=true;
@@ -3003,6 +3003,7 @@ function switchTab(tab){
   document.getElementById('campView').classList.toggle('active', tab==='campaigns');
   document.getElementById('graphView').classList.toggle('active', tab==='graph');
   document.getElementById('teamView').classList.toggle('active', tab==='team');
+  if(tab!=='team') document.body.classList.remove('reviewer-lock-active');
   document.getElementById('notesSearchWrap').style.display = tab==='notes'?'':'none';
   document.getElementById('dailyNoteBtn').style.display = tab==='notes'?'':'none';
   const actionBtn = document.getElementById('topbarActionBtn');
@@ -3051,6 +3052,7 @@ function switchChecklistSubView(view){
   showChecklistPage(view);
 }
 function showChecklistPage(view){
+  document.body.classList.toggle('reviewer-lock-active',view==='reviewer');
   document.getElementById('checklistTemplatesView').classList.toggle('active',view==='templates');
   document.getElementById('checklistMineView').classList.toggle('active',view==='mine');
   document.getElementById('checklistDetailView').classList.toggle('active',view==='detail');

@@ -570,7 +570,21 @@ pre.popup-code-body{padding:12px;font-family:'JetBrains Mono',monospace;font-siz
 .reviewer-comment-edit-link{align-self:flex-start;background:none;border:none;padding:0;font-family:inherit;font-size:11px;color:var(--accent);cursor:pointer}
 .reviewer-comment-edit-link:hover{text-decoration:underline}
 .reviewer-comment-error{font-size:11px;color:var(--danger)}
-.checklist-readonly-note{margin-top:16px;font-size:11px;color:var(--text-dim);text-align:center}
+:root{--reviewer-lock-bar-h:44px}
+/* Sticky bottom bar (mirrors the .fab's fixed-to-viewport approach) so the
+   read-only notice stays visible while scrolling instead of only appearing
+   once the reviewer scrolls to the end of the checklist. */
+.checklist-readonly-bar{
+  position:fixed;left:0;right:0;bottom:0;height:var(--reviewer-lock-bar-h);box-sizing:border-box;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--surface2);border-top:1px solid var(--border);
+  font-size:11px;color:var(--text-dim);z-index:40;
+}
+/* Reserve room so the last checklist items aren't hidden underneath the bar */
+#checklistReviewerScroll{padding-bottom:calc(18px + var(--reviewer-lock-bar-h))}
+/* Shift the FAB (z-index:50, normally bottom:22px) above the bar so the two never overlap */
+body.reviewer-lock-active .fab{bottom:calc(22px + var(--reviewer-lock-bar-h))}
+body.reviewer-lock-active .fab-tooltip{bottom:calc(72px + var(--reviewer-lock-bar-h))}
 
 /* Admin template editor (simple rows, not a fancy builder) */
 .tpl-items-editor{display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto}
