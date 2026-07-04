@@ -93,6 +93,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 .note-detail-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .detail-folder-badge{font-size:10px;color:var(--accent);background:var(--accent-dim);padding:2px 8px;border-radius:4px;font-weight:500}
 .detail-tag{font-size:10px;color:var(--text-muted);background:var(--tag-bg);border:1px solid var(--border);padding:2px 6px;border-radius:4px}
+.author-badge{font-size:9px;font-weight:600;color:var(--sql);background:rgba(245,158,11,.15);padding:2px 7px;border-radius:4px;margin-left:6px;letter-spacing:.2px}
+.privacy-badge{font-size:9px;font-weight:600;padding:2px 7px;border-radius:4px;letter-spacing:.2px}
+.privacy-badge.is-private{color:var(--text-muted);background:var(--tag-bg);border:1px solid var(--border)}
+.privacy-badge.is-shared{color:#1f8a4c;background:rgba(56,165,106,.18)}
 .detail-dates{margin-left:auto;font-size:10px;color:var(--text-dim);display:flex;flex-direction:column;align-items:flex-end;gap:2px}
 .detail-actions{display:flex;gap:6px;padding:8px 20px;border-bottom:1px solid var(--border);flex-shrink:0}
 .note-detail-content{flex:1;padding:16px 20px;overflow-y:auto}
@@ -250,6 +254,10 @@ textarea.code-input{font-family:'JetBrains Mono',monospace;font-size:12px;min-he
 
 /* code textarea stays dark for contrast/readability even in light modal */
 #noteModalOverlay textarea.code-input{background:#131720;color:#e2e8f0;border-color:#2a3047}
+
+/* share toggle — must be visually obvious at a glance whether a note is private or shared */
+.share-toggle-btn{align-self:flex-start;padding:6px 14px;font-size:12px;font-weight:600;border-radius:6px;cursor:pointer;font-family:inherit;transition:all .15s;border:1px solid #d4d8e8;background:#eef0f7;color:#5a6380}
+.share-toggle-btn.is-shared{background:#e3f5e8;border-color:#38a56a;color:#1f8a4c}
 
 
 /* ══════════════════════════════════════
@@ -417,6 +425,106 @@ pre.popup-code-body{padding:12px;font-family:'JetBrains Mono',monospace;font-siz
 .camp-view.active{display:flex}
 .notes-view{display:flex;flex:1;overflow:hidden}
 .notes-view.hidden{display:none}
+.team-view{display:none;flex-direction:column;flex:1;overflow:hidden}
+.team-view.active{display:flex}
+
+/* ══════════════════════════════════════
+   TEAM SHARED — SUB-NAV
+══════════════════════════════════════ */
+.team-subnav{padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface)}
+.team-subview{display:none;flex:1;overflow:hidden}
+.team-subview.active{display:flex}
+
+/* ══════════════════════════════════════
+   CHECKLISTS
+══════════════════════════════════════ */
+.checklist-panel{display:flex;flex-direction:column;flex:1;overflow:hidden}
+.checklist-innernav{padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
+.checklist-page{display:none;flex-direction:column;flex:1;overflow:hidden}
+.checklist-page.active{display:flex}
+
+/* Templates admin grid */
+.checklist-template-grid{flex:1;overflow-y:auto;padding:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;align-content:start}
+.checklist-template-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.tpl-card-header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.tpl-card-title{font-weight:600;font-size:13px;color:var(--text)}
+.template-badge-admin{font-size:9px;padding:2px 7px;border-radius:10px;background:var(--tag-bg);color:var(--text-muted);white-space:nowrap;flex-shrink:0}
+.tpl-card-desc{font-size:11px;color:var(--text-muted);line-height:1.4}
+.tpl-card-meta{font-size:10px;color:var(--text-dim)}
+.tpl-card-actions{display:flex;gap:6px;margin-top:4px}
+
+/* My Checklists hub */
+.checklist-instance-groups{flex:1;overflow-y:auto;padding:14px}
+.checklist-group-label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin:16px 0 8px}
+.checklist-group-label:first-child{margin-top:0}
+.checklist-instance-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.checklist-instance-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;display:flex;flex-direction:column;gap:7px;transition:border-color .15s}
+.checklist-instance-card:hover{border-color:var(--accent)}
+.ci-card-title{font-weight:600;font-size:13px;color:var(--text)}
+.ci-card-tpl{font-size:10px;color:var(--text-dim)}
+.ci-card-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10px;color:var(--text-muted)}
+
+/* Progress bars (shared by hub cards + detail header) */
+.checklist-progress-bar-outer{height:6px;background:var(--border);border-radius:4px;overflow:hidden}
+.checklist-progress-bar-outer.big{height:9px}
+.checklist-progress-bar-inner{height:100%;background:var(--accent);border-radius:4px;transition:width .3s}
+.checklist-flag-badge{font-size:10px;color:var(--danger);font-weight:600;white-space:nowrap}
+
+/* Checklist detail view */
+.checklist-detail-topbar{padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
+.checklist-detail-scroll{flex:1;overflow-y:auto;padding:18px}
+.checklist-detail-header{display:flex;flex-direction:column;gap:8px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.checklist-detail-title-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.checklist-detail-title{font-size:17px;font-weight:600;color:var(--text)}
+.checklist-status-badge{font-size:10px;padding:3px 9px;border-radius:10px;font-weight:600;white-space:nowrap}
+.checklist-status-badge.is-progress{background:var(--tag-bg);color:var(--text-muted)}
+.checklist-status-badge.is-done{background:var(--danger-dim);color:var(--success)}
+.checklist-detail-tpl{font-size:11px;color:var(--text-dim)}
+.checklist-detail-meta-row{display:flex;align-items:center;gap:14px;font-size:11px;color:var(--text-muted)}
+
+/* Phase collapsibles (only rendered when items carry a phase field) */
+.checklist-phase{border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden}
+.checklist-phase-summary{cursor:pointer;list-style:none;padding:10px 12px;background:var(--surface2);display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;font-weight:600;color:var(--text)}
+.checklist-phase-summary::-webkit-details-marker{display:none}
+.checklist-phase-progress{font-size:10px;color:var(--text-muted);font-weight:500;white-space:nowrap}
+.checklist-phase-body{padding:10px 12px}
+
+/* Sections + item rows (used both inside phases and standalone for flat templates) */
+.checklist-section-title{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin:14px 0 6px}
+.checklist-section-title:first-child{margin-top:0}
+.checklist-item-list{display:flex;flex-direction:column;gap:6px}
+.checklist-item-row{display:flex;align-items:flex-start;gap:8px;padding:8px;border-radius:6px;background:var(--surface2);transition:opacity .15s}
+.checklist-item-row.is-done{opacity:.6}
+.checklist-item-checkbox{margin-top:3px;flex-shrink:0;cursor:pointer}
+.checklist-item-body{flex:1;display:flex;flex-direction:column;gap:5px;min-width:0}
+.checklist-item-text{font-size:12px;color:var(--text);display:flex;align-items:center;gap:6px}
+.checklist-item-hint-toggle{cursor:pointer;font-size:10px;color:var(--accent);border:1px solid var(--accent-dim);border-radius:50%;width:15px;height:15px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.checklist-item-hint{font-size:11px;color:var(--text-muted);background:var(--code-bg);border-radius:6px;padding:7px 9px;white-space:pre-wrap;line-height:1.5}
+.checklist-item-note{font-size:11px;font-family:inherit;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 8px;resize:vertical;min-height:28px;color:var(--text);outline:none;transition:border-color .15s}
+.checklist-item-note:focus{border-color:var(--accent)}
+.checklist-item-flag{opacity:.15;font-size:13px;flex-shrink:0;margin-top:2px;transition:opacity .15s}
+.checklist-item-flag.has-note{opacity:1}
+
+/* Admin template editor (simple rows, not a fancy builder) */
+.tpl-items-editor{display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto}
+.tpl-item-row{display:grid;grid-template-columns:1fr 1fr 2fr 1fr auto;gap:6px;align-items:center}
+.tpl-item-row .form-input{font-size:11px;padding:5px 7px}
+.tpl-item-remove{padding:4px 9px;font-size:11px}
+
+/* New Checklist modal — Step 1 template picker + preview */
+.template-picker-list{display:flex;flex-direction:column;gap:8px;max-height:440px;overflow-y:auto}
+.template-picker-row{border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.template-picker-row-header{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text)}
+.tpr-chevron{color:var(--text-dim);width:10px;flex-shrink:0}
+.tpr-title{flex:1}
+.tpr-count{font-size:10px;color:var(--text-dim);font-weight:400}
+.tpr-desc{font-size:11px;color:var(--text-muted);margin:6px 0 0 18px}
+.tpl-preview-box{margin:8px 0 8px 18px;font-size:11px;max-height:220px;overflow-y:auto;background:var(--surface2);border-radius:6px;padding:9px 11px}
+.tpl-preview-phase{font-weight:600;color:var(--text);margin-top:8px}
+.tpl-preview-phase:first-child{margin-top:0}
+.tpl-preview-section{font-weight:500;color:var(--text-muted);margin:6px 0 2px}
+.tpl-preview-items{margin:0 0 0 16px;padding:0;color:var(--text-muted)}
+.tpr-use-btn{margin-top:8px;font-size:11px}
 
 /* FILTER BAR */
 .camp-filter-bar{display:flex;align-items:center;gap:6px;padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface);flex-wrap:wrap}
@@ -528,6 +636,8 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
 .graph-count{font-size:11px;color:var(--text-dim);background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 12px}
 .graph-ctrl-btn{font-size:13px;color:var(--text-muted);background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 10px;cursor:pointer;font-family:inherit;line-height:1}
 .graph-ctrl-btn:hover{background:var(--surface2);color:var(--text)}
+.graph-shared-toggle{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 10px;cursor:pointer;user-select:none}
+.graph-shared-toggle input{cursor:pointer}
 .graph-canvas-wrap svg{cursor:grab}
 .graph-canvas-wrap svg.is-panning{cursor:grabbing}
 .graph-legend{position:absolute;bottom:12px;left:12px;z-index:3;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:9px 11px;display:flex;flex-direction:column;gap:6px}
