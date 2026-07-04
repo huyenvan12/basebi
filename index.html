@@ -1130,24 +1130,39 @@ function renderGraph(){
   graphResetView();
   graphBindInteractions();
   const gNotes=graphNotes();
-  document.getElementById('graphCount').textContent=`${gNotes.length} notes · ${linkEdges.length} links`;
+  const gNoteIds=new Set(gNotes.map(n=>n.id));
+  // linkEdges/tagEdges are scoped to visibleNotes() (all org-shared notes), which is broader
+  // than gNotes (org-shared notes AND the graph's own "include team-shared" toggle) — filter
+  // again here so an edge is never drawn to a note whose circle isn't actually rendered below.
+  const visibleLinkEdges=linkEdges.filter(({a,b})=>gNoteIds.has(a)&&gNoteIds.has(b));
+  const visibleTagEdges=tagEdges.filter(({a,b})=>gNoteIds.has(a)&&gNoteIds.has(b));
+  document.getElementById('graphCount').textContent=`${gNotes.length} notes · ${visibleLinkEdges.length} links`;
 
   const ns='http://www.w3.org/2000/svg';
   function mk(tag,attrs){const e=document.createElementNS(ns,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);return e;}
 
-  linkEdges.forEach(({a,b})=>{
+  visibleLinkEdges.forEach(({a,b})=>{
     if(!graphNodePositions[a]||!graphNodePositions[b])return;
     svg.appendChild(mk('line',{class:'graph-edge graph-edge-link','data-a':a,'data-b':b}));
   });
-  tagEdges.forEach(({a,b})=>{
+  visibleTagEdges.forEach(({a,b})=>{
     if(!graphNodePositions[a]||!graphNodePositions[b])return;
     svg.appendChild(mk('line',{class:'graph-edge graph-edge-tag','data-a':a,'data-b':b}));
+  });
+
+  // Degree for node sizing must come from the same visibility-filtered edges as what's actually
+  // drawn above — graphNeighbors()/backlinks is scoped to visibleNotes(), so a node's radius must
+  // not count connections to notes hidden by the graph's own include-shared toggle.
+  const visibleNeighbors={};
+  gNotes.forEach(n=>{visibleNeighbors[n.id]=new Set();});
+  visibleLinkEdges.concat(visibleTagEdges).forEach(({a,b})=>{
+    visibleNeighbors[a].add(b); visibleNeighbors[b].add(a);
   });
 
   gNotes.forEach(n=>{
     const p=graphNodePositions[n.id];
     if(!p)return;
-    const connCount=graphNeighbors(n.id).size;
+    const connCount=visibleNeighbors[n.id].size;
     const r=5+Math.min(6,connCount*1.3);
     const c=mk('circle',{r:r,class:'graph-node','data-id':n.id});
     const g=mk('g',{class:'graph-label-g','data-id':n.id,'data-r':r});
@@ -1194,10 +1209,14 @@ function graphShowDetail(id){
   const detail=document.getElementById('graphNodeDetail');
   detail.classList.add('show');
   document.getElementById('gnTitle').textContent=n.title;
-  const conns=graphNeighbors(id).size;
+  // Scope neighbor count + linked-note list to the graph's own currently-visible note set
+  // (graphNotes()), not the broader visibleNotes()-scoped global backlinks map — a note hidden
+  // by the include-shared toggle must never surface here, even as just a title or a count.
+  const gNoteIds=new Set(graphNotes().map(gn=>gn.id));
+  const conns=[...graphNeighbors(id)].filter(nid=>gNoteIds.has(nid)).length;
   document.getElementById('gnMeta').textContent=`${n.folder||'Unfiled'} · ${conns} connection${conns===1?'':'s'}`;
   document.getElementById('gnTags').innerHTML=(n.tags||[]).map(t=>`<span class="graph-chip">#${esc(t)}</span>`).join('')||'';
-  const linked=getBacklinks(id);
+  const linked=getBacklinks(id).filter(ln=>gNoteIds.has(ln.id));
   document.getElementById('gnLinks').innerHTML=linked.length
     ? linked.map(ln=>`<div class="graph-link-item" onclick="graphShowDetail(${ln.id})">${esc(ln.title)}</div>`).join('')
     : '<div class="graph-node-meta">No connections yet</div>';
