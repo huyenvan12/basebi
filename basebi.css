@@ -28,6 +28,7 @@
   --graph-folder-palette-8:#818cf8;
   --graph-folder-palette-9:#c084fc;
   --graph-folder-palette-10:#f472b6;
+  --graph-shared-color:#64748b;
 }
 
 /* ── LIGHT THEME ── */
@@ -58,6 +59,7 @@
   --graph-folder-palette-8:#6366f1;
   --graph-folder-palette-9:#a855f7;
   --graph-folder-palette-10:#db2777;
+  --graph-shared-color:#475569;
 }
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;font-size:13px}
 

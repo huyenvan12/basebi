@@ -1119,7 +1119,7 @@ function graphSimulationStep(){
   });
 
   const byFolder={};
-  notes.forEach(nn=>{const f=nn.folder||'Unfiled';(byFolder[f]=byFolder[f]||[]).push(nn.id);});
+  notes.forEach(nn=>{const f=graphGroupKey(nn);(byFolder[f]=byFolder[f]||[]).push(nn.id);});
   Object.values(byFolder).forEach(group=>{
     if(group.length<2)return;
     for(let i=0;i<group.length;i++){
@@ -1199,18 +1199,31 @@ function graphTruncateTitle(title){
 }
 
 const GRAPH_FOLDER_PALETTE_SIZE=10;
+const GRAPH_SHARED_GROUP_KEY='__shared__';
+// Folders are owner-only (RLS, never shared) and notes.folder is a soft text match, not an FK —
+// so a shared note's folder value is meaningless to the viewer. Bucket every note the viewer
+// doesn't own into one synthetic "Shared" group instead, for both color assignment and the
+// physics clustering pull below, so shared notes never inherit or clash with the viewer's own
+// folder groups.
+function graphGroupKey(n){
+  return n.owner_id!==currentUserId ? GRAPH_SHARED_GROUP_KEY : (n.folder||'Unfiled');
+}
 // Assigns each distinct folder present in gNotes a fill color from the fixed
 // --graph-folder-palette-N tokens, keyed off the alphabetical sort position of the folder
 // name (not first-seen order) so the same folder always lands on the same color across
 // reloads/sessions without persisting any mapping. Read once per render, not per node.
+// The synthetic "Shared" group is excluded from the palette rotation and always gets the
+// fixed --graph-shared-color token instead, so it can never collide with an owned folder's
+// color and stays stable no matter how many folders exist.
 function graphBuildFolderColorMap(gNotes){
-  const folders=[...new Set(gNotes.map(n=>n.folder||'Unfiled'))].sort();
+  const folders=[...new Set(gNotes.map(graphGroupKey))].filter(f=>f!==GRAPH_SHARED_GROUP_KEY).sort();
   const style=getComputedStyle(document.body);
   const map={};
   folders.forEach((f,i)=>{
     const slot=(i%GRAPH_FOLDER_PALETTE_SIZE)+1;
     map[f]=style.getPropertyValue(`--graph-folder-palette-${slot}`).trim();
   });
+  map[GRAPH_SHARED_GROUP_KEY]=style.getPropertyValue('--graph-shared-color').trim();
   return map;
 }
 // Degree tiers for label font-size/weight/color — thresholds tuned against node radius,
@@ -1270,7 +1283,7 @@ function renderGraph(){
     const connCount=visibleNeighbors[n.id].size;
     const r=5+Math.min(6,connCount*1.3);
     const c=mk('circle',{r:r,class:'graph-node','data-id':n.id,
-      style:`--graph-node-fill:${folderColorMap[n.folder||'Unfiled']}`});
+      style:`--graph-node-fill:${folderColorMap[graphGroupKey(n)]}`});
     const g=mk('g',{class:'graph-label-g','data-id':n.id,'data-r':r});
     const t=mk('text',{x:r+6,y:4,class:`graph-node-label tier-${graphDegreeTier(connCount)}`});
     t.textContent=graphTruncateTitle(n.title);
@@ -1320,7 +1333,8 @@ function graphShowDetail(id){
   // by the include-shared toggle must never surface here, even as just a title or a count.
   const gNoteIds=new Set(graphNotes().map(gn=>gn.id));
   const conns=[...graphNeighbors(id)].filter(nid=>gNoteIds.has(nid)).length;
-  document.getElementById('gnMeta').textContent=`${n.folder||'Unfiled'} · ${conns} connection${conns===1?'':'s'}`;
+  const gnFolderLabel=n.owner_id!==currentUserId?'Shared':(n.folder||'Unfiled');
+  document.getElementById('gnMeta').textContent=`${gnFolderLabel} · ${conns} connection${conns===1?'':'s'}`;
   document.getElementById('gnTags').innerHTML=(n.tags||[]).map(t=>`<span class="graph-chip">#${esc(t)}</span>`).join('')||'';
   const linked=getBacklinks(id).filter(ln=>gNoteIds.has(ln.id));
   document.getElementById('gnLinks').innerHTML=linked.length
