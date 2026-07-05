@@ -2,6 +2,7 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 /* ── DARK THEME (default) ── */
 :root,[data-theme="dark"]{
+  --graph-label-scale:1;
   --bg:#0f1117;--surface:#181c27;--surface2:#1f2535;
   --border:#2a3047;--accent:#5b8dee;--accent-dim:#1e2d52;
   --text:#e2e8f0;--text-muted:#7a8599;--text-dim:#4a556b;
@@ -732,6 +733,8 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
 .graph-ctrl-btn:hover{background:var(--surface2);color:var(--text)}
 .graph-shared-toggle{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 10px;cursor:pointer;user-select:none}
 .graph-shared-toggle input{cursor:pointer}
+.graph-label-size-ctrl{display:flex;align-items:center;gap:4px}
+.graph-label-size-value{font-size:11px;color:var(--text-muted);min-width:34px;text-align:center;user-select:none}
 .graph-canvas-wrap svg{cursor:grab}
 .graph-canvas-wrap svg.is-panning{cursor:grabbing}
 .graph-legend{position:absolute;bottom:12px;left:12px;z-index:3;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:9px 11px;display:flex;flex-direction:column;gap:6px}
@@ -747,10 +750,10 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
 .graph-label-g{transition:opacity .15s}
 .graph-label-g.is-dim{opacity:.15}
 .graph-node-label{font-family:'Inter',sans-serif;pointer-events:none}
-.graph-node-label.tier-hub{font-size:15px;font-weight:600;fill:var(--graph-label-color-hub)}
-.graph-node-label.tier-large{font-size:13px;font-weight:500;fill:var(--graph-label-color)}
-.graph-node-label.tier-medium{font-size:12px;font-weight:400;fill:var(--graph-label-color)}
-.graph-node-label.tier-small{font-size:11px;font-weight:400;fill:var(--graph-label-color);opacity:.85}
+.graph-node-label.tier-hub{font-size:calc(16px * var(--graph-label-scale,1));font-weight:600;fill:var(--graph-label-color-hub)}
+.graph-node-label.tier-large{font-size:calc(14px * var(--graph-label-scale,1));font-weight:500;fill:var(--graph-label-color)}
+.graph-node-label.tier-medium{font-size:calc(13px * var(--graph-label-scale,1));font-weight:400;fill:var(--graph-label-color)}
+.graph-node-label.tier-small{font-size:calc(13px * var(--graph-label-scale,1));font-weight:400;fill:var(--graph-label-color);opacity:.85}
 .graph-edge{stroke:var(--graph-edge-link-color);stroke-opacity:var(--graph-edge-opacity);transition:opacity .15s}
 .graph-edge-tag{stroke:var(--graph-edge-tag-color);stroke-opacity:var(--graph-edge-opacity);stroke-dasharray:3,3}
 .graph-edge.is-dim{opacity:.08}
