@@ -243,6 +243,7 @@
       <div class="tab-group team-subtab-group">
         <button class="tab-btn active" id="teamSubTabNotes" onclick="switchTeamSubTab('notes')">🌐 Shared Notes</button>
         <button class="tab-btn" id="teamSubTabChecklists" onclick="switchTeamSubTab('checklists')">✅ Checklists</button>
+        <button class="tab-btn" id="teamSubTabMonitorLog" onclick="switchTeamSubTab('monitorlog')">📈 Monitor Log</button>
       </div>
     </div>
 
@@ -314,6 +315,31 @@
             <button class="btn btn-ghost" onclick="backToSharedWithMe()">← Back to Shared with me</button>
           </div>
           <div class="checklist-detail-scroll" id="checklistReviewerScroll"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MONITOR LOG SUB-VIEW -->
+    <div class="team-subview" id="teamMonitorLogSubview">
+      <div class="checklist-panel" id="monitorLogPanel">
+        <!-- LIST PAGE -->
+        <div class="checklist-page active" id="monitorLogListView">
+          <div class="note-list-header">
+            <span class="note-list-title">📈 Monitor Log</span>
+            <button class="btn btn-primary" onclick="createMonitorReportFromTemplate()">+ New from template</button>
+          </div>
+          <table class="camp-table monitor-log-list-table">
+            <thead><tr><th>Report Date</th><th>Created By</th><th></th></tr></thead>
+            <tbody id="monitorLogListBody"></tbody>
+          </table>
+        </div>
+
+        <!-- DETAIL PAGE -->
+        <div class="checklist-page" id="monitorLogDetailView">
+          <div class="checklist-detail-topbar">
+            <button class="btn btn-ghost" onclick="backToMonitorLogList()">← Back to Monitor Log</button>
+          </div>
+          <div class="checklist-detail-scroll" id="monitorLogDetailScroll"></div>
         </div>
       </div>
     </div>
@@ -692,6 +718,35 @@ async function loadOrgMembers(){
   if(error||!data) return [];
   return data;
 }
+async function loadMonitorReports(){
+  const{data,error}=await sb.from('monitor_reports').select('*')
+    .order('report_date',{ascending:false}).order('created_at',{ascending:false});
+  return (error||!data)?[]:data;
+}
+async function loadMonitorReportCriteria(reportId){
+  const{data,error}=await sb.from('monitor_report_criteria').select('*')
+    .eq('report_id',reportId).order('sort_order',{ascending:true});
+  return (error||!data)?[]:data;
+}
+async function loadMonitorReportLines(criterionIds){
+  if(!criterionIds.length) return [];
+  const{data,error}=await sb.from('monitor_report_lines').select('*')
+    .in('criterion_id',criterionIds).order('sort_order',{ascending:true});
+  return (error||!data)?[]:data;
+}
+async function loadMonitorTemplateCriteria(templateId){
+  const{data,error}=await sb.from('monitor_report_template_criteria').select('*')
+    .eq('template_id',templateId).order('sort_order',{ascending:true});
+  if(error) throw error;
+  return data||[];
+}
+async function loadMonitorTemplateLines(templateCriterionIds){
+  if(!templateCriterionIds.length) return [];
+  const{data,error}=await sb.from('monitor_report_template_lines').select('*')
+    .in('template_criterion_id',templateCriterionIds).order('sort_order',{ascending:true});
+  if(error) throw error;
+  return data||[];
+}
 
 // ── async savers ──────────────────────────────────
 async function saveNotes(arr){
@@ -816,6 +871,13 @@ let shareModalInstanceId=null;
 let activeReviewShareId=null;
 let reviewerCommentEditing=false;              // false=locked display (if a comment exists), true=textarea open
 let reviewerCommentError=null;
+
+// ── MONITOR LOG STATE ──────────────────────────────
+let monitorReports=[];
+let currentMonitorReportId=null;
+let monitorReportCriteria=[];
+let monitorReportLines=[];
+const monitorSaveTimers={};                    // key -> timeout handle, one independent debounce per field instance
 
 // ══════════════════════════════════════════════════
 // INDEX
@@ -2907,6 +2969,11 @@ function fmtDailyTitle(iso){
   const d=new Date(iso+'T00:00:00');
   return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
 }
+const MONITOR_MONTH_ABBR=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function fmtMonitorReportDate(iso){
+  const d=new Date(iso+'T00:00:00');
+  return `${String(d.getDate()).padStart(2,'0')}-${MONITOR_MONTH_ABBR[d.getMonth()]}, ${d.getFullYear()}`;
+}
 function openDailyNote(){
   if(currentTab!=='notes')switchTab('notes');
   const existing=getTodayNote();
@@ -3083,9 +3150,12 @@ function switchTeamSubTab(sub){
   currentTeamSubTab=sub;
   document.getElementById('teamSubTabNotes').classList.toggle('active',sub==='notes');
   document.getElementById('teamSubTabChecklists').classList.toggle('active',sub==='checklists');
+  document.getElementById('teamSubTabMonitorLog').classList.toggle('active',sub==='monitorlog');
   document.getElementById('teamNotesSubview').classList.toggle('active',sub==='notes');
   document.getElementById('teamChecklistsSubview').classList.toggle('active',sub==='checklists');
+  document.getElementById('teamMonitorLogSubview').classList.toggle('active',sub==='monitorlog');
   if(sub==='checklists') renderTeamSubnav();
+  if(sub==='monitorlog') showMonitorLogPage('list');
 }
 // Renders the admin-only inner pill toggle (Templates | My Checklists) and
 // makes sure non-admins land directly on My Checklists with no toggle shown.
@@ -3132,6 +3202,263 @@ function backToMyChecklists(){
 function backToSharedWithMe(){
   activeReviewShareId=null;
   switchChecklistSubView('shared');
+}
+
+// ══════════════════════════════════════════════════
+// MONITOR LOG — NAV
+// ══════════════════════════════════════════════════
+function showMonitorLogPage(view){
+  document.getElementById('monitorLogListView').classList.toggle('active',view==='list');
+  document.getElementById('monitorLogDetailView').classList.toggle('active',view==='detail');
+  if(view==='list') renderMonitorLogList();
+  if(view==='detail') renderMonitorReportDetail();
+}
+function openMonitorReportDetail(id){
+  currentMonitorReportId=id;
+  document.getElementById('monitorLogListView').classList.remove('active');
+  document.getElementById('monitorLogDetailView').classList.add('active');
+  loadAndRenderMonitorReportDetail();
+}
+function backToMonitorLogList(){
+  currentMonitorReportId=null;
+  showMonitorLogPage('list');
+}
+
+// ── MONITOR LOG — LIST VIEW ───────────────────────
+function renderMonitorLogList(){
+  const tbody=document.getElementById('monitorLogListBody');
+  if(!monitorReports.length){
+    tbody.innerHTML='<tr><td colspan="3" class="note-empty">No monitor reports yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML=monitorReports.map(r=>`
+    <tr>
+      <td>${esc(fmtMonitorReportDate(r.report_date))}</td>
+      <td>${esc(profilesMap[r.created_by]||'Unknown')}</td>
+      <td><button class="ci-view-detail-btn" onclick="openMonitorReportDetail('${escJs(r.id)}')">View details →</button></td>
+    </tr>`).join('');
+}
+
+async function createMonitorReportFromTemplate(){
+  try{
+    const {data:tpl,error:tplErr}=await sb.from('monitor_report_templates')
+      .select('id').eq('is_default',true).limit(1).single();
+    if(tplErr||!tpl){alert('Monitor Log template not found.');return;}
+
+    const tplCriteria=await loadMonitorTemplateCriteria(tpl.id);
+    const tplLines=await loadMonitorTemplateLines(tplCriteria.map(c=>c.id));
+
+    const {data:report,error:repErr}=await sb.from('monitor_reports')
+      .insert({report_date:today(),created_by:currentUserId}).select().single();
+    if(repErr) throw repErr;
+
+    const criteriaPayload=tplCriteria.map(c=>({
+      report_id:report.id, sort_order:c.sort_order, row_type:c.row_type, label:c.label
+    }));
+    const {data:newCriteria,error:critErr}=await sb.from('monitor_report_criteria')
+      .insert(criteriaPayload).select();
+    if(critErr) throw critErr;
+
+    // map old template_criteria.id -> new criterion.id by sort_order (unique per report/template),
+    // NOT by array index — PostgREST insert().select() does not guarantee row order = input order
+    const oldIdToNew={};
+    tplCriteria.forEach(oldC=>{
+      const match=newCriteria.find(nc=>nc.sort_order===oldC.sort_order);
+      if(match) oldIdToNew[oldC.id]=match.id;
+    });
+
+    const linesPayload=tplLines
+      .filter(l=>oldIdToNew[l.template_criterion_id])
+      .map(l=>({
+        criterion_id:oldIdToNew[l.template_criterion_id],
+        sort_order:l.sort_order, category:l.category, value:l.sample_value
+      }));
+    if(linesPayload.length){
+      const{error:lineErr}=await sb.from('monitor_report_lines').insert(linesPayload);
+      if(lineErr) throw lineErr;
+    }
+
+    monitorReports.unshift(report);
+    openMonitorReportDetail(report.id);
+  }catch(err){ alert('Could not create monitor report: '+(err.message||err)); }
+}
+
+// ── MONITOR LOG — DETAIL VIEW ─────────────────────
+async function loadAndRenderMonitorReportDetail(){
+  const el=document.getElementById('monitorLogDetailScroll');
+  el.innerHTML='<div class="empty-state"><p>Loading…</p></div>';
+  monitorReportCriteria=await loadMonitorReportCriteria(currentMonitorReportId);
+  monitorReportLines=await loadMonitorReportLines(monitorReportCriteria.filter(c=>c.row_type==='criterion').map(c=>c.id));
+  renderMonitorReportDetail();
+}
+function getActiveMonitorReport(){ return monitorReports.find(r=>r.id===currentMonitorReportId); }
+
+function renderMonitorReportDetail(){
+  const el=document.getElementById('monitorLogDetailScroll');
+  const report=getActiveMonitorReport();
+  if(!report){el.innerHTML='<div class="empty-state"><p>Report not found</p></div>';return;}
+  const isOwner=currentUserId===report.created_by;
+
+  const linesByCriterion={};
+  monitorReportLines.forEach(l=>(linesByCriterion[l.criterion_id]=linesByCriterion[l.criterion_id]||[]).push(l));
+
+  const sorted=[...monitorReportCriteria].sort((a,b)=>a.sort_order-b.sort_order);
+  let rowsHtml='';
+  let currentSectionHeaderId=null;
+
+  const flushSectionAddBtn=()=>{
+    if(isOwner&&currentSectionHeaderId){
+      rowsHtml+=`<tr class="monitor-add-criterion-row"><td colspan="2"><button class="monitor-add-line-btn" onclick="addMonitorCriterion('${escJs(currentSectionHeaderId)}')">+ Add criterion</button></td></tr>`;
+    }
+  };
+
+  sorted.forEach((c,i)=>{
+    if(c.row_type==='section_header'){
+      flushSectionAddBtn();
+      currentSectionHeaderId=c.id;
+      rowsHtml+=`<tr><td colspan="2" class="monitor-section-header-row">${esc(c.label)}</td></tr>`;
+      return;
+    }
+    const lines=(linesByCriterion[c.id]||[]).sort((a,b)=>a.sort_order-b.sort_order);
+    const addLineBtn=isOwner?`<button class="monitor-add-line-btn" onclick="addMonitorLine('${escJs(c.id)}')">+ Add line</button>`:'';
+    const delCritBtn=isOwner?`<button class="monitor-del-crit-btn" onclick="deleteMonitorCriterion('${escJs(c.id)}')">✕</button>`:'';
+    const labelCell=isOwner
+      ?`<input class="monitor-cell-input monitor-label-input" value="${esc(c.label||'')}"
+          oninput="onMonitorCriterionLabelInput('${escJs(c.id)}',this)" onblur="onMonitorCriterionLabelBlur('${escJs(c.id)}',this)">`
+      :esc(c.label);
+    if(!lines.length){
+      rowsHtml+=`<tr>
+        <td class="monitor-criterion-cell">${labelCell}<div class="monitor-criterion-actions">${addLineBtn}${delCritBtn}</div></td>
+        <td class="monitor-value-cell"><span class="note-empty" style="font-size:11px">no lines</span></td>
+      </tr>`;
+    } else {
+      lines.forEach((line,li)=>{
+        rowsHtml+='<tr>';
+        if(li===0){
+          rowsHtml+=`<td class="monitor-criterion-cell" rowspan="${lines.length}">
+            ${labelCell}<div class="monitor-criterion-actions">${addLineBtn}${delCritBtn}</div></td>`;
+        }
+        rowsHtml+=isOwner
+          ?`<td class="monitor-value-cell">
+              <input class="monitor-cell-input monitor-cat-input" value="${esc(line.category||'')}"
+                oninput="onMonitorCategoryInput('${escJs(line.id)}',this)" onblur="onMonitorCategoryBlur('${escJs(line.id)}',this)">
+              <input class="monitor-cell-input monitor-val-input" value="${esc(line.value||'')}"
+                oninput="onMonitorValueInput('${escJs(line.id)}',this)" onblur="onMonitorValueBlur('${escJs(line.id)}',this)">
+              <button class="monitor-del-line-btn" onclick="deleteMonitorLine('${escJs(line.id)}')">✕</button>
+            </td>`
+          :`<td class="monitor-value-cell"><span class="monitor-category-text">${line.category?esc(line.category):''}</span>
+              <span class="monitor-value-sep"> | </span><span class="monitor-value-text">${esc(line.value||'')}</span></td>`;
+        rowsHtml+='</tr>';
+      });
+    }
+    if(i===sorted.length-1) flushSectionAddBtn();
+  });
+
+  el.innerHTML=`
+    <div class="monitor-report-header">
+      <div class="monitor-report-date">${esc(fmtMonitorReportDate(report.report_date))}</div>
+      ${!isOwner?'<span class="monitor-readonly-badge">View only</span>':''}
+      <button class="btn btn-ghost" style="margin-left:auto" onclick="copyMonitorReportAsTable(event)">Copy as table</button>
+    </div>
+    <table class="camp-table monitor-report-table" id="monitorReportTable">
+      <thead><tr><th>Categories</th><th>Value</th></tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>`;
+}
+
+// ── MONITOR LOG — EDIT / SAVE (owner only) ────────
+function debounceMonitorSave(key,fn){ clearTimeout(monitorSaveTimers[key]); monitorSaveTimers[key]=setTimeout(fn,800); }
+
+function onMonitorCategoryInput(lineId,el){ debounceMonitorSave(`${lineId}:category`,()=>saveMonitorLineDB(lineId,{category:el.value},el)); }
+function onMonitorCategoryBlur(lineId,el){ clearTimeout(monitorSaveTimers[`${lineId}:category`]); saveMonitorLineDB(lineId,{category:el.value},el); }
+function onMonitorValueInput(lineId,el){ debounceMonitorSave(`${lineId}:value`,()=>saveMonitorLineDB(lineId,{value:el.value},el)); }
+function onMonitorValueBlur(lineId,el){ clearTimeout(monitorSaveTimers[`${lineId}:value`]); saveMonitorLineDB(lineId,{value:el.value},el); }
+function onMonitorCriterionLabelInput(id,el){ debounceMonitorSave(`${id}:label`,()=>saveMonitorCriterionDB(id,{label:el.value},el)); }
+function onMonitorCriterionLabelBlur(id,el){ clearTimeout(monitorSaveTimers[`${id}:label`]); saveMonitorCriterionDB(id,{label:el.value},el); }
+
+async function saveMonitorLineDB(lineId,patch,el){
+  const line=monitorReportLines.find(l=>l.id===lineId); if(line) Object.assign(line,patch);
+  const{error}=await sb.from('monitor_report_lines').update(patch).eq('id',lineId);
+  el.classList.toggle('monitor-save-error',!!error);
+}
+async function saveMonitorCriterionDB(id,patch,el){
+  const c=monitorReportCriteria.find(c=>c.id===id); if(c) Object.assign(c,patch);
+  const{error}=await sb.from('monitor_report_criteria').update(patch).eq('id',id);
+  el.classList.toggle('monitor-save-error',!!error);
+}
+
+// ── MONITOR LOG — ADD LINE / ADD CRITERION ────────
+async function addMonitorLine(criterionId){
+  const report=getActiveMonitorReport(); if(!report||currentUserId!==report.created_by) return;
+  const existing=monitorReportLines.filter(l=>l.criterion_id===criterionId);
+  const nextSort=existing.length?Math.max(...existing.map(l=>l.sort_order))+1:0;
+  const{data,error}=await sb.from('monitor_report_lines')
+    .insert({criterion_id:criterionId,sort_order:nextSort,category:'',value:''}).select().single();
+  if(error){alert('Could not add line: '+error.message);return;}
+  monitorReportLines.push(data);
+  renderMonitorReportDetail();
+}
+
+async function addMonitorCriterion(sectionHeaderId){
+  const report=getActiveMonitorReport(); if(!report||currentUserId!==report.created_by) return;
+  const sorted=[...monitorReportCriteria].sort((a,b)=>a.sort_order-b.sort_order);
+  const headerIdx=sorted.findIndex(c=>c.id===sectionHeaderId);
+  let insertAt=sorted.length?sorted[sorted.length-1].sort_order+1:0;
+  for(let i=headerIdx+1;i<sorted.length;i++){ if(sorted[i].row_type==='section_header'){insertAt=sorted[i].sort_order;break;} }
+  const toShift=sorted.filter(c=>c.sort_order>=insertAt);
+  await Promise.all(toShift.map(c=>sb.from('monitor_report_criteria').update({sort_order:c.sort_order+1}).eq('id',c.id)));
+  toShift.forEach(c=>c.sort_order+=1);
+  const{data,error}=await sb.from('monitor_report_criteria')
+    .insert({report_id:report.id,row_type:'criterion',label:'New criterion',sort_order:insertAt}).select().single();
+  if(error){alert('Could not add criterion: '+error.message);return;}
+  monitorReportCriteria.push(data);
+  renderMonitorReportDetail();
+}
+
+// ── MONITOR LOG — DELETE (owner only, any criterion/line in their report) ──
+async function deleteMonitorLine(lineId){
+  const report=getActiveMonitorReport(); if(!report||currentUserId!==report.created_by) return;
+  if(!confirm('Delete this line?')) return;
+  const{error}=await sb.from('monitor_report_lines').delete().eq('id',lineId);
+  if(error){ alert('Could not delete line: '+error.message); return; }
+  monitorReportLines=monitorReportLines.filter(l=>l.id!==lineId);
+  renderMonitorReportDetail();
+}
+async function deleteMonitorCriterion(criterionId){
+  const report=getActiveMonitorReport(); if(!report||currentUserId!==report.created_by) return;
+  if(!confirm('Delete this criterion and all its lines?')) return;
+  const{error:lineErr}=await sb.from('monitor_report_lines').delete().eq('criterion_id',criterionId);
+  if(lineErr){ alert('Could not delete criterion lines: '+lineErr.message); return; }
+  const{error:critErr}=await sb.from('monitor_report_criteria').delete().eq('id',criterionId);
+  if(critErr){ alert('Could not delete criterion: '+critErr.message); return; }
+  monitorReportCriteria=monitorReportCriteria.filter(c=>c.id!==criterionId);
+  monitorReportLines=monitorReportLines.filter(l=>l.criterion_id!==criterionId);
+  renderMonitorReportDetail();
+}
+
+// ── MONITOR LOG — COPY AS TABLE (rich HTML clipboard) ──
+async function copyMonitorReportAsTable(evt){
+  const table=document.getElementById('monitorReportTable');
+  if(!table) return;
+  const clone=table.cloneNode(true);
+  clone.querySelectorAll('input.monitor-cell-input').forEach(inp=>{
+    const span=document.createElement('span'); span.textContent=inp.value; inp.replaceWith(span);
+  });
+  clone.querySelectorAll('.monitor-del-line-btn,.monitor-del-crit-btn,.monitor-criterion-actions button').forEach(b=>b.remove());
+  clone.querySelectorAll('tr.monitor-add-criterion-row').forEach(tr=>tr.remove());
+  const html=`<table border="1" cellspacing="0" cellpadding="4">${clone.innerHTML}</table>`;
+  const text=table.innerText;
+  const btn=evt.target;
+  try{
+    await navigator.clipboard.write([new ClipboardItem({
+      'text/html': new Blob([html],{type:'text/html'}),
+      'text/plain': new Blob([text],{type:'text/plain'})
+    })]);
+  }catch(err){
+    await navigator.clipboard.writeText(text).catch(()=>{});
+  }
+  const original=btn.textContent;
+  btn.textContent='✓ Copied'; setTimeout(()=>{btn.textContent=original;},1500);
 }
 
 // ══════════════════════════════════════════════════
@@ -3519,6 +3846,9 @@ async function initApp(){
       checklistShares.filter(s=>s.shared_with===currentUserId).map(s=>s.instance_id)
     );
     orgMembers = await loadOrgMembers();
+
+    msg.textContent='Loading monitor log…'; bar.style.width='97%';
+    monitorReports = await loadMonitorReports();
 
     msg.textContent='Ready!'; bar.style.width='100%';
     await new Promise(r=>setTimeout(r,300));

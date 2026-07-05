@@ -621,6 +621,32 @@ body.reviewer-lock-active .fab-tooltip{bottom:calc(72px + var(--reviewer-lock-ba
 .tpl-preview-items{margin:0 0 0 16px;padding:0;color:var(--text-muted)}
 .tpr-use-btn{margin-top:8px;font-size:11px}
 
+/* MONITOR LOG */
+table.monitor-log-list-table,table.monitor-report-table{min-width:0;width:100%;table-layout:fixed}
+table.monitor-report-table td,table.monitor-report-table th{white-space:normal;word-break:break-word}
+.monitor-log-list-table td{cursor:default}
+.monitor-log-list-table tr:hover td{background:none}
+.monitor-section-header-row{background:var(--surface2);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted);padding:8px 12px}
+.monitor-criterion-cell{vertical-align:top;font-weight:600;font-size:12px;color:var(--text);width:220px;cursor:default}
+.monitor-criterion-actions{display:flex;gap:6px;margin-top:6px}
+.monitor-value-cell{vertical-align:middle;cursor:default}
+.monitor-cell-input{background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;padding:4px 6px;font-family:inherit;outline:none;transition:border-color .15s}
+.monitor-cell-input:focus{border-color:var(--accent)}
+.monitor-cell-input.monitor-save-error{border-color:var(--danger)!important}
+.monitor-label-input{width:100%;font-weight:600;margin-bottom:0}
+.monitor-cat-input{width:35%;margin-right:6px}
+.monitor-val-input{width:55%}
+.monitor-category-text{color:var(--text-muted)}
+.monitor-value-text{color:var(--text)}
+.monitor-value-sep{color:var(--text-dim);margin:0 4px}
+.monitor-del-line-btn,.monitor-del-crit-btn{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:11px}
+.monitor-del-line-btn:hover,.monitor-del-crit-btn:hover{color:var(--danger)}
+.monitor-add-line-btn{background:none;border:none;color:var(--accent);cursor:pointer;font-size:11px;font-weight:600;padding:0}
+.monitor-add-criterion-row td{padding:8px 12px;background:var(--bg)}
+.monitor-report-header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.monitor-report-date{font-size:16px;font-weight:700;color:var(--text)}
+.monitor-readonly-badge{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:2px 8px}
+
 /* FILTER BAR */
 .camp-filter-bar{display:flex;align-items:center;gap:6px;padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface);flex-wrap:wrap}
 .camp-filter-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text-dim);margin-right:2px}
