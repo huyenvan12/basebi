@@ -2534,11 +2534,11 @@ function confirmDeleteNote(id,targetId){
     </div>`;
   el.querySelector('.detail-actions').insertAdjacentElement('afterend',box);
 }
-function deleteNote(id,targetId){
+async function deleteNote(id,targetId){
   notes=notes.filter(n=>n.id!==id);
   if(activeNoteId===id)activeNoteId=null;
   if(activeTeamNoteId===id)activeTeamNoteId=null;
-  sb.from('notes').update({deleted:true,deleted_at:new Date().toISOString()}).eq('id',id);
+  await sb.from('notes').update({deleted:true,deleted_at:new Date().toISOString()}).eq('id',id);
   buildIndex();
   if(targetId==='teamDetail'){renderTeamList();renderTeamDetail(notes.find(n=>n.id===activeTeamNoteId)||null);}
   else{renderAll();renderDetail(notes.find(n=>n.id===activeNoteId)||null);}
