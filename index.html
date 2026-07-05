@@ -210,6 +210,11 @@
         <button class="graph-ctrl-btn" onclick="graphZoomCenter(0.8)" title="Zoom in">＋</button>
         <button class="graph-ctrl-btn" onclick="graphZoomCenter(1.25)" title="Zoom out">－</button>
         <button class="graph-ctrl-btn" onclick="graphResetView()" title="Reset view">⟲</button>
+        <div class="graph-label-size-ctrl" title="Label size">
+          <button class="graph-ctrl-btn" onclick="graphAdjustLabelScale(-1)" title="Smaller labels">A－</button>
+          <span class="graph-label-size-value" id="graphLabelScaleValue">100%</span>
+          <button class="graph-ctrl-btn" onclick="graphAdjustLabelScale(1)" title="Larger labels">A＋</button>
+        </div>
       </div>
       <div class="graph-legend">
         <div class="graph-legend-row"><span class="graph-legend-swatch graph-legend-link"></span> [[ ]] link</div>
@@ -945,6 +950,7 @@ const GRAPH_DAMPING=0.78;         // velocity retained per frame (friction)
 const GRAPH_MAX_VEL=36;           // per-frame velocity clamp, prevents jitter/overshoot from initial overlap
 const GRAPH_REST_KE=0.05;         // avg per-node kinetic energy below which the sim is considered settled
 const GRAPH_MAX_SIM_FRAMES=900;   // safety cap (~15s at 60fps) so a non-converging graph can't spin forever
+const GRAPH_MIN_ZOOM_SCALE=0.8;   // fit-to-bounds never zooms out past this scale (viewBox can't exceed default/scale), so labels stay legible on load even when nodes are spread far apart
 
 function graphApplyViewBox(){
   document.getElementById('graphSvg').setAttribute('viewBox',
@@ -962,8 +968,12 @@ function graphFitToBounds(){
   let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
   pts.forEach(p=>{ minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y); });
   const pad=100;
-  const w=Math.max(maxX-minX+pad*2, graphDefaultW*0.25);
-  const h=Math.max(maxY-minY+pad*2, graphDefaultH*0.25);
+  let w=Math.max(maxX-minX+pad*2, graphDefaultW*0.25);
+  let h=Math.max(maxY-minY+pad*2, graphDefaultH*0.25);
+  // clamp to a minimum zoom scale — never let sparse layouts fit-to-bounds into a viewBox so
+  // large that labels/nodes render illegibly small on load
+  w=Math.min(w, graphDefaultW/GRAPH_MIN_ZOOM_SCALE);
+  h=Math.min(h, graphDefaultH/GRAPH_MIN_ZOOM_SCALE);
   const cx=(minX+maxX)/2, cy=(minY+maxY)/2;
   graphViewBox={x:cx-w/2, y:cy-h/2, w, h};
   graphApplyViewBox();
@@ -971,6 +981,25 @@ function graphFitToBounds(){
 function graphResetView(){
   graphUserAdjustedView=false;
   graphFitToBounds();
+}
+// Label size — persisted like the theme, independent of pan/zoom (drives the
+// --graph-label-scale CSS var consumed by the .graph-node-label tier rules).
+const LS_GRAPH_LABEL_SCALE='basebi_graph_label_scale';
+const GRAPH_LABEL_SCALE_MIN=0.7, GRAPH_LABEL_SCALE_MAX=1.6, GRAPH_LABEL_SCALE_STEP=0.1;
+let graphLabelScale=1;
+function graphApplyLabelScale(scale,save=true){
+  graphLabelScale=Math.max(GRAPH_LABEL_SCALE_MIN,Math.min(GRAPH_LABEL_SCALE_MAX,scale));
+  document.body.style.setProperty('--graph-label-scale',graphLabelScale);
+  const el=document.getElementById('graphLabelScaleValue');
+  if(el)el.textContent=Math.round(graphLabelScale*100)+'%';
+  if(save)localStorage.setItem(LS_GRAPH_LABEL_SCALE,graphLabelScale);
+}
+function graphLoadLabelScale(){
+  const saved=parseFloat(localStorage.getItem(LS_GRAPH_LABEL_SCALE));
+  graphApplyLabelScale(isNaN(saved)?1:saved,false);
+}
+function graphAdjustLabelScale(dir){
+  graphApplyLabelScale(graphLabelScale+dir*GRAPH_LABEL_SCALE_STEP);
 }
 // zoom keeping a given SVG-space point fixed (used by wheel, anchored at cursor)
 function graphZoomAt(factor,px,py){
@@ -3452,6 +3481,7 @@ async function initApp(){
   const msg = document.getElementById('loadingMsg');
   try{
     loadTheme();
+    graphLoadLabelScale();
     msg.textContent='Loading notes…'; bar.style.width='25%';
     notes = await loadNotes();
     notes.forEach(n=>{if(n.type==='sql')n.type='code';});
