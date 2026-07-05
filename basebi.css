@@ -496,7 +496,7 @@ pre.popup-code-body{padding:12px;font-family:'JetBrains Mono',monospace;font-siz
 .checklist-instance-groups{flex:1;overflow-y:auto;padding:14px}
 .checklist-group-label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;margin:16px 0 8px}
 .checklist-group-label:first-child{margin-top:0}
-.checklist-instance-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.checklist-instance-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;align-items:start}
 .checklist-instance-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:7px}
 .ci-card-title{font-weight:600;font-size:13px;color:var(--text);min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ci-card-tpl{font-size:10px;color:var(--text-dim)}
