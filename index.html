@@ -690,9 +690,12 @@ async function loadOrgMembers(){
 
 // ── async savers ──────────────────────────────────
 async function saveNotes(arr){
-  // upsert all notes
-  if(!arr.length) return;
-  const rows = arr.map(n=>({
+  // only ever push the current user's own rows — arr may contain shared notes
+  // owned by other users (visible via RLS), which would get rejected and fail
+  // the WHOLE batch since notes_insert/notes_update require owner_id=auth.uid()
+  const own = arr.filter(n=>n.owner_id===currentUserId);
+  if(!own.length) return;
+  const rows = own.map(n=>({
     id:n.id, title:n.title, folder:n.folder, type:n.type,
     tags:n.tags||[], links:n.links||[], body:n.body||null,
     code:n.code||null, pinned:n.pinned||false,
@@ -710,8 +713,6 @@ async function saveOneNote(n){
     is_shared:n.is_shared||false
   },{onConflict:'id'});
 }
-async function deleteNoteDB(id){ await sb.from('notes').delete().eq('id',id); }
-
 async function saveFolders(arr){
   const rows = arr.map((name,i)=>({name,sort_order:i}));
   await sb.from('folders').upsert(rows,{onConflict:'name'});
@@ -816,13 +817,13 @@ let reviewerCommentError=null;
 // ══════════════════════════════════════════════════
 function buildIndex(){
   idx={};
-  notes.forEach(n=>{
+  notes.filter(n=>!n.deleted).forEach(n=>{
     const text=[n.title,n.body||'',n.code||'',(n.tags||[]).join(' ')].join(' ').toLowerCase();
     (text.match(/\w+/g)||[]).forEach(tok=>{if(!idx[tok])idx[tok]=new Set();idx[tok].add(n.id);});
   });
 }
 function searchIds(q){
-  if(!q.trim())return notes.map(n=>n.id);
+  if(!q.trim())return notes.filter(n=>!n.deleted).map(n=>n.id);
   const tokens=q.toLowerCase().match(/\w+/g)||[];
   let result=null;
   tokens.forEach(tok=>{
@@ -838,7 +839,7 @@ function searchIds(q){
 // users' private notes too (RLS only enforces org-scoping, not per-user privacy), so
 // every UI surface that lists/suggests/links notes MUST filter through this — never
 // iterate the raw `notes` array directly for anything user-facing.
-function visibleNotes(){ return notes.filter(n=>n.owner_id===currentUserId||n.is_shared); }
+function visibleNotes(){ return notes.filter(n=>(n.owner_id===currentUserId||n.is_shared)&&!n.deleted); }
 
 // ══════════════════════════════════════════════════
 // LINK INDEX (backlinks + graph edge data)
@@ -1062,13 +1063,14 @@ function toggleGraphShared(checked){
   renderGraph();
 }
 function graphNotes(){
-  return notes.filter(n=>n.owner_id===currentUserId||(graphIncludeShared&&n.is_shared));
+  return notes.filter(n=>(n.owner_id===currentUserId||(graphIncludeShared&&n.is_shared))&&!n.deleted);
 }
 // Reconciles graphNodePositions/graphVelocities with the current notes list: drops entries for
 // deleted notes and seeds new notes near the existing graph's centroid (not folder-anchored, not
 // from scratch) so a warm-started simulation settles smoothly instead of jumping (Task 4).
 function graphSyncNodePositions(){
-  const currentIds=new Set(notes.map(n=>n.id));
+  const gNotes=graphNotes();
+  const currentIds=new Set(gNotes.map(n=>n.id));
   Object.keys(graphNodePositions).forEach(k=>{
     const id=+k;
     if(!currentIds.has(id)){ delete graphNodePositions[id]; delete graphVelocities[id]; }
@@ -1076,7 +1078,7 @@ function graphSyncNodePositions(){
   const existing=Object.values(graphNodePositions);
   const cx=existing.length?existing.reduce((s,p)=>s+p.x,0)/existing.length:graphDefaultW/2;
   const cy=existing.length?existing.reduce((s,p)=>s+p.y,0)/existing.length:graphDefaultH/2;
-  notes.forEach(n=>{
+  gNotes.forEach(n=>{
     if(!graphNodePositions[n.id]){
       graphNodePositions[n.id]={x:cx+(Math.random()-0.5)*120, y:cy+(Math.random()-0.5)*120};
       graphVelocities[n.id]={vx:0,vy:0};
@@ -1321,7 +1323,7 @@ function graphClearHighlight(){
 
 function graphShowDetail(id){
   graphActiveNodeId=id;
-  const n=notes.find(n=>n.id===id);
+  const n=notes.find(n=>n.id===id&&!n.deleted);
   if(!n)return;
   graphHighlight(id);
   document.getElementById('graphEmptyState').style.display='none';
@@ -1348,7 +1350,7 @@ function graphOpenNote(id){
   selectNote(id);
 }
 
-function myNotes(){ return notes.filter(n=>n.owner_id===currentUserId); }
+function myNotes(){ return notes.filter(n=>n.owner_id===currentUserId&&!n.deleted); }
 function getFiltered(){
   const own=myNotes();
   let ids=searchQuery?searchIds(searchQuery):own.map(n=>n.id);
@@ -1408,7 +1410,7 @@ function today(){
   return `${y}-${m}-${day}`;
 }
 function fmtDate(d){return d?d.slice(0,10):'';}
-function allTags(list){const t={};(list||notes).forEach(n=>(n.tags||[]).forEach(tag=>{t[tag]=(t[tag]||0)+1;}));return t;}
+function allTags(list){const t={};(list||notes.filter(n=>!n.deleted)).forEach(n=>(n.tags||[]).forEach(tag=>{t[tag]=(t[tag]||0)+1;}));return t;}
 
 function copyBtn(btn,text){
   // Try modern clipboard API first, fall back to execCommand for file:// protocol
@@ -1523,6 +1525,9 @@ function renderDetail(note){
       <input type="text" id="dailyCaptureInput" placeholder="Log a timestamped entry…" autocomplete="off" onkeydown="if(event.key==='Enter')appendDailyEntry(${note.id})">
       <span class="capture-hint">Enter to append</span>
     </div>`:'';
+  const isOwner=note.owner_id===currentUserId;
+  const ownerActions=isOwner?`<button class="btn btn-ghost" style="font-size:11px" onclick="openNoteModal(${note.id})">✎ Edit</button>
+      <button class="btn btn-danger" style="font-size:11px" onclick="confirmDeleteNote(${note.id})">✕ Delete</button>`:'';
   el.innerHTML=`
     <div class="note-detail-header">
       <div class="note-detail-title">${hl(note.title,searchQuery)}</div>
@@ -1533,8 +1538,7 @@ function renderDetail(note){
       </div>
     </div>
     <div class="detail-actions">
-      <button class="btn btn-ghost" style="font-size:11px" onclick="openNoteModal(${note.id})">✎ Edit</button>
-      <button class="btn btn-danger" style="font-size:11px" onclick="confirmDeleteNote(${note.id})">✕ Delete</button>
+      ${ownerActions}
       <button class="pin-btn ${note.pinned?'pinned':''}" onclick="togglePin(${note.id})" title="${note.pinned?'Unpin note':'Pin note'}">${note.pinned?'📌':'📍'}</button>
     </div>
     <div class="note-detail-content" id="noteDetailContent">${body}</div>
@@ -1564,7 +1568,7 @@ function renderAll(){renderFolders();renderTagCloud();renderNoteList();}
 // ══════════════════════════════════════════════════
 function selectNote(id){
   activeNoteId=id;renderNoteList();
-  const note=notes.find(n=>n.id===id);
+  const note=notes.find(n=>n.id===id&&!n.deleted);
   renderDetail(note);
   if(note&&note.daily_date)focusDailyCapture();
 }
@@ -1582,7 +1586,7 @@ function jumpToLink(title){const n=visibleNotes().find(n=>n.title.toLowerCase()=
 // TEAM SHARED
 // ══════════════════════════════════════════════════
 function getTeamSharedNotes(){
-  return notes.filter(n=>n.is_shared&&n.owner_id!==currentUserId)
+  return notes.filter(n=>n.is_shared&&n.owner_id!==currentUserId&&!n.deleted)
     .sort((a,b)=>new Date(b.modified||b.created||0)-new Date(a.modified||a.created||0));
 }
 function renderTeamList(){
@@ -2354,7 +2358,7 @@ function saveFolder(){
   saveFolders(folders);if(changed.length)saveNotes(changed);closeFolderModal();renderAll();
 }
 function deleteFolder(name){
-  const cnt=notes.filter(n=>n.folder===name).length;
+  const cnt=notes.filter(n=>n.folder===name&&!n.deleted).length;
   if(cnt>0){alert(`Cannot delete "${name}" — it has ${cnt} note${cnt>1?'s':''}. Move or delete those notes first.`);return;}
   if(!confirm(`Delete folder "${name}"?`))return;
   folders=folders.filter(f=>f!==name);saveFolders(folders);
@@ -2547,11 +2551,16 @@ function confirmDeleteNote(id,targetId){
     </div>`;
   el.querySelector('.detail-actions').insertAdjacentElement('afterend',box);
 }
-function deleteNote(id,targetId){
+async function deleteNote(id,targetId){
+  const{data,error}=await sb.from('notes').update({deleted:true,deleted_at:new Date().toISOString()}).eq('id',id).select('id');
+  if(error||!data||!data.length){
+    alert("You don't have permission to delete this note.");
+    return;
+  }
   notes=notes.filter(n=>n.id!==id);
   if(activeNoteId===id)activeNoteId=null;
   if(activeTeamNoteId===id)activeTeamNoteId=null;
-  saveNotes(notes);buildIndex();
+  buildIndex();
   if(targetId==='teamDetail'){renderTeamList();renderTeamDetail(notes.find(n=>n.id===activeTeamNoteId)||null);}
   else{renderAll();renderDetail(notes.find(n=>n.id===activeNoteId)||null);}
 }
@@ -2863,7 +2872,7 @@ function getTodayNote(){
   // daily notes are personal — must be scoped to the current user, otherwise this could
   // match a teammate's daily note for the same date (if it happens to sort first) and
   // open their private journal entry instead of creating/opening your own.
-  return notes.find(n=>n.daily_date===t&&n.owner_id===currentUserId)||null;
+  return notes.find(n=>n.daily_date===t&&n.owner_id===currentUserId&&!n.deleted)||null;
 }
 function fmtDailyTitle(iso){
   const d=new Date(iso+'T00:00:00');
