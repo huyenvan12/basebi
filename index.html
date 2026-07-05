@@ -3269,6 +3269,7 @@ function selectCamp(id){
   if(activeRow) activeRow.classList.add('camp-row-active');
   const camp = campaigns.find(cc=>cc.id===id);
   if(!camp) return;
+  const isOwner = camp.owner_id===currentUserId;
   document.getElementById('cspCd').textContent = camp.campaign_cd;
   document.getElementById('cspNm').textContent = camp.campaign_nm;
   document.getElementById('cspBadges').innerHTML =
@@ -3282,7 +3283,7 @@ function selectCamp(id){
     <div class="csp-extra-row">
       <span class="csp-extra-key">${esc(k)}</span>
       <span class="csp-extra-val">${esc(v)}</span>
-      <button class="csp-extra-del" onclick="deleteCampExtra(${id},'${esc(k)}')">×</button>
+      ${isOwner?`<button class="csp-extra-del" onclick="deleteCampExtra(${id},'${esc(k)}')">×</button>`:''}
     </div>`).join('');
 
   document.getElementById('cspBody').innerHTML = `
@@ -3296,12 +3297,15 @@ function selectCamp(id){
     <div class="csp-extra-section">
       <div class="csp-field-label" style="margin-bottom:8px">Extra Fields</div>
       ${extraRows}
-      <div class="csp-add-extra">
+      ${isOwner?`<div class="csp-add-extra">
         <input class="csp-add-extra-input" id="extra-key-${id}" placeholder="Field name…" style="max-width:90px">
         <input class="csp-add-extra-input" id="extra-val-${id}" placeholder="Value…">
         <button class="csp-add-extra-btn" onclick="addCampExtra(${id})">+ Add</button>
-      </div>
+      </div>`:''}
     </div>`;
+
+  document.querySelector('.csp-edit-btn').style.display = isOwner?'':'none';
+  document.querySelector('.csp-del-btn').style.display = isOwner?'':'none';
 
   document.getElementById('campSidePanel').classList.add('open');
   document.getElementById('campResizer').classList.add('visible');
