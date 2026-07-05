@@ -626,7 +626,7 @@ table.monitor-log-list-table,table.monitor-report-table{min-width:0;width:100%;t
 table.monitor-report-table td,table.monitor-report-table th{white-space:normal;word-break:break-word}
 .monitor-log-list-table td{cursor:default}
 .monitor-log-list-table tr:hover td{background:none}
-.monitor-section-header-row{background:var(--surface2);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted);padding:8px 12px}
+.monitor-section-header-row{background:var(--accent);color:#fff;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em;padding:8px 12px}
 .monitor-criterion-cell{vertical-align:top;font-weight:600;font-size:12px;color:var(--text);width:220px;cursor:default}
 .monitor-criterion-actions{display:flex;gap:6px;margin-top:6px}
 .monitor-value-cell{vertical-align:middle;cursor:default}

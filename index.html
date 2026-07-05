@@ -3306,11 +3306,9 @@ function renderMonitorReportDetail(){
   let rowsHtml='';
   let currentSectionHeaderId=null;
 
-  const flushSectionAddBtn=()=>{
-    if(isOwner&&currentSectionHeaderId){
-      rowsHtml+=`<tr class="monitor-add-criterion-row"><td colspan="2"><button class="monitor-add-line-btn" onclick="addMonitorCriterion('${escJs(currentSectionHeaderId)}')">+ Add criterion</button></td></tr>`;
-    }
-  };
+  // "+ Add criterion" temporarily hidden this pass (scope reduction) — addMonitorCriterion()
+  // still exists below for re-enabling later, this just stops rendering the trigger button.
+  const flushSectionAddBtn=()=>{};
 
   sorted.forEach((c,i)=>{
     if(c.row_type==='section_header'){
@@ -3320,7 +3318,9 @@ function renderMonitorReportDetail(){
       return;
     }
     const lines=(linesByCriterion[c.id]||[]).sort((a,b)=>a.sort_order-b.sort_order);
-    const addLineBtn=isOwner?`<button class="monitor-add-line-btn" onclick="addMonitorLine('${escJs(c.id)}')">+ Add line</button>`:'';
+    // "+ Add line" temporarily hidden this pass (scope reduction) — addMonitorLine() still
+    // exists below for re-enabling later, this just stops rendering the trigger button.
+    const addLineBtn='';
     const delCritBtn=isOwner?`<button class="monitor-del-crit-btn" onclick="deleteMonitorCriterion('${escJs(c.id)}')">✕</button>`:'';
     const labelCell=isOwner
       ?`<input class="monitor-cell-input monitor-label-input" value="${esc(c.label||'')}"
@@ -3338,16 +3338,14 @@ function renderMonitorReportDetail(){
           rowsHtml+=`<td class="monitor-criterion-cell" rowspan="${lines.length}">
             ${labelCell}<div class="monitor-criterion-actions">${addLineBtn}${delCritBtn}</div></td>`;
         }
-        rowsHtml+=isOwner
-          ?`<td class="monitor-value-cell">
-              <input class="monitor-cell-input monitor-cat-input" value="${esc(line.category||'')}"
-                oninput="onMonitorCategoryInput('${escJs(line.id)}',this)" onblur="onMonitorCategoryBlur('${escJs(line.id)}',this)">
-              <input class="monitor-cell-input monitor-val-input" value="${esc(line.value||'')}"
-                oninput="onMonitorValueInput('${escJs(line.id)}',this)" onblur="onMonitorValueBlur('${escJs(line.id)}',this)">
-              <button class="monitor-del-line-btn" onclick="deleteMonitorLine('${escJs(line.id)}')">✕</button>
-            </td>`
-          :`<td class="monitor-value-cell"><span class="monitor-category-text">${line.category?esc(line.category):''}</span>
-              <span class="monitor-value-sep"> | </span><span class="monitor-value-text">${esc(line.value||'')}</span></td>`;
+        // Category/Value inputs are locked read-only for everyone this pass (even the owner) —
+        // onMonitorCategoryInput/onMonitorValueInput + their debounce/save logic still exist
+        // below for re-enabling later, they're just not wired up to these elements yet.
+        rowsHtml+=`<td class="monitor-value-cell">
+            <input class="monitor-cell-input monitor-cat-input" value="${esc(line.category||'')}" disabled>
+            <input class="monitor-cell-input monitor-val-input" value="${esc(line.value||'')}" disabled>
+            ${isOwner?`<button class="monitor-del-line-btn" onclick="deleteMonitorLine('${escJs(line.id)}')">✕</button>`:''}
+          </td>`;
         rowsHtml+='</tr>';
       });
     }
