@@ -10,6 +10,7 @@ import { ensureFolder } from './folders.js';
 // per the plan, and main.js imports this module's initDailyNote() for wiring. Safe because
 // switchTab is only called inside openDailyNote()'s function body, never at module top-level.
 import { switchTab } from './main.js';
+import { isFeatureVisible } from './feature-flags.js';
 
 export function today(){
   const d=new Date();
@@ -29,6 +30,7 @@ export function fmtDailyTitle(iso){
   return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
 }
 export async function openDailyNote(){
+  if(!isFeatureVisible('daily_note')) return;
   if(state.currentTab!=='notes')switchTab('notes');
   const existing=getTodayNote();
   if(existing){selectNote(existing.id);return;}
