@@ -52,12 +52,12 @@ export function renderAdminHub(){
       <div class="tpl-card-desc">${esc(f.description||'')}</div>
       <div class="tpl-card-meta">key: ${esc(f.feature_key)}</div>
       <div class="tpl-card-actions">
-        <select class="form-input" style="width:auto" onchange="updateFlagStatus('${escJs(f.id)}',this.value)">
+        <select class="form-input admin-flag-status-select" onchange="updateFlagStatus('${escJs(f.id)}',this.value)">
           <option value="off" ${f.status==='off'?'selected':''}>Off</option>
           <option value="beta" ${f.status==='beta'?'selected':''}>Beta</option>
           <option value="on" ${f.status==='on'?'selected':''}>On</option>
         </select>
-        <button class="btn btn-ghost" style="font-size:11px" onclick="toggleFlagTesterPanel('${escJs(f.id)}')">${expanded?'▲ Hide testers':'▼ Testers'}</button>
+        <button class="btn btn-ghost" style="font-size:11px" onclick="toggleFlagTesterPanel('${escJs(f.id)}')">${expanded?'▲ Hide early access':'▼ Early access'}</button>
       </div>
       ${expanded?renderTesterPanel(f):''}
     </div>`;
@@ -73,10 +73,10 @@ function renderTesterPanel(f){
       ${testers.length?testers.map(t=>`
         <span class="admin-flag-tester-chip">${esc(t.display_name)}
           <button class="admin-flag-tester-remove" onclick="removeFlagTester('${escJs(f.id)}','${escJs(t.id)}')" title="Remove tester">✕</button>
-        </span>`).join(''):'<span class="note-empty" style="padding:0">No testers yet</span>'}
+        </span>`).join(''):'<span class="note-empty" style="padding:0">No one has early access yet</span>'}
     </div>
     ${candidates.length?`<select class="form-input" onchange="if(this.value){addFlagTester('${escJs(f.id)}',this.value);this.value='';}">
-      <option value="">+ Add tester…</option>
+      <option value="">+ Grant access…</option>
       ${candidates.map(m=>`<option value="${escJs(m.id)}">${esc(m.display_name)}</option>`).join('')}
     </select>`:''}
   </div>`;

@@ -384,6 +384,7 @@ async function initApp(){
     if(state.currentUserRole==='admin') state.featureFlags = await loadFeatureFlags();
 
     applyNavGating();
+    startFeatureVisibilityPolling();
 
     msg.textContent='Ready!'; bar.style.width='100%';
     await new Promise(r=>setTimeout(r,300));
@@ -415,6 +416,24 @@ function applyNavGating(){
     const fallback=['notes','campaigns','graph','team','admin'].find(isTabAllowed);
     if(fallback) switchTab(fallback);
   }
+}
+
+// ══════════════════════════════════════════════════
+// FEATURE VISIBILITY POLLING — get_feature_visibility() is resolved once at bootstrap and
+// cached in state.featureVisibility (see feature-flags.js) so nav render / switchTab() don't
+// hit the RPC on every check. But that means an admin's live change (flip a flag, remove a
+// tester) never reaches an already-open session — the tester keeps "active" until they log
+// out and back in. Re-fetching on every render would reintroduce a query-per-click; instead
+// we poll on a bounded interval so a revoked tester loses access within a short, predictable
+// window without needing to log out. 30s is a deliberate tradeoff: frequent enough that "the
+// admin just removed me" resolves quickly, infrequent enough it's not a query storm.
+let featureVisibilityPollTimer=null;
+function startFeatureVisibilityPolling(){
+  if(featureVisibilityPollTimer) return; // idempotent guard — initApp() must not stack intervals
+  featureVisibilityPollTimer=setInterval(async()=>{
+    await loadFeatureVisibility();
+    applyNavGating();
+  },30000);
 }
 
 function initMain(){

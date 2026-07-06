@@ -496,7 +496,12 @@ pre.popup-code-body{padding:12px;font-family:'JetBrains Mono',monospace;font-siz
 .tpl-card-actions{display:flex;gap:6px;margin-top:4px;align-items:center}
 
 /* Admin Hub — feature flags grid */
-.admin-flag-grid{flex:1;overflow-y:auto;padding:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;align-content:start}
+/* align-items:start (default grid behavior is 'stretch') stops every card in a CSS-grid row
+   from being forced to the height of its tallest sibling — without this, expanding one card's
+   tester panel visually stretched every other card in that row into blank empty space, which
+   read as "the whole row expanded" even though only one card actually held the panel. */
+.admin-flag-grid{flex:1;overflow-y:auto;padding:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;align-content:start;align-items:start}
+.admin-flag-status-select{width:96px;flex-shrink:0}
 .admin-flag-status{font-size:9px;padding:2px 7px;border-radius:10px;white-space:nowrap;flex-shrink:0;font-weight:600}
 .admin-flag-status-off{background:var(--tag-bg);color:var(--text-dim)}
 .admin-flag-status-beta{background:#f59e0b33;color:#f59e0b}
