@@ -33,7 +33,7 @@ export async function saveNotes(arr){
   const own = arr.filter(n=>n.owner_id===state.currentUserId);
   if(!own.length) return;
   const rows = own.map(n=>({
-    id:n.id, title:n.title, folder:n.folder, type:n.type,
+    id:n.id, title:n.title, folder:n.folder, folder_id:n.folder_id||null, type:n.type,
     tags:n.tags||[], links:n.links||[], body:n.body||null,
     code:n.code||null, pinned:n.pinned||false,
     created:n.created, modified:n.modified, daily_date:n.daily_date||null,
@@ -43,7 +43,7 @@ export async function saveNotes(arr){
 }
 export async function saveOneNote(n){
   const{error}=await sb.from('notes').upsert({
-    id:n.id, title:n.title, folder:n.folder, type:n.type,
+    id:n.id, title:n.title, folder:n.folder, folder_id:n.folder_id||null, type:n.type,
     tags:n.tags||[], links:n.links||[], body:n.body||null,
     code:n.code||null, pinned:n.pinned||false,
     created:n.created, modified:n.modified, daily_date:n.daily_date||null,
@@ -723,13 +723,15 @@ export function applyCodeDefaultsToForm(){
 export async function saveNote(){
   const title=document.getElementById('f-title').value.trim();if(!title){document.getElementById('f-title').focus();return;}
   const type=state.currentNoteType;const now=today();
+  const folderName=document.getElementById('f-folder').value;
+  const folderId=state.folderIds[folderName]||null;
   hideTitleError();
   if(state.editingNoteId){
     const note=state.notes.find(n=>n.id===state.editingNoteId);if(!note)return;
     const savedId=state.editingNoteId;
-    const prev={title:note.title,folder:note.folder,type:note.type,tags:note.tags,links:note.links,
+    const prev={title:note.title,folder:note.folder,folder_id:note.folder_id,type:note.type,tags:note.tags,links:note.links,
       body:note.body,code:note.code,modified:note.modified,is_shared:note.is_shared};
-    note.title=title;note.folder=document.getElementById('f-folder').value;
+    note.title=title;note.folder=folderName;note.folder_id=folderId;
     note.type=type;note.tags=[...state.selectedTags];note.links=[...state.selectedLinks];
     note.body=type==='code'?document.getElementById('f-desc').value.trim():document.getElementById('f-body').value.trim();
     note.code=type==='code'?document.getElementById('f-code').value.trim():null;
@@ -747,7 +749,7 @@ export async function saveNote(){
     if(state.noteEditOriginTab==='team'){renderTeamList();renderTeamDetail(note);}
     else{renderAll();selectNote(savedId);}
   }else{
-    const note={id:Date.now(),title,folder:document.getElementById('f-folder').value,type,
+    const note={id:Date.now(),title,folder:folderName,folder_id:folderId,type,
       tags:[...state.selectedTags],links:[...state.selectedLinks],
       body:type==='code'?document.getElementById('f-desc').value.trim():document.getElementById('f-body').value.trim(),
       code:type==='code'?document.getElementById('f-code').value.trim():null,
