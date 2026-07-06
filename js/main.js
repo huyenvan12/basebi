@@ -46,7 +46,7 @@ export function switchTab(tab){
   // Regression fix (not a mechanical port): the original used actionBtn.setAttribute('onclick', ...),
   // which relies on the referenced function being a global. Under ES modules that silently no-ops
   // (button does nothing). Assign the handler directly instead.
-  if(tab==='notes'){ actionBtn.style.display=''; actionBtn.textContent='+ New Note'; actionBtn.onclick=openNoteModal; }
+  if(tab==='notes'){ actionBtn.style.display=''; actionBtn.textContent='+ New Note'; actionBtn.onclick=()=>openNoteModal(); }
   else if(tab==='campaigns'){ actionBtn.style.display=''; actionBtn.textContent='+ Add Campaign'; actionBtn.onclick=openAddCampModal; }
   else{ actionBtn.style.display='none'; }
   if(tab==='campaigns') renderCampTable();
@@ -373,7 +373,7 @@ function initMain(){
   // Wired here unconditionally (not just inside switchTab()) so #topbarActionBtn's initial-state
   // handler doesn't depend on window.openNoteModal (exposed elsewhere only for notes.js's
   // dynamically-rendered Edit-button template strings, not for this element).
-  document.getElementById('topbarActionBtn').onclick=openNoteModal;
+  document.getElementById('topbarActionBtn').onclick=()=>openNoteModal();
   document.getElementById('teamSubTabNotes').onclick=()=>switchTeamSubTab('notes');
   document.getElementById('teamSubTabChecklists').onclick=()=>switchTeamSubTab('checklists');
   document.getElementById('checklistTabTemplates').onclick=()=>switchChecklistSubView('templates');
