@@ -23,6 +23,8 @@ export const state = {
   ssResults: [], ssCursor: -1,
   currentUserId: null, currentUserEmail: null, profilesMap: {},
   currentUserIsAdmin: false,
+  currentUserRole: null, currentUserIsQaSeat: false,
+  featureVisibility: {},
   noteIsShared: false,
   activeTeamNoteId: null,
   graphIncludeShared: false,
@@ -43,6 +45,11 @@ export const state = {
   sharedWithMeInstances: [],
   currentUserOrgId: null,
   orgMembers: [],
+
+  // admin hub state
+  featureFlags: [],
+  expandedFlagId: null,
+  featureFlagTesters: {},                     // { [featureId]: [{id,display_name}] } — lazy-loaded per expanded flag
   checklistSharePanelOpen: {},                // { [instanceId]: bool } — mirrors checklistPhaseOpen pattern
   shareModalInstanceId: null,
   activeReviewShareId: null,

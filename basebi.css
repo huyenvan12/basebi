@@ -69,9 +69,16 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 .logo{font-size:15px;font-weight:600;color:var(--accent);letter-spacing:-.3px;white-space:nowrap}
 .logo em{color:var(--text-muted);font-style:normal;font-weight:300}
 .search-wrap{flex:1;position:relative;max-width:420px}
-.search-wrap input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 12px 7px 32px;color:var(--text);font-family:inherit;font-size:13px;outline:none;transition:border-color .15s}
+.search-wrap input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 12px 7px 32px;color:var(--text);font-family:inherit;font-size:13px;outline:none;transition:border-color .15s;-webkit-appearance:none;appearance:none}
 .search-wrap input:focus{border-color:var(--accent)}
 .search-wrap input::placeholder{color:var(--text-dim)}
+/* type="search" (used to dodge Chrome's Password Manager autofill heuristic) adds a native
+   WebKit cancel/decoration button by default — suppress it so the field looks identical to
+   the old type="text" version. */
+.search-wrap input::-webkit-search-decoration,
+.search-wrap input::-webkit-search-cancel-button,
+.search-wrap input::-webkit-search-results-button,
+.search-wrap input::-webkit-search-results-decoration{-webkit-appearance:none;appearance:none}
 .search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-dim)}
 .topbar-actions{display:flex;gap:8px;margin-left:auto}
 .btn{padding:6px 12px;border-radius:6px;border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:500;transition:all .15s}
@@ -364,7 +371,11 @@ mark{background:var(--highlight);color:var(--text);border-radius:2px;padding:0 1
 .search-screen{position:fixed;inset:0;background-color:var(--search-bg);background-image:radial-gradient(var(--border) 1px, transparent 1px);background-size:22px 22px;z-index:200;display:none;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:80px}
 .search-screen.open{display:flex}
 .search-screen-bar-wrap{width:100%;max-width:560px;position:relative;margin-bottom:20px}
-.search-screen-input{width:100%;border:2px solid var(--search-border);border-radius:10px;padding:13px 16px 13px 44px;font-size:15px;color:var(--search-text);background:var(--search-card);font-family:'Inter',sans-serif;outline:none;box-shadow:0 0 0 4px rgba(59,111,224,.1),0 2px 8px rgba(0,0,0,.08)}
+.search-screen-input{width:100%;border:2px solid var(--search-border);border-radius:10px;padding:13px 16px 13px 44px;font-size:15px;color:var(--search-text);background:var(--search-card);font-family:'Inter',sans-serif;outline:none;box-shadow:0 0 0 4px rgba(59,111,224,.1),0 2px 8px rgba(0,0,0,.08);-webkit-appearance:none;appearance:none}
+.search-screen-input::-webkit-search-decoration,
+.search-screen-input::-webkit-search-cancel-button,
+.search-screen-input::-webkit-search-results-button,
+.search-screen-input::-webkit-search-results-decoration{-webkit-appearance:none;appearance:none}
 .search-screen-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:17px;color:var(--search-border)}
 .search-screen-results{width:100%;max-width:560px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;max-height:calc(100vh - 220px)}
 .search-result-card{background:var(--search-card);border:1px solid var(--search-card-border);border-radius:8px;padding:10px 14px;cursor:pointer;transition:all .12s}
@@ -493,7 +504,24 @@ pre.popup-code-body{padding:12px;font-family:'JetBrains Mono',monospace;font-siz
 .template-badge-admin{font-size:9px;padding:2px 7px;border-radius:10px;background:var(--tag-bg);color:var(--text-muted);white-space:nowrap;flex-shrink:0}
 .tpl-card-desc{font-size:11px;color:var(--text-muted);line-height:1.4}
 .tpl-card-meta{font-size:10px;color:var(--text-dim)}
-.tpl-card-actions{display:flex;gap:6px;margin-top:4px}
+.tpl-card-actions{display:flex;gap:6px;margin-top:4px;align-items:center}
+
+/* Admin Hub — feature flags grid */
+/* align-items:start (default grid behavior is 'stretch') stops every card in a CSS-grid row
+   from being forced to the height of its tallest sibling — without this, expanding one card's
+   tester panel visually stretched every other card in that row into blank empty space, which
+   read as "the whole row expanded" even though only one card actually held the panel. */
+.admin-flag-grid{flex:1;overflow-y:auto;padding:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;align-content:start;align-items:start}
+.admin-flag-status-select{width:96px;flex-shrink:0}
+.admin-flag-status{font-size:9px;padding:2px 7px;border-radius:10px;white-space:nowrap;flex-shrink:0;font-weight:600}
+.admin-flag-status-off{background:var(--tag-bg);color:var(--text-dim)}
+.admin-flag-status-beta{background:#f59e0b33;color:#f59e0b}
+.admin-flag-status-on{background:#22c55e33;color:#22c55e}
+.admin-flag-testers{margin-top:6px;padding-top:8px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+.admin-flag-testers-list{display:flex;flex-wrap:wrap;gap:6px}
+.admin-flag-tester-chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;background:var(--tag-bg);color:var(--text-muted);padding:2px 4px 2px 8px;border-radius:10px}
+.admin-flag-tester-remove{border:none;background:none;color:var(--text-dim);cursor:pointer;font-size:11px;padding:0 4px}
+.admin-flag-tester-remove:hover{color:#f87171}
 
 /* My Checklists hub */
 .checklist-instance-groups{flex:1;overflow-y:auto;padding:14px}

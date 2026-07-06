@@ -25,23 +25,42 @@ import {
 } from './checklist-share.js';
 import { initMonitorReport } from './monitor-report.js';
 import { graphLoadLabelScale, renderGraph, initGraphView } from './graph-view.js';
+import { loadFeatureVisibility, isFeatureVisible } from './feature-flags.js';
+import { loadFeatureFlags, renderAdminHub, initAdminHub } from './admin-hub.js';
 
 // ══════════════════════════════════════════════════
 // TAB SWITCHING
 // ══════════════════════════════════════════════════
+// Maps each tab to the feature_key that must resolve 'active' before entry is allowed.
+// null means the tab has no single flag (team is gated by teamshared_notes OR checklist;
+// admin is gated by role, not a feature flag).
+const TAB_FEATURE_KEY = { notes:'notes', campaigns:'campaign', graph:'graph_view', team:null, admin:null };
+
+// Defense-in-depth: blocks entry into a hidden section even if switchTab() is invoked
+// directly (console, stale onclick, etc.) rather than through a nav click.
+function isTabAllowed(tab){
+  if(tab==='admin') return state.currentUserRole==='admin';
+  if(tab==='team') return isFeatureVisible('teamshared_notes')||isFeatureVisible('checklist');
+  const key=TAB_FEATURE_KEY[tab];
+  return !key || isFeatureVisible(key);
+}
+
 export function switchTab(tab){
+  if(!isTabAllowed(tab)) return;
   state.currentTab = tab;
   document.getElementById('tabNotes').classList.toggle('active', tab==='notes');
   document.getElementById('tabCampaigns').classList.toggle('active', tab==='campaigns');
   document.getElementById('tabGraph').classList.toggle('active', tab==='graph');
   document.getElementById('tabTeam').classList.toggle('active', tab==='team');
+  document.getElementById('tabAdmin').classList.toggle('active', tab==='admin');
   document.getElementById('notesView').classList.toggle('hidden', tab!=='notes');
   document.getElementById('campView').classList.toggle('active', tab==='campaigns');
   document.getElementById('graphView').classList.toggle('active', tab==='graph');
   document.getElementById('teamView').classList.toggle('active', tab==='team');
+  document.getElementById('adminView').classList.toggle('active', tab==='admin');
   if(tab!=='team') document.body.classList.remove('reviewer-lock-active');
   document.getElementById('notesSearchWrap').style.display = tab==='notes'?'':'none';
-  document.getElementById('dailyNoteBtn').style.display = tab==='notes'?'':'none';
+  document.getElementById('dailyNoteBtn').style.display = (tab==='notes'&&isFeatureVisible('daily_note'))?'':'none';
   const actionBtn = document.getElementById('topbarActionBtn');
   // Regression fix (not a mechanical port): the original used actionBtn.setAttribute('onclick', ...),
   // which relies on the referenced function being a global. Under ES modules that silently no-ops
@@ -51,13 +70,25 @@ export function switchTab(tab){
   else{ actionBtn.style.display='none'; }
   if(tab==='campaigns') renderCampTable();
   if(tab==='graph') renderGraph();
-  if(tab==='team'){ renderTeamList(); renderTeamSubnav(); }
+  if(tab==='team'){
+    // land on whichever Team Shared sub-tab is actually visible — e.g. if teamshared_notes
+    // is off but checklist is on, don't default into a hidden "Shared Notes" sub-view
+    if(!isFeatureVisible('teamshared_notes')&&state.currentTeamSubTab==='notes') state.currentTeamSubTab='checklists';
+    if(!isFeatureVisible('checklist')&&state.currentTeamSubTab==='checklists') state.currentTeamSubTab='notes';
+    document.getElementById('teamSubTabNotes').classList.toggle('active',state.currentTeamSubTab==='notes');
+    document.getElementById('teamSubTabChecklists').classList.toggle('active',state.currentTeamSubTab==='checklists');
+    document.getElementById('teamNotesSubview').classList.toggle('active',state.currentTeamSubTab==='notes');
+    document.getElementById('teamChecklistsSubview').classList.toggle('active',state.currentTeamSubTab==='checklists');
+    renderTeamList(); renderTeamSubnav();
+  }
+  if(tab==='admin') renderAdminHub();
 }
 
 // ══════════════════════════════════════════════════
 // TEAM SHARED — SUB-NAV (Shared Notes vs Checklists)
 // ══════════════════════════════════════════════════
 export function switchTeamSubTab(sub){
+  if(sub==='checklists'&&!isFeatureVisible('checklist')) return;
   state.currentTeamSubTab=sub;
   document.getElementById('teamSubTabNotes').classList.toggle('active',sub==='notes');
   document.getElementById('teamSubTabChecklists').classList.toggle('active',sub==='checklists');
@@ -77,6 +108,7 @@ function renderTeamSubnav(){
   showChecklistPage(state.currentChecklistView);
 }
 export function switchChecklistSubView(view){
+  if(!isFeatureVisible('checklist')) return;
   if(view==='templates'&&!state.currentUserIsAdmin) view='mine';
   state.currentChecklistView=view;
   document.getElementById('checklistTabTemplates').classList.toggle('active',view==='templates');
@@ -320,24 +352,39 @@ async function initApp(){
     msg.textContent='Loading folders…'; bar.style.width='50%';
     state.folders = await loadFolders();
 
-    msg.textContent='Loading campaigns…'; bar.style.width='75%';
-    state.campaigns = await loadCampaignsDB();
-
-    msg.textContent='Loading team…'; bar.style.width='90%';
+    msg.textContent='Loading team…'; bar.style.width='70%';
     state.profilesMap = await loadProfilesMap();
-    // loadCurrentUserIsAdmin() sets state.currentUserOrgId as a side effect, which
-    // loadOrgMembers() below depends on — this sequencing must stay non-parallel.
+    // loadCurrentUserIsAdmin() sets state.currentUserOrgId/currentUserRole/currentUserIsQaSeat
+    // as side effects, which loadFeatureVisibility() and loadOrgMembers() below depend on —
+    // this sequencing must stay non-parallel.
     state.currentUserIsAdmin = await loadCurrentUserIsAdmin();
     renderGearUserInfo();
 
+    msg.textContent='Resolving feature access…'; bar.style.width='80%';
+    await loadFeatureVisibility();
+
+    msg.textContent='Loading campaigns…'; bar.style.width='90%';
+    if(isFeatureVisible('campaign')){ state.campaigns = await loadCampaignsDB(); initCampaigns(); }
+
     msg.textContent='Loading checklists…'; bar.style.width='95%';
-    state.checklistTemplates = await loadChecklistTemplates();
-    state.checklistInstances = await loadChecklistInstances();
-    state.checklistShares = await loadChecklistShares();
-    state.sharedWithMeInstances = await loadSharedWithMeInstances(
-      state.checklistShares.filter(s=>s.shared_with===state.currentUserId).map(s=>s.instance_id)
-    );
+    if(isFeatureVisible('checklist')){
+      state.checklistTemplates = await loadChecklistTemplates();
+      state.checklistInstances = await loadChecklistInstances();
+      state.checklistShares = await loadChecklistShares();
+      state.sharedWithMeInstances = await loadSharedWithMeInstances(
+        state.checklistShares.filter(s=>s.shared_with===state.currentUserId).map(s=>s.instance_id)
+      );
+      initChecklistTemplates(); initChecklistInstances(); initChecklistShare();
+    }
     state.orgMembers = await loadOrgMembers();
+
+    if(isFeatureVisible('notes')) initNotes();
+    if(isFeatureVisible('graph_view')) initGraphView();
+    if(isFeatureVisible('monitor_log')) initMonitorReport();
+    if(state.currentUserRole==='admin') state.featureFlags = await loadFeatureFlags();
+
+    applyNavGating();
+    startFeatureVisibilityPolling();
 
     msg.textContent='Ready!'; bar.style.width='100%';
     await new Promise(r=>setTimeout(r,300));
@@ -349,6 +396,48 @@ async function initApp(){
     msg.style.color='#f87171';
     console.error('base·bi init error:', err);
   }
+}
+
+// ══════════════════════════════════════════════════
+// NAV GATING — hides topbar/nav elements the current user has no visibility into, and
+// lands on the first tab that's actually allowed (in case 'notes' itself is hidden).
+// Runs once feature visibility + role are known (end of initApp()).
+// ══════════════════════════════════════════════════
+function applyNavGating(){
+  document.getElementById('tabNotes').style.display = isFeatureVisible('notes')?'':'none';
+  document.getElementById('tabCampaigns').style.display = isFeatureVisible('campaign')?'':'none';
+  document.getElementById('tabGraph').style.display = isFeatureVisible('graph_view')?'':'none';
+  document.getElementById('tabTeam').style.display = (isFeatureVisible('teamshared_notes')||isFeatureVisible('checklist'))?'':'none';
+  document.getElementById('teamSubTabNotes').style.display = isFeatureVisible('teamshared_notes')?'':'none';
+  document.getElementById('teamSubTabChecklists').style.display = isFeatureVisible('checklist')?'':'none';
+  document.getElementById('tabAdmin').style.display = state.currentUserRole==='admin'?'':'none';
+  // dailyNoteBtn is otherwise only gated inside switchTab(), which never runs at bootstrap
+  // unless the current tab is disallowed (see fallback below) — without this line the button
+  // is left in its raw, visible-by-default HTML state until the user's first tab switch.
+  document.getElementById('dailyNoteBtn').style.display = (state.currentTab==='notes' && isFeatureVisible('daily_note')) ? '' : 'none';
+
+  if(!isTabAllowed(state.currentTab)){
+    const fallback=['notes','campaigns','graph','team','admin'].find(isTabAllowed);
+    if(fallback) switchTab(fallback);
+  }
+}
+
+// ══════════════════════════════════════════════════
+// FEATURE VISIBILITY POLLING — get_feature_visibility() is resolved once at bootstrap and
+// cached in state.featureVisibility (see feature-flags.js) so nav render / switchTab() don't
+// hit the RPC on every check. But that means an admin's live change (flip a flag, remove a
+// tester) never reaches an already-open session — the tester keeps "active" until they log
+// out and back in. Re-fetching on every render would reintroduce a query-per-click; instead
+// we poll on a bounded interval so a revoked tester loses access within a short, predictable
+// window without needing to log out. 30s is a deliberate tradeoff: frequent enough that "the
+// admin just removed me" resolves quickly, infrequent enough it's not a query storm.
+let featureVisibilityPollTimer=null;
+function startFeatureVisibilityPolling(){
+  if(featureVisibilityPollTimer) return; // idempotent guard — initApp() must not stack intervals
+  featureVisibilityPollTimer=setInterval(async()=>{
+    await loadFeatureVisibility();
+    applyNavGating();
+  },30000);
 }
 
 function initMain(){
@@ -370,6 +459,7 @@ function initMain(){
   document.getElementById('tabCampaigns').onclick=()=>switchTab('campaigns');
   document.getElementById('tabGraph').onclick=()=>switchTab('graph');
   document.getElementById('tabTeam').onclick=()=>switchTab('team');
+  document.getElementById('tabAdmin').onclick=()=>switchTab('admin');
   // Wired here unconditionally (not just inside switchTab()) so #topbarActionBtn's initial-state
   // handler doesn't depend on window.openNoteModal (exposed elsewhere only for notes.js's
   // dynamically-rendered Edit-button template strings, not for this element).
@@ -402,16 +492,15 @@ function initMain(){
   bindGlobalListeners();
 }
 
+// Feature-gated init*() calls (initNotes, initCampaigns, initChecklistTemplates,
+// initChecklistInstances, initChecklistShare, initMonitorReport, initGraphView) moved into
+// initApp() — they must run only after loadFeatureVisibility() resolves, which itself
+// depends on state.currentUserId being set by auth. Wiring calls with no feature gate
+// (folders, daily note, nav shell, admin hub globals) still run unconditionally at bootstrap.
 initUiHelpers();
 initSupabaseClient(initApp);
 initFolders();
-initNotes();
 initDailyNote();
-initCampaigns();
-initChecklistTemplates();
-initChecklistInstances();
-initChecklistShare();
-initMonitorReport();
-initGraphView();
+initAdminHub();
 initMain();
 checkAuthAndInit();
