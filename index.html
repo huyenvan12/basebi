@@ -21,6 +21,7 @@
     <button class="tab-btn" id="tabCampaigns" onclick="switchTab('campaigns')">📊 Campaigns</button>
     <button class="tab-btn" id="tabGraph" onclick="switchTab('graph')">🕸 Graph</button>
     <button class="tab-btn" id="tabTeam" onclick="switchTab('team')">🌐 Team Shared</button>
+    <button class="tab-btn" id="tabAdmin" onclick="switchTab('admin')">🛠 Admin</button>
   </div>
   <div class="search-wrap" id="notesSearchWrap">
     <span class="search-icon">⌕</span>
@@ -317,6 +318,14 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- ADMIN HUB VIEW -->
+  <div class="team-view" id="adminView">
+    <div class="note-list-header">
+      <span class="note-list-title">🛠 Admin Hub — Feature Flags</span>
+    </div>
+    <div class="admin-flag-grid" id="adminFlagGrid"></div>
   </div>
 
 </div>

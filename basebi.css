@@ -493,7 +493,19 @@ pre.popup-code-body{padding:12px;font-family:'JetBrains Mono',monospace;font-siz
 .template-badge-admin{font-size:9px;padding:2px 7px;border-radius:10px;background:var(--tag-bg);color:var(--text-muted);white-space:nowrap;flex-shrink:0}
 .tpl-card-desc{font-size:11px;color:var(--text-muted);line-height:1.4}
 .tpl-card-meta{font-size:10px;color:var(--text-dim)}
-.tpl-card-actions{display:flex;gap:6px;margin-top:4px}
+.tpl-card-actions{display:flex;gap:6px;margin-top:4px;align-items:center}
+
+/* Admin Hub — feature flags grid */
+.admin-flag-grid{flex:1;overflow-y:auto;padding:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;align-content:start}
+.admin-flag-status{font-size:9px;padding:2px 7px;border-radius:10px;white-space:nowrap;flex-shrink:0;font-weight:600}
+.admin-flag-status-off{background:var(--tag-bg);color:var(--text-dim)}
+.admin-flag-status-beta{background:#f59e0b33;color:#f59e0b}
+.admin-flag-status-on{background:#22c55e33;color:#22c55e}
+.admin-flag-testers{margin-top:6px;padding-top:8px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+.admin-flag-testers-list{display:flex;flex-wrap:wrap;gap:6px}
+.admin-flag-tester-chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;background:var(--tag-bg);color:var(--text-muted);padding:2px 4px 2px 8px;border-radius:10px}
+.admin-flag-tester-remove{border:none;background:none;color:var(--text-dim);cursor:pointer;font-size:11px;padding:0 4px}
+.admin-flag-tester-remove:hover{color:#f87171}
 
 /* My Checklists hub */
 .checklist-instance-groups{flex:1;overflow-y:auto;padding:14px}
