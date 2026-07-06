@@ -4,7 +4,7 @@
 // ══════════════════════════════════════════════════
 import { state } from './state.js';
 import { loadTheme, closeGearMenu, closeShortcutsModal, initUiHelpers } from './ui-helpers.js';
-import { sb, initSupabaseClient, loadProfilesMap, loadCurrentUserIsAdmin, renderGearUserInfo, closePasswordModal } from './supabase-client.js';
+import { sb, initSupabaseClient, checkAuthAndInit, loadProfilesMap, loadCurrentUserIsAdmin, renderGearUserInfo, closePasswordModal } from './supabase-client.js';
 import { loadFolders, closeFolderModal, initFolders } from './folders.js';
 import {
   loadNotes, myNotes, buildIndex, renderAll, selectNote, closeNoteModal,
@@ -414,3 +414,4 @@ initChecklistShare();
 initMonitorReport();
 initGraphView();
 initMain();
+checkAuthAndInit();
