@@ -11,8 +11,12 @@ export const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // Also reused by future features (Campaign Log, Admin Hub) that need the same admin gate.
 export async function loadCurrentUserIsAdmin(){
   if(!state.currentUserId) return false;
-  const{data,error}=await sb.from('profiles').select('role,org_id').eq('id',state.currentUserId).single();
-  if(!error&&data) state.currentUserOrgId=data.org_id;
+  const{data,error}=await sb.from('profiles').select('role,org_id,is_qa_seat').eq('id',state.currentUserId).single();
+  if(!error&&data){
+    state.currentUserOrgId=data.org_id;
+    state.currentUserRole=data.role;
+    state.currentUserIsQaSeat=!!data.is_qa_seat;
+  }
   return !error && data && data.role==='admin';
 }
 
