@@ -21,7 +21,15 @@ export async function insertTemplateDB(title,description,items){
 export async function updateTemplateDB(id,title,description,items){
   await sb.from('checklist_templates').update({title,description,items}).eq('id',id);
 }
-export async function deleteTemplateDB(id){ await sb.from('checklist_templates').delete().eq('id',id); }
+export async function deleteTemplateDB(id){
+  const{error}=await sb.from('checklist_templates').delete().eq('id',id);
+  if(error) throw error;
+}
+export async function countInstancesUsingTemplate(id){
+  const{count,error}=await sb.from('checklist_instances').select('id',{count:'exact',head:true}).eq('template_id',id);
+  if(error) return 0;
+  return count||0;
+}
 
 // ══════════════════════════════════════════════════
 // TEMPLATES ADMIN VIEW
@@ -106,15 +114,19 @@ export async function saveTemplate(){
     renderChecklistTemplates();
   }catch(err){alert('Could not save template: '+(err.message||err));}
 }
-export function confirmDeleteTemplate(id){
+export async function confirmDeleteTemplate(id){
   const t=state.checklistTemplates.find(t=>t.id===id);if(!t)return;
+  const inUseCount=await countInstancesUsingTemplate(id);
+  if(inUseCount>0){alert(`Can't delete — ${inUseCount} checklist${inUseCount>1?'s are':' is'} using this template.`);return;}
   if(!confirm(`Delete template "${t.title}"? This cannot be undone.`))return;
   deleteTemplateAction(id);
 }
 export async function deleteTemplateAction(id){
-  await deleteTemplateDB(id);
-  state.checklistTemplates=state.checklistTemplates.filter(t=>t.id!==id);
-  renderChecklistTemplates();
+  try{
+    await deleteTemplateDB(id);
+    state.checklistTemplates=state.checklistTemplates.filter(t=>t.id!==id);
+    renderChecklistTemplates();
+  }catch(err){alert('Could not delete template: '+(err.message||err));}
 }
 
 export function initChecklistTemplates(){
