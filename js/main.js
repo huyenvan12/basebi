@@ -411,6 +411,10 @@ function applyNavGating(){
   document.getElementById('teamSubTabNotes').style.display = isFeatureVisible('teamshared_notes')?'':'none';
   document.getElementById('teamSubTabChecklists').style.display = isFeatureVisible('checklist')?'':'none';
   document.getElementById('tabAdmin').style.display = state.currentUserRole==='admin'?'':'none';
+  // dailyNoteBtn is otherwise only gated inside switchTab(), which never runs at bootstrap
+  // unless the current tab is disallowed (see fallback below) — without this line the button
+  // is left in its raw, visible-by-default HTML state until the user's first tab switch.
+  document.getElementById('dailyNoteBtn').style.display = (state.currentTab==='notes' && isFeatureVisible('daily_note')) ? '' : 'none';
 
   if(!isTabAllowed(state.currentTab)){
     const fallback=['notes','campaigns','graph','team','admin'].find(isTabAllowed);
