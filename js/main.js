@@ -17,11 +17,11 @@ import {
 } from './campaigns.js';
 import { loadChecklistTemplates, renderChecklistTemplates, initChecklistTemplates } from './checklist-templates.js';
 import {
-  loadChecklistInstances, renderMyChecklists, renderChecklistDetail, initChecklistInstances
+  loadChecklistInstances, renderChecklistDetail, initChecklistInstances
 } from './checklist-instances.js';
 import {
   loadChecklistShares, loadSharedWithMeInstances, loadOrgMembers,
-  updateSharedWithMeBadge, renderSharedWithMeList, renderReviewerChecklist, initChecklistShare
+  updateSharedWithMeBadge, renderMyChecklists, renderSharedWithMeList, renderReviewerChecklist, initChecklistShare
 } from './checklist-share.js';
 import { initMonitorReport } from './monitor-report.js';
 import { graphLoadLabelScale, renderGraph, initGraphView } from './graph-view.js';
