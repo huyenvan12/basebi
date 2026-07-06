@@ -9,6 +9,7 @@ export const state = {
   // data layer
   notes: [],
   folders: [...SEED_FOLDERS],
+  folderIds: {},
   campaigns: [],
 
   // notes/nav state

@@ -33,7 +33,7 @@ export async function saveNotes(arr){
   const own = arr.filter(n=>n.owner_id===state.currentUserId);
   if(!own.length) return;
   const rows = own.map(n=>({
-    id:n.id, title:n.title, folder:n.folder, type:n.type,
+    id:n.id, title:n.title, folder:n.folder, folder_id:n.folder_id||null, type:n.type,
     tags:n.tags||[], links:n.links||[], body:n.body||null,
     code:n.code||null, pinned:n.pinned||false,
     created:n.created, modified:n.modified, daily_date:n.daily_date||null,
@@ -42,13 +42,14 @@ export async function saveNotes(arr){
   await sb.from('notes').upsert(rows,{onConflict:'id'});
 }
 export async function saveOneNote(n){
-  await sb.from('notes').upsert({
-    id:n.id, title:n.title, folder:n.folder, type:n.type,
+  const{error}=await sb.from('notes').upsert({
+    id:n.id, title:n.title, folder:n.folder, folder_id:n.folder_id||null, type:n.type,
     tags:n.tags||[], links:n.links||[], body:n.body||null,
     code:n.code||null, pinned:n.pinned||false,
     created:n.created, modified:n.modified, daily_date:n.daily_date||null,
     is_shared:n.is_shared||false
   },{onConflict:'id'});
+  if(error) throw error;
 }
 
 // ══════════════════════════════════════════════════
@@ -629,6 +630,15 @@ export function linkInputKey(e){if(e.key==='Escape')document.getElementById('lin
 export function populateFolderSelect(){
   document.getElementById('f-folder').innerHTML=state.folders.map(f=>`<option value="${esc(f)}">${esc(f)}</option>`).join('');
 }
+export function showTitleError(msg){
+  const el=document.getElementById('f-title-error');
+  el.textContent=msg;el.style.display='';
+}
+export function hideTitleError(){
+  const el=document.getElementById('f-title-error');
+  el.textContent='';el.style.display='none';
+}
+function isUniqueViolation(err){return !!err&&err.code==='23505';}
 export function openNoteModal(id){
   state.editingNoteId=id||null;state.selectedTags=[];state.selectedLinks=[];
   state.noteEditOriginTab=state.currentTab;
@@ -641,6 +651,7 @@ export function openNoteModal(id){
   document.getElementById('tagDropdown').classList.remove('open');
   document.getElementById('linkDropdown').classList.remove('open');
   state.noteIsShared=false;
+  hideTitleError();
   if(id){
     const note=state.notes.find(n=>n.id===id);if(!note)return;
     document.getElementById('f-title').value=note.title;
@@ -709,29 +720,52 @@ export function applyCodeDefaultsToForm(){
     renderTagChips();
   }
 }
-export function saveNote(){
+export async function saveNote(){
   const title=document.getElementById('f-title').value.trim();if(!title){document.getElementById('f-title').focus();return;}
   const type=state.currentNoteType;const now=today();
+  const folderName=document.getElementById('f-folder').value;
+  const folderId=state.folderIds[folderName]||null;
+  hideTitleError();
   if(state.editingNoteId){
     const note=state.notes.find(n=>n.id===state.editingNoteId);if(!note)return;
     const savedId=state.editingNoteId;
-    note.title=title;note.folder=document.getElementById('f-folder').value;
+    const prev={title:note.title,folder:note.folder,folder_id:note.folder_id,type:note.type,tags:note.tags,links:note.links,
+      body:note.body,code:note.code,modified:note.modified,is_shared:note.is_shared};
+    note.title=title;note.folder=folderName;note.folder_id=folderId;
     note.type=type;note.tags=[...state.selectedTags];note.links=[...state.selectedLinks];
     note.body=type==='code'?document.getElementById('f-desc').value.trim():document.getElementById('f-body').value.trim();
     note.code=type==='code'?document.getElementById('f-code').value.trim():null;
     note.modified=now;note.is_shared=state.noteIsShared;
-    saveOneNote(note);buildIndex();closeNoteModal();
+    try{
+      await saveOneNote(note);
+    }catch(err){
+      Object.assign(note,prev);
+      buildIndex();renderAll();selectNote(savedId);
+      if(isUniqueViolation(err)) showTitleError('You already have a note with this title.');
+      else alert('Could not save note: '+(err.message||err));
+      return;
+    }
+    buildIndex();closeNoteModal();
     if(state.noteEditOriginTab==='team'){renderTeamList();renderTeamDetail(note);}
     else{renderAll();selectNote(savedId);}
   }else{
-    const note={id:Date.now(),title,folder:document.getElementById('f-folder').value,type,
+    const note={id:Date.now(),title,folder:folderName,folder_id:folderId,type,
       tags:[...state.selectedTags],links:[...state.selectedLinks],
       body:type==='code'?document.getElementById('f-desc').value.trim():document.getElementById('f-body').value.trim(),
       code:type==='code'?document.getElementById('f-code').value.trim():null,
       is_shared:state.noteIsShared,owner_id:state.currentUserId,
       created:now,modified:now};
     state.notes.unshift(note);
-    saveOneNote(note);buildIndex();closeNoteModal();renderAll();selectNote(note.id);
+    try{
+      await saveOneNote(note);
+    }catch(err){
+      state.notes=state.notes.filter(n=>n.id!==note.id);
+      buildIndex();renderAll();
+      if(isUniqueViolation(err)) showTitleError('You already have a note with this title.');
+      else alert('Could not save note: '+(err.message||err));
+      return;
+    }
+    buildIndex();closeNoteModal();renderAll();selectNote(note.id);
   }
 }
 

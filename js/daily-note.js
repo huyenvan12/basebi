@@ -5,7 +5,7 @@
 // ══════════════════════════════════════════════════
 import { state } from './state.js';
 import { saveOneNote, buildIndex, renderAll, selectNote, renderDetail, focusDailyCapture } from './notes.js';
-import { saveFolders } from './folders.js';
+import { ensureFolder } from './folders.js';
 // Narrow, intentional circular import: main.js is the cross-domain nav router (switchTab)
 // per the plan, and main.js imports this module's initDailyNote() for wiring. Safe because
 // switchTab is only called inside openDailyNote()'s function body, never at module top-level.
@@ -28,13 +28,13 @@ export function fmtDailyTitle(iso){
   const d=new Date(iso+'T00:00:00');
   return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
 }
-export function openDailyNote(){
+export async function openDailyNote(){
   if(state.currentTab!=='notes')switchTab('notes');
   const existing=getTodayNote();
   if(existing){selectNote(existing.id);return;}
-  if(!state.folders.includes('Daily')){state.folders.push('Daily');saveFolders(state.folders);}
+  const dailyFolderId=await ensureFolder('Daily');
   const t=today();
-  const note={id:Date.now(),title:fmtDailyTitle(t),folder:'Daily',type:'plain',
+  const note={id:Date.now(),title:fmtDailyTitle(t),folder:'Daily',folder_id:dailyFolderId,type:'plain',
     tags:[],links:[],body:'',code:null,daily_date:t,
     created:t,modified:t};
   state.notes.unshift(note);
