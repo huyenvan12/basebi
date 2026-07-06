@@ -370,6 +370,10 @@ function initMain(){
   document.getElementById('tabCampaigns').onclick=()=>switchTab('campaigns');
   document.getElementById('tabGraph').onclick=()=>switchTab('graph');
   document.getElementById('tabTeam').onclick=()=>switchTab('team');
+  // Wired here unconditionally (not just inside switchTab()) so #topbarActionBtn's initial-state
+  // handler doesn't depend on window.openNoteModal (exposed elsewhere only for notes.js's
+  // dynamically-rendered Edit-button template strings, not for this element).
+  document.getElementById('topbarActionBtn').onclick=openNoteModal;
   document.getElementById('teamSubTabNotes').onclick=()=>switchTeamSubTab('notes');
   document.getElementById('teamSubTabChecklists').onclick=()=>switchTeamSubTab('checklists');
   document.getElementById('checklistTabTemplates').onclick=()=>switchChecklistSubView('templates');
