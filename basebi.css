@@ -69,9 +69,16 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 .logo{font-size:15px;font-weight:600;color:var(--accent);letter-spacing:-.3px;white-space:nowrap}
 .logo em{color:var(--text-muted);font-style:normal;font-weight:300}
 .search-wrap{flex:1;position:relative;max-width:420px}
-.search-wrap input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 12px 7px 32px;color:var(--text);font-family:inherit;font-size:13px;outline:none;transition:border-color .15s}
+.search-wrap input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 12px 7px 32px;color:var(--text);font-family:inherit;font-size:13px;outline:none;transition:border-color .15s;-webkit-appearance:none;appearance:none}
 .search-wrap input:focus{border-color:var(--accent)}
 .search-wrap input::placeholder{color:var(--text-dim)}
+/* type="search" (used to dodge Chrome's Password Manager autofill heuristic) adds a native
+   WebKit cancel/decoration button by default — suppress it so the field looks identical to
+   the old type="text" version. */
+.search-wrap input::-webkit-search-decoration,
+.search-wrap input::-webkit-search-cancel-button,
+.search-wrap input::-webkit-search-results-button,
+.search-wrap input::-webkit-search-results-decoration{-webkit-appearance:none;appearance:none}
 .search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-dim)}
 .topbar-actions{display:flex;gap:8px;margin-left:auto}
 .btn{padding:6px 12px;border-radius:6px;border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:500;transition:all .15s}
@@ -364,7 +371,11 @@ mark{background:var(--highlight);color:var(--text);border-radius:2px;padding:0 1
 .search-screen{position:fixed;inset:0;background-color:var(--search-bg);background-image:radial-gradient(var(--border) 1px, transparent 1px);background-size:22px 22px;z-index:200;display:none;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:80px}
 .search-screen.open{display:flex}
 .search-screen-bar-wrap{width:100%;max-width:560px;position:relative;margin-bottom:20px}
-.search-screen-input{width:100%;border:2px solid var(--search-border);border-radius:10px;padding:13px 16px 13px 44px;font-size:15px;color:var(--search-text);background:var(--search-card);font-family:'Inter',sans-serif;outline:none;box-shadow:0 0 0 4px rgba(59,111,224,.1),0 2px 8px rgba(0,0,0,.08)}
+.search-screen-input{width:100%;border:2px solid var(--search-border);border-radius:10px;padding:13px 16px 13px 44px;font-size:15px;color:var(--search-text);background:var(--search-card);font-family:'Inter',sans-serif;outline:none;box-shadow:0 0 0 4px rgba(59,111,224,.1),0 2px 8px rgba(0,0,0,.08);-webkit-appearance:none;appearance:none}
+.search-screen-input::-webkit-search-decoration,
+.search-screen-input::-webkit-search-cancel-button,
+.search-screen-input::-webkit-search-results-button,
+.search-screen-input::-webkit-search-results-decoration{-webkit-appearance:none;appearance:none}
 .search-screen-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:17px;color:var(--search-border)}
 .search-screen-results{width:100%;max-width:560px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;max-height:calc(100vh - 220px)}
 .search-result-card{background:var(--search-card);border:1px solid var(--search-card-border);border-radius:8px;padding:10px 14px;cursor:pointer;transition:all .12s}
