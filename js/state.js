@@ -61,6 +61,19 @@ export const state = {
   activeCampId: null, editingCampId: null,
   campAddRowVisible: false,
 
+  // delivery tracker (gantt) state
+  ganttTaskTypes: [], ganttTickets: [], ganttEntries: [],
+  ganttActiveView: 'timeline',                // 'timeline' | 'calendar'
+  ganttTimelineStartDate: null,               // ISO date, defaulted to Monday-of-this-week at first render
+  ganttTimelineWeeks: 6,
+  ganttInactiveExpanded: false,
+  ganttEditingTicketId: null,
+  ganttTaskTypeEditItems: [],                 // working array while Manage Task Types modal is open
+  ganttMonthCursor: null,                     // {year, month}, defaulted to current month at first render
+  ganttCalendarShowInactive: false,
+  ganttDragState: null,                       // {ticketId, anchorDate, currentDate} while a drag-to-fill is in progress
+  ganttPendingEntryWrite: null,               // {ticketId, startDate, endDate, overlaps} staged between type-pick and overlap-confirm
+
   // tab/nav state
   currentTab: 'notes',
 };

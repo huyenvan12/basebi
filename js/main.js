@@ -27,6 +27,10 @@ import { initMonitorReport } from './monitor-report.js';
 import { graphLoadLabelScale, renderGraph, initGraphView } from './graph-view.js';
 import { loadFeatureVisibility, isFeatureVisible } from './feature-flags.js';
 import { loadFeatureFlags, renderAdminHub, initAdminHub } from './admin-hub.js';
+import {
+  loadTaskTypes, loadTickets, loadEntries, switchGanttView, initGanttTracker,
+  closeTicketModal, closeTaskTypeModal, closeOverlapModal, closeTypePicker, closeCalPopover
+} from './gantt-tracker.js';
 
 // ══════════════════════════════════════════════════
 // TAB SWITCHING
@@ -34,7 +38,7 @@ import { loadFeatureFlags, renderAdminHub, initAdminHub } from './admin-hub.js';
 // Maps each tab to the feature_key that must resolve 'active' before entry is allowed.
 // null means the tab has no single flag (team is gated by teamshared_notes OR checklist;
 // admin is gated by role, not a feature flag).
-const TAB_FEATURE_KEY = { notes:'notes', campaigns:'campaign', graph:'graph_view', team:null, admin:null };
+const TAB_FEATURE_KEY = { notes:'notes', campaigns:'campaign', graph:'graph_view', team:null, admin:null, deliveryTracker:'gantt_tracker' };
 
 // Defense-in-depth: blocks entry into a hidden section even if switchTab() is invoked
 // directly (console, stale onclick, etc.) rather than through a nav click.
@@ -53,11 +57,13 @@ export function switchTab(tab){
   document.getElementById('tabGraph').classList.toggle('active', tab==='graph');
   document.getElementById('tabTeam').classList.toggle('active', tab==='team');
   document.getElementById('tabAdmin').classList.toggle('active', tab==='admin');
+  document.getElementById('tabGantt').classList.toggle('active', tab==='deliveryTracker');
   document.getElementById('notesView').classList.toggle('hidden', tab!=='notes');
   document.getElementById('campView').classList.toggle('active', tab==='campaigns');
   document.getElementById('graphView').classList.toggle('active', tab==='graph');
   document.getElementById('teamView').classList.toggle('active', tab==='team');
   document.getElementById('adminView').classList.toggle('active', tab==='admin');
+  document.getElementById('ganttView').classList.toggle('active', tab==='deliveryTracker');
   if(tab!=='team') document.body.classList.remove('reviewer-lock-active');
   document.getElementById('notesSearchWrap').style.display = tab==='notes'?'':'none';
   document.getElementById('dailyNoteBtn').style.display = (tab==='notes'&&isFeatureVisible('daily_note'))?'':'none';
@@ -82,6 +88,10 @@ export function switchTab(tab){
     renderTeamList(); renderTeamSubnav();
   }
   if(tab==='admin') renderAdminHub();
+  if(tab==='deliveryTracker'){
+    document.getElementById('dtManageTypesBtn').style.display=state.currentUserRole==='admin'?'':'none';
+    switchGanttView(state.ganttActiveView);
+  }
 }
 
 // ══════════════════════════════════════════════════
@@ -322,6 +332,7 @@ function bindGlobalListeners(){
       if(document.getElementById('notePopupOverlay').classList.contains('open')){closeNotePopup();return;}
       if(state.searchScreenOpen){closeSearchScreen();return;}
       closeNoteModal();closeFolderModal();closeTagModal();closeExportModal();closePasswordModal();hideInlineCampRow();closeShortcutsModal();closeGearMenu();closeInlineLinkDd();
+      closeTicketModal();closeTaskTypeModal();closeOverlapModal();closeTypePicker();closeCalPopover();
       document.getElementById('tagDropdown').classList.remove('open');
       document.getElementById('linkDropdown').classList.remove('open');
     }
@@ -383,6 +394,13 @@ async function initApp(){
     if(isFeatureVisible('monitor_log')) initMonitorReport();
     if(state.currentUserRole==='admin') state.featureFlags = await loadFeatureFlags();
 
+    if(isFeatureVisible('gantt_tracker')){
+      state.ganttTaskTypes = await loadTaskTypes();
+      state.ganttTickets = await loadTickets();
+      state.ganttEntries = await loadEntries();
+      initGanttTracker();
+    }
+
     applyNavGating();
     startFeatureVisibilityPolling();
 
@@ -411,13 +429,15 @@ function applyNavGating(){
   document.getElementById('teamSubTabNotes').style.display = isFeatureVisible('teamshared_notes')?'':'none';
   document.getElementById('teamSubTabChecklists').style.display = isFeatureVisible('checklist')?'':'none';
   document.getElementById('tabAdmin').style.display = state.currentUserRole==='admin'?'':'none';
+  document.getElementById('tabGantt').style.display = isFeatureVisible('gantt_tracker')?'':'none';
+  document.getElementById('dtManageTypesBtn').style.display = state.currentUserRole==='admin'?'':'none';
   // dailyNoteBtn is otherwise only gated inside switchTab(), which never runs at bootstrap
   // unless the current tab is disallowed (see fallback below) — without this line the button
   // is left in its raw, visible-by-default HTML state until the user's first tab switch.
   document.getElementById('dailyNoteBtn').style.display = (state.currentTab==='notes' && isFeatureVisible('daily_note')) ? '' : 'none';
 
   if(!isTabAllowed(state.currentTab)){
-    const fallback=['notes','campaigns','graph','team','admin'].find(isTabAllowed);
+    const fallback=['notes','campaigns','graph','team','admin','deliveryTracker'].find(isTabAllowed);
     if(fallback) switchTab(fallback);
   }
 }
@@ -460,6 +480,7 @@ function initMain(){
   document.getElementById('tabGraph').onclick=()=>switchTab('graph');
   document.getElementById('tabTeam').onclick=()=>switchTab('team');
   document.getElementById('tabAdmin').onclick=()=>switchTab('admin');
+  document.getElementById('tabGantt').onclick=()=>switchTab('deliveryTracker');
   // Wired here unconditionally (not just inside switchTab()) so #topbarActionBtn's initial-state
   // handler doesn't depend on window.openNoteModal (exposed elsewhere only for notes.js's
   // dynamically-rendered Edit-button template strings, not for this element).
