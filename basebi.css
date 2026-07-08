@@ -822,7 +822,7 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
 .dt-timeline-table thead th{background:var(--surface2);color:var(--text-muted);font-weight:600;padding:5px 8px;position:sticky;top:0;z-index:2}
 .dt-month-th,.dt-week-th{text-align:center;font-size:10px}
 .dt-day-th{text-align:center;font-size:9px;color:var(--text-dim);padding:4px 0!important}
-.dt-sticky-col{position:sticky;background:var(--surface);z-index:3;padding:6px 8px;color:var(--text);overflow:hidden;text-overflow:ellipsis}
+.dt-timeline-table .dt-sticky-col{position:sticky;background:var(--surface);z-index:3;padding:8px 14px;color:var(--text);overflow:hidden;text-overflow:ellipsis;height:30px;vertical-align:middle;box-sizing:border-box}
 thead .dt-sticky-col{z-index:4;background:var(--surface2)}
 .dt-timeline-table td.dt-sticky-col:nth-child(5){box-shadow:2px 0 4px rgba(0,0,0,.25)}
 .dt-note-cell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-muted)}
@@ -839,7 +839,7 @@ thead .dt-sticky-col{z-index:4;background:var(--surface2)}
 .dt-ticket-row.dt-flash{animation:dt-flash-anim 1.5s ease-out}
 @keyframes dt-flash-anim{0%{background:var(--accent-dim)}100%{background:transparent}}
 
-.dt-status-cell{display:flex;justify-content:center}
+.dt-timeline-table .dt-status-cell{display:flex;align-items:center;justify-content:center;padding:8px 14px}
 .dt-status-badge{font-size:9px;padding:2px 7px;border-radius:10px;font-weight:600;white-space:nowrap}
 .dt-status-NotStarted{background:var(--tag-bg);color:var(--text-muted)}
 .dt-status-InProgress{background:var(--accent-dim);color:var(--accent)}
@@ -862,13 +862,16 @@ thead .dt-sticky-col{z-index:4;background:var(--surface2)}
 .dt-tasktype-row{display:flex;gap:8px;align-items:center;margin-bottom:6px}
 .dt-color-input{width:34px;height:28px;padding:0;border:1px solid var(--border);border-radius:4px;background:none;cursor:pointer}
 
-/* CALENDAR — CALENDAR_COL_WIDTH in js/gantt-tracker.js must match this width. */
-.dt-calendar-grid{flex:1;overflow-y:auto;border:1px solid var(--border);border-radius:6px}
-.dt-cal-week-row{position:relative;border-bottom:1px solid var(--border)}
-.dt-cal-day-labels{display:flex}
-.dt-cal-day-label{padding:4px 6px;font-size:10px;color:var(--text-muted);border-right:1px solid var(--border)}
+/* CALENDAR — CALENDAR_COL_WIDTH/CAL_ROW_HEIGHT in js/gantt-tracker.js must match these values.
+   Fixed width (5 x column width) + margin:auto keeps the grid from stretching to fill the pane
+   and centers it; fixed row height (matching column width) makes each day read as a square;
+   removing flex-grow on the outer container stops it from expanding into unused vertical space. */
+.dt-calendar-grid{width:702px;max-width:100%;margin:10px auto 0;overflow:auto;border:1px solid var(--border);border-radius:6px;flex-shrink:0}
+.dt-cal-week-row{position:relative;display:flex;flex-direction:column;height:140px;border-bottom:1px solid var(--border)}
+.dt-cal-day-labels{display:flex;flex-shrink:0}
+.dt-cal-day-label{padding:4px 6px;font-size:10px;color:var(--text-muted);border-right:1px solid var(--border);box-sizing:border-box}
 .dt-cal-day-muted{color:var(--text-dim)}
-.dt-cal-bars-layer{position:relative}
+.dt-cal-bars-layer{position:relative;flex:1;overflow:hidden}
 .dt-cal-bar{position:absolute;height:18px;line-height:18px;border-radius:3px;color:#fff;font-size:10px;font-weight:600;padding:0 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;text-shadow:0 1px 1px rgba(0,0,0,.3)}
 .dt-cal-overflow-chip{position:absolute;font-size:9px;color:var(--text-dim);cursor:pointer;padding:1px 6px}
 .dt-cal-overflow-chip:hover{color:var(--accent)}

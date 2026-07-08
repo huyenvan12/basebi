@@ -648,7 +648,7 @@ export function renderCalendarGrid(){
     }).join('');
     return `<div class="dt-cal-week-row">
       <div class="dt-cal-day-labels">${dayLabels}</div>
-      <div class="dt-cal-bars-layer" style="height:${CAL_MAX_LANES*22+16}px">${bars}${overflowChips}</div>
+      <div class="dt-cal-bars-layer">${bars}${overflowChips}</div>
     </div>`;
   }).join('');
 }
