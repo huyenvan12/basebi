@@ -798,4 +798,78 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
 .graph-link-item{font-size:12px;color:var(--accent);cursor:pointer;padding:4px 0}
 .graph-link-item:hover{text-decoration:underline}
 .graph-open-btn{margin-top:auto;padding:8px;text-align:center;background:var(--accent);color:#fff;font-size:12px;font-weight:500;border:none;border-radius:6px;cursor:pointer;font-family:inherit}
+
+/* ══════════════════════════════════════════════════
+   DELIVERY TRACKER
+   ══════════════════════════════════════════════════ */
+.dt-view-switcher{display:flex;gap:2px;padding:8px 14px 0;flex-shrink:0}
+.dt-subtab{padding:6px 14px;font-size:11px;font-weight:500;cursor:pointer;color:var(--text-muted);background:var(--surface);border:1px solid var(--border);border-bottom:none;border-radius:6px 6px 0 0;font-family:inherit}
+.dt-subtab.active{background:var(--accent-dim);color:var(--accent)}
+.dt-subview{display:none;flex-direction:column;flex:1;overflow:hidden;padding:0 14px 14px}
+.dt-subview.active{display:flex}
+
+.dt-controls-row{display:flex;align-items:center;gap:8px;padding:10px 0;flex-shrink:0;flex-wrap:wrap}
+.dt-legend-row{display:grid;grid-template-columns:repeat(5,1fr);gap:6px 16px;padding:10px 12px;margin-top:10px;flex-shrink:0;border:1px solid var(--border);border-radius:6px}
+.dt-legend-chip{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text-muted);min-width:0}
+.dt-legend-chip>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dt-legend-swatch{width:10px;height:10px;border-radius:3px;display:inline-block;flex-shrink:0}
+
+/* TIMELINE — sticky columns share pixel values with js/gantt-tracker.js's
+   TIMELINE_COL_WIDTHS/TIMELINE_COL_LEFT constants; change both together. */
+.dt-timeline-wrap{flex:1;overflow:auto;border:1px solid var(--border);border-radius:6px;position:relative}
+.dt-timeline-table{border-collapse:separate;border-spacing:0;font-size:11px;white-space:nowrap;table-layout:fixed}
+.dt-timeline-table th,.dt-timeline-table td{border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:0;box-sizing:border-box}
+.dt-timeline-table thead th{background:var(--surface2);color:var(--text-muted);font-weight:600;padding:5px 8px;position:sticky;top:0;z-index:2}
+.dt-month-th,.dt-week-th{text-align:center;font-size:10px}
+.dt-day-th{text-align:center;font-size:9px;color:var(--text-dim);padding:4px 0!important}
+.dt-sticky-col{position:sticky;background:var(--surface);z-index:3;padding:6px 8px;color:var(--text);overflow:hidden;text-overflow:ellipsis}
+thead .dt-sticky-col{z-index:4;background:var(--surface2)}
+.dt-timeline-table td.dt-sticky-col:nth-child(5){box-shadow:2px 0 4px rgba(0,0,0,.25)}
+.dt-note-cell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-muted)}
+.dt-ticket-swatch{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.dt-ticket-edit-btn{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:11px;padding:0 2px;float:right}
+.dt-ticket-edit-btn:hover{color:var(--accent)}
+.dt-day-cell{width:36px;height:30px;cursor:pointer;text-align:center;user-select:none}
+.dt-day-cell:hover{outline:1px solid var(--accent) inset}
+.dt-day-cell.dt-day-selecting{background:var(--accent-dim)!important}
+.dt-day-code{font-size:8px;font-weight:700;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.4)}
+.dt-inactive-divider{cursor:pointer;background:var(--surface2)}
+.dt-inactive-divider td{padding:6px 10px!important;color:var(--text-dim);font-size:10px;font-weight:600}
+.dt-inactive-divider:hover td{color:var(--text-muted)}
+.dt-ticket-row.dt-flash{animation:dt-flash-anim 1.5s ease-out}
+@keyframes dt-flash-anim{0%{background:var(--accent-dim)}100%{background:transparent}}
+
+.dt-status-cell{display:flex;justify-content:center}
+.dt-status-badge{font-size:9px;padding:2px 7px;border-radius:10px;font-weight:600;white-space:nowrap}
+.dt-status-NotStarted{background:var(--tag-bg);color:var(--text-muted)}
+.dt-status-InProgress{background:var(--accent-dim);color:var(--accent)}
+.dt-status-Delayed{background:var(--danger-dim);color:var(--danger)}
+.dt-status-Done{background:rgba(74,222,128,.15);color:var(--success)}
+.dt-status-Cancelled{background:var(--tag-bg);color:var(--text-dim)}
+
+/* TYPE-PICKER + CALENDAR POPOVERS — positioned via JS (left/top set inline) */
+.dt-type-picker-popover,.dt-cal-popover{position:fixed;z-index:100;background:var(--surface2);border:1px solid var(--border);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.35);padding:6px;font-size:11px;max-width:260px}
+.dt-type-picker-row{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:4px;cursor:pointer;color:var(--text)}
+.dt-type-picker-row:hover{background:var(--accent-dim);color:var(--accent)}
+.dt-popover-title{font-weight:600;color:var(--text);margin-bottom:6px;font-size:12px}
+.dt-cal-popover>div{padding:2px 4px;color:var(--text-muted)}
+.dt-popover-ticket-row{display:flex;align-items:center;gap:7px;padding:4px;border-radius:4px;cursor:pointer}
+.dt-popover-ticket-row:hover{background:var(--accent-dim)}
+
+.dt-overlap-item{font-size:11px;color:var(--text-muted);padding:4px 0;border-bottom:1px solid var(--border)}
+.dt-overlap-item:last-child{border-bottom:none}
+
+.dt-tasktype-row{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.dt-color-input{width:34px;height:28px;padding:0;border:1px solid var(--border);border-radius:4px;background:none;cursor:pointer}
+
+/* CALENDAR — CALENDAR_COL_WIDTH in js/gantt-tracker.js must match this width. */
+.dt-calendar-grid{flex:1;overflow-y:auto;border:1px solid var(--border);border-radius:6px}
+.dt-cal-week-row{position:relative;border-bottom:1px solid var(--border)}
+.dt-cal-day-labels{display:flex}
+.dt-cal-day-label{padding:4px 6px;font-size:10px;color:var(--text-muted);border-right:1px solid var(--border)}
+.dt-cal-day-muted{color:var(--text-dim)}
+.dt-cal-bars-layer{position:relative}
+.dt-cal-bar{position:absolute;height:18px;line-height:18px;border-radius:3px;color:#fff;font-size:10px;font-weight:600;padding:0 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;text-shadow:0 1px 1px rgba(0,0,0,.3)}
+.dt-cal-overflow-chip{position:absolute;font-size:9px;color:var(--text-dim);cursor:pointer;padding:1px 6px}
+.dt-cal-overflow-chip:hover{color:var(--accent)}
 .graph-open-btn:hover{opacity:.9}

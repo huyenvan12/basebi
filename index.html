@@ -22,6 +22,7 @@
     <button class="tab-btn" id="tabGraph" onclick="switchTab('graph')">🕸 Graph</button>
     <button class="tab-btn" id="tabTeam" onclick="switchTab('team')">🌐 Team Shared</button>
     <button class="tab-btn" id="tabAdmin" onclick="switchTab('admin')">🛠 Admin</button>
+    <button class="tab-btn" id="tabGantt" onclick="switchTab('deliveryTracker')">🚀 Delivery Tracker</button>
   </div>
   <div class="search-wrap" id="notesSearchWrap">
     <span class="search-icon">⌕</span>
@@ -328,6 +329,44 @@
     <div class="admin-flag-grid" id="adminFlagGrid"></div>
   </div>
 
+  <!-- DELIVERY TRACKER VIEW -->
+  <div class="team-view" id="ganttView">
+    <div class="dt-view-switcher">
+      <button class="dt-subtab active" id="dtSubTabTimeline" onclick="switchGanttView('timeline')">Timeline</button>
+      <button class="dt-subtab" id="dtSubTabCalendar" onclick="switchGanttView('calendar')">Calendar</button>
+    </div>
+
+    <!-- TIMELINE SUB-VIEW -->
+    <div class="dt-subview active" id="dtTimelineSubview">
+      <div class="dt-legend-row" id="dtLegendRow"></div>
+      <div class="dt-controls-row">
+        <input type="date" class="form-input" id="dtStartDate" style="width:140px">
+        <input type="number" class="form-input" id="dtWeeksInput" min="1" max="12" value="6" style="width:60px">
+        <button class="btn btn-ghost" id="dtPrevWeekBtn">‹ Prev week</button>
+        <button class="btn btn-ghost" id="dtNextWeekBtn">Next week ›</button>
+        <button class="btn btn-primary" id="dtAddTicketBtn">+ Add ticket</button>
+        <button class="btn btn-ghost" id="dtManageTypesBtn" style="display:none">⚙ Manage Task Types</button>
+      </div>
+      <div class="dt-timeline-wrap" id="dtTimelineWrap">
+        <table class="dt-timeline-table" id="dtTimelineTable">
+          <thead id="dtTimelineHead"></thead>
+          <tbody id="dtTimelineBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CALENDAR SUB-VIEW -->
+    <div class="dt-subview" id="dtCalendarSubview">
+      <div class="dt-controls-row">
+        <button class="btn btn-ghost" id="dtCalPrevBtn">‹ Prev</button>
+        <span id="dtCalMonthLabel"></span>
+        <button class="btn btn-ghost" id="dtCalNextBtn">Next ›</button>
+        <label class="checkbox-row"><input type="checkbox" id="dtCalShowInactive"> Show Inactive tickets</label>
+      </div>
+      <div class="dt-calendar-grid" id="dtCalendarGrid"></div>
+    </div>
+  </div>
+
 </div>
 
 <!-- FLOATING ACTION BUTTON -->
@@ -621,6 +660,88 @@
     </div>
   </div>
 </div>
+
+<!-- DELIVERY TICKET MODAL (add/edit) -->
+<div class="modal-overlay" id="dtTicketModalOverlay">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="dtTicketModalTitle">Add ticket</span>
+      <button class="modal-close" onclick="closeTicketModal()">×</button>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Project name *</label>
+      <input class="form-input" id="dt-project" placeholder="e.g. Q3 Loyalty Campaign">
+    </div>
+    <div class="form-row">
+      <label class="form-label">Jira key</label>
+      <input class="form-input" id="dt-jira-key" placeholder="e.g. MKT-1234">
+    </div>
+    <div class="form-row">
+      <label class="form-label">Jira URL</label>
+      <input class="form-input" id="dt-jira-url" placeholder="https://…">
+    </div>
+    <div class="form-row">
+      <label class="form-label">Mon. scope</label>
+      <input class="form-input" id="dt-scope" placeholder="Monitoring scope…">
+    </div>
+    <div class="form-row">
+      <label class="form-label">Status</label>
+      <select class="form-input" id="dt-status">
+        <option>Not Started</option>
+        <option>In Progress</option>
+        <option>Delayed</option>
+        <option>Done</option>
+        <option>Cancelled</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Note</label>
+      <textarea class="form-input" id="dt-note" style="min-height:60px" placeholder="Notes…"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="dtTicketDeleteBtn" style="display:none;margin-right:auto" onclick="deleteTicket()">Delete</button>
+      <button class="btn btn-ghost" onclick="closeTicketModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTicket()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- MANAGE TASK TYPES MODAL (admin only) -->
+<div class="modal-overlay" id="dtTaskTypeModalOverlay">
+  <div class="modal">
+    <div class="modal-title">
+      <span>Manage Task Types</span>
+      <button class="modal-close" onclick="closeTaskTypeModal()">×</button>
+    </div>
+    <div id="dtTaskTypeEditor"></div>
+    <button type="button" class="btn btn-ghost" style="align-self:flex-start;font-size:11px" onclick="addTaskTypeRow()">+ Add type</button>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeTaskTypeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTaskTypes()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAP CONFIRM MODAL -->
+<div class="modal-overlay" id="dtOverlapModalOverlay">
+  <div class="modal modal-sm">
+    <div class="modal-title">
+      <span>Replace existing entries?</span>
+      <button class="modal-close" onclick="closeOverlapModal()">×</button>
+    </div>
+    <div id="dtOverlapList"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeOverlapModal()">Cancel</button>
+      <button class="btn btn-danger" id="dtOverlapConfirmBtn">Replace</button>
+    </div>
+  </div>
+</div>
+
+<!-- TYPE-PICKER POPOVER (positioned via JS) -->
+<div class="dt-type-picker-popover" id="dtTypePickerPopover" style="display:none"></div>
+
+<!-- CALENDAR TICKET / OVERFLOW POPOVER (shared, positioned via JS) -->
+<div class="dt-cal-popover" id="dtCalPopover" style="display:none"></div>
 
 <script type="module" src="js/main.js"></script>
 </body>
