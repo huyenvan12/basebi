@@ -444,20 +444,25 @@ function highlightRange(ticketId,start,end){
     if(d>=lo&&d<=hi) el.classList.add('dt-day-selecting');
   });
 }
-export function handleDayMouseDown(e){
+// Drag-to-fill uses Pointer Events (not mouse events) deliberately. mouseover-based delegation
+// is unreliable mid-drag in real browsers: once a mousedown starts inside a <td>, the browser's
+// native cell/text-selection machinery can take over hit-testing for the remainder of the
+// gesture, so 'mouseover' silently stops firing on cells the pointer passes over until
+// mouseup — even with preventDefault() on mousedown, this is inconsistent across
+// browsers/input devices (trackpads especially). Pointer Events + explicit
+// document.elementFromPoint() on every 'pointermove' sidesteps that entirely — we're directly
+// querying what's under the pointer instead of relying on the browser to tell us via bubbling.
+export function handleDayPointerDown(e){
   const cell=e.target.closest('.dt-day-cell');
   if(!cell) return;
-  // Without this, real (non-synthetic) mouse drags across table cells can trigger the
-  // browser's native text-selection/drag behavior, which swallows the mouseover/mouseup
-  // sequence the drag-to-fill state machine relies on — so the range picker/"Clear
-  // assignment" flow silently never fires.
   e.preventDefault();
   state.ganttDragState={ticketId:cell.getAttribute('data-ticket-id'),anchorDate:cell.getAttribute('data-date'),currentDate:cell.getAttribute('data-date')};
   highlightRange(state.ganttDragState.ticketId,state.ganttDragState.anchorDate,state.ganttDragState.currentDate);
 }
-export function handleDayMouseOver(e){
+export function handleDayPointerMove(e){
   if(!state.ganttDragState) return;
-  const cell=e.target.closest('.dt-day-cell');
+  const el=document.elementFromPoint(e.clientX,e.clientY);
+  const cell=el&&el.closest('.dt-day-cell');
   if(!cell) return;
   if(cell.getAttribute('data-ticket-id')!==state.ganttDragState.ticketId) return;
   state.ganttDragState.currentDate=cell.getAttribute('data-date');
@@ -466,12 +471,13 @@ export function handleDayMouseOver(e){
 function findEntryAtCell(ticketId,dateStr){
   return state.ganttEntries.find(e=>e.ticket_id===ticketId&&dateStr>=e.start_date&&dateStr<=e.end_date);
 }
-export function handleDayMouseUp(e){
+export function handleDayPointerUp(e){
   const drag=state.ganttDragState;
   state.ganttDragState=null;
   clearDayHighlight();
   if(!drag) return;
-  const cell=e.target.closest('.dt-day-cell');
+  const el=document.elementFromPoint(e.clientX,e.clientY);
+  const cell=(el&&el.closest('.dt-day-cell'))||e.target.closest('.dt-day-cell');
   if(!cell){ return; } // released outside a day cell — cancel with no popover
   // plain click (no drag movement) on an already-assigned cell — open the lighter-weight
   // "Change type / Remove" popover scoped to that entry's own range, instead of the
@@ -1015,9 +1021,9 @@ export function initGanttTracker(){
   // drag-to-fill: mousedown/mouseup delegated on the table, mouseover delegated (native
   // mouseenter doesn't bubble) for live range highlighting during drag
   const wrap=document.getElementById('dtTimelineWrap');
-  wrap.addEventListener('mousedown',handleDayMouseDown);
-  wrap.addEventListener('mouseover',handleDayMouseOver);
-  document.addEventListener('mouseup',handleDayMouseUp);
+  wrap.addEventListener('pointerdown',handleDayPointerDown);
+  document.addEventListener('pointermove',handleDayPointerMove);
+  document.addEventListener('pointerup',handleDayPointerUp);
 
   // sticky-column resize handles — delegated on the header since header rows are re-rendered
   // on every renderTimelineHeader() call, so per-element listeners would be lost each time
