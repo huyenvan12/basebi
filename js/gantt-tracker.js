@@ -471,6 +471,25 @@ export function handleDayPointerMove(e){
 function findEntryAtCell(ticketId,dateStr){
   return state.ganttEntries.find(e=>e.ticket_id===ticketId&&dateStr>=e.start_date&&dateStr<=e.end_date);
 }
+// Guards the type-picker/manage-popover against a same-gesture close: when a drag's
+// pointerdown and pointerup land on different cells, the browser still synthesizes a
+// trailing native 'click' event, targeted at the nearest common ancestor of the two cells
+// (e.g. the <tr>) rather than either .dt-day-cell — so the outside-click-to-dismiss listener
+// (which only allow-lists clicks inside '.dt-day-cell'/'#dtTypePickerPopover') doesn't
+// recognize it as "inside" and immediately closes the popover we just opened, in the same
+// event-loop tick. We set this flag right before opening the popover and consume it (skip
+// exactly one close) in the document click listener; a queued microtask/timeout clears it
+// afterward as a safety net in case the trailing click never arrives.
+let suppressNextOutsideClick=false;
+export function armPopoverOpenGuard(){
+  suppressNextOutsideClick=true;
+  setTimeout(()=>{suppressNextOutsideClick=false;},0);
+}
+export function consumeOutsideClickSuppression(){
+  if(!suppressNextOutsideClick) return false;
+  suppressNextOutsideClick=false;
+  return true;
+}
 export function handleDayPointerUp(e){
   const drag=state.ganttDragState;
   state.ganttDragState=null;
@@ -479,6 +498,7 @@ export function handleDayPointerUp(e){
   const el=document.elementFromPoint(e.clientX,e.clientY);
   const cell=(el&&el.closest('.dt-day-cell'))||e.target.closest('.dt-day-cell');
   if(!cell){ return; } // released outside a day cell — cancel with no popover
+  armPopoverOpenGuard();
   // plain click (no drag movement) on an already-assigned cell — open the lighter-weight
   // "Change type / Remove" popover scoped to that entry's own range, instead of the
   // assign-a-new-range flow. Dragging (even a 1-day drag onto empty space) keeps old behavior.
@@ -1034,6 +1054,12 @@ export function initGanttTracker(){
   });
 
   document.addEventListener('click',e=>{
+    // A drag whose pointerdown/pointerup land on different .dt-day-cells still produces a
+    // trailing native 'click', targeted at their common ancestor (e.g. the <tr>) rather than
+    // either cell — which would otherwise look like an "outside" click on the very same
+    // gesture that just opened the popover and close it before it's ever seen. See
+    // armPopoverOpenGuard()/consumeOutsideClickSuppression() above.
+    if(consumeOutsideClickSuppression()) return;
     if(!e.target.closest('#dtTypePickerPopover')&&!e.target.closest('.dt-day-cell')) closeTypePicker();
     if(!e.target.closest('#dtCalPopover')&&!e.target.closest('.dt-cal-bar')&&!e.target.closest('.dt-cal-overflow-chip')) closeCalPopover();
   });
