@@ -833,7 +833,7 @@ thead .dt-sticky-col{z-index:4;background:var(--surface2)}
    colors underneath (task-type fills, header styling) are never washed out. */
 .dt-timeline-table thead th.dt-week-th-today,.dt-timeline-table thead th.dt-day-th-today{box-shadow:inset 0 0 0 2px var(--amber);color:var(--amber);font-weight:700}
 .dt-day-cell.dt-day-cell-today{border-left:1px solid var(--amber);border-right:1px solid var(--amber)}
-.dt-cal-today-badge{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--accent);color:#fff;font-weight:700}
+.dt-cal-today-badge{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:transparent;border:2px solid var(--amber);color:var(--amber);font-weight:700}
 .dt-ticket-swatch{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
 .dt-ticket-edit-btn{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:11px;padding:0 2px;float:right}
 .dt-ticket-edit-btn:hover{color:var(--accent)}
