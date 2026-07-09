@@ -166,6 +166,12 @@ export function buildCalendarWeeks(year,month){
 export function weekdayIndexInRow(dateStr,weekRow){
   return weekRow.days.indexOf(dateStr);
 }
+// next business day after dateStr — Friday rolls to the following Monday, matching the
+// weekend-skip already used by walkWeekdayColumns (cur=addDays(cur,2) after 5 weekdays)
+export function nextBusinessDay(dateStr){
+  const dow=parseISO(dateStr).getDay();
+  return addDays(dateStr,dow===5?3:1);
+}
 export function countWeekdaysInclusive(startDateStr,endDateStr){
   let count=0,cur=startDateStr;
   while(cur<=endDateStr){
@@ -190,12 +196,89 @@ export function ticketColor(ticket){
 }
 
 // ══════════════════════════════════════════════════
-// TIMELINE — shared width/offset constants (single source of truth; both header-row and
-// body-row generators read exclusively from these, no pixel value hardcoded a second time).
+// TIMELINE — user-resizable sticky columns. ganttColumnWidths is the single source of truth
+// for widths (persisted to localStorage); left offsets are always DERIVED from it as a live
+// cumulative sum (never stored/hardcoded) so header and body cells can never drift out of sync.
 // ══════════════════════════════════════════════════
-const TIMELINE_COL_WIDTHS={project:170,jira:110,scope:90,status:118,note:160};
-const TIMELINE_COL_LEFT={project:0,jira:170,scope:280,status:370,note:488};
+const TIMELINE_COL_ORDER=['project','jira','scope','status','note'];
+const TIMELINE_COL_DEFAULTS={project:170,jira:110,scope:90,status:118,note:160};
+const TIMELINE_COL_MIN={project:100,jira:60,scope:60,status:60,note:100};
+const TIMELINE_COL_MAX=400;
+const TIMELINE_COL_STORAGE_KEY='gantt-timeline-column-widths';
 const TIMELINE_DAY_COL_WIDTH=36;
+
+function loadColumnWidths(){
+  try{
+    const raw=localStorage.getItem(TIMELINE_COL_STORAGE_KEY);
+    if(raw){
+      const parsed=JSON.parse(raw);
+      const out={...TIMELINE_COL_DEFAULTS};
+      TIMELINE_COL_ORDER.forEach(k=>{ if(typeof parsed[k]==='number') out[k]=parsed[k]; });
+      return out;
+    }
+  }catch(e){/* ignore malformed/unavailable localStorage, fall back to defaults */}
+  return {...TIMELINE_COL_DEFAULTS};
+}
+let ganttColumnWidths=loadColumnWidths();
+function saveColumnWidths(){
+  try{ localStorage.setItem(TIMELINE_COL_STORAGE_KEY,JSON.stringify(ganttColumnWidths)); }catch(e){/* ignore */}
+}
+// left offset of a sticky column = live cumulative sum of all preceding columns' CURRENT widths
+function timelineColLeft(key){
+  let left=0;
+  for(const k of TIMELINE_COL_ORDER){
+    if(k===key) return left;
+    left+=ganttColumnWidths[k];
+  }
+  return left;
+}
+// Re-applies widths/offsets to already-rendered header+body cells without a full re-render,
+// so drag-move stays smooth. Header and body read the exact same ganttColumnWidths/timelineColLeft,
+// so they can never show a stale/mismatched state mid-drag.
+function applyColumnLayout(){
+  let cum=0;
+  TIMELINE_COL_ORDER.forEach(k=>{
+    const w=ganttColumnWidths[k];
+    document.querySelectorAll(`.dt-sticky-col[data-col="${k}"]`).forEach(el=>{
+      el.style.width=w+'px';
+      el.style.left=cum+'px';
+    });
+    cum+=w;
+  });
+  const table=document.getElementById('dtTimelineTable');
+  if(!table) return;
+  const colgroup=table.querySelector('colgroup');
+  if(colgroup){
+    TIMELINE_COL_ORDER.forEach((k,i)=>{
+      const col=colgroup.children[i];
+      if(col) col.style.width=ganttColumnWidths[k]+'px';
+    });
+    let total=0;
+    Array.from(colgroup.children).forEach(col=>{ total+=parseFloat(col.style.width)||0; });
+    table.style.width=total+'px';
+  }
+}
+function startColumnResize(e,key){
+  e.preventDefault();
+  e.stopPropagation();
+  const startX=e.clientX;
+  const startWidth=ganttColumnWidths[key];
+  const min=TIMELINE_COL_MIN[key]||60;
+  function onMove(ev){
+    const dx=ev.clientX-startX;
+    let w=startWidth+dx;
+    w=Math.max(min,Math.min(TIMELINE_COL_MAX,w));
+    ganttColumnWidths[key]=w;
+    applyColumnLayout();
+  }
+  function onUp(){
+    document.removeEventListener('mousemove',onMove);
+    document.removeEventListener('mouseup',onUp);
+    saveColumnWidths();
+  }
+  document.addEventListener('mousemove',onMove);
+  document.addEventListener('mouseup',onUp);
+}
 
 function isTicketActive(t){ return !INACTIVE_STATUSES.includes(t.status); }
 
@@ -215,13 +298,13 @@ function renderTimelineColgroup(dayCount){
   if(!table) return;
   let colgroup=table.querySelector('colgroup');
   if(!colgroup){colgroup=document.createElement('colgroup');table.insertBefore(colgroup,table.firstChild);}
-  const stickyCols=Object.keys(TIMELINE_COL_WIDTHS).map(k=>`<col style="width:${TIMELINE_COL_WIDTHS[k]}px">`).join('');
+  const stickyCols=TIMELINE_COL_ORDER.map(k=>`<col style="width:${ganttColumnWidths[k]}px">`).join('');
   const dayCols=Array.from({length:dayCount},()=>`<col style="width:${TIMELINE_DAY_COL_WIDTH}px">`).join('');
   colgroup.innerHTML=stickyCols+dayCols;
   // table-layout:fixed with width:auto still shrinks the table to fit its scrollable
   // container instead of honoring the colgroup — pin the table's own width to the sum of
   // declared column widths so .dt-timeline-wrap's overflow:auto scrolls instead of squeezing.
-  const stickyTotal=Object.values(TIMELINE_COL_WIDTHS).reduce((a,b)=>a+b,0);
+  const stickyTotal=TIMELINE_COL_ORDER.reduce((a,k)=>a+ganttColumnWidths[k],0);
   table.style.width=(stickyTotal+dayCount*TIMELINE_DAY_COL_WIDTH)+'px';
 }
 
@@ -234,7 +317,7 @@ export function renderTimelineHeader(){
 
   renderTimelineColgroup(cols.length);
 
-  const stickyTh=(key,label)=>`<th class="dt-sticky-col" style="left:${TIMELINE_COL_LEFT[key]}px" rowspan="3">${esc(label)}</th>`;
+  const stickyTh=(key,label)=>`<th class="dt-sticky-col" data-col="${key}" style="left:${timelineColLeft(key)}px;width:${ganttColumnWidths[key]}px" rowspan="3">${esc(label)}<span class="dt-col-resize-handle" data-col="${key}" title="Drag to resize"></span></th>`;
 
   const monthRow=`<tr>${stickyTh('project','Project')}${stickyTh('jira','Jira')}${stickyTh('scope','Mon. Scope')}${stickyTh('status','Status')}${stickyTh('note','Note')}${
     monthGroups.map(mg=>`<th colspan="${mg.weekGroups.reduce((n,wg)=>n+wg.cols.length,0)}" class="dt-month-th">${esc(mg.monthLabel)}</th>`).join('')
@@ -269,14 +352,14 @@ function renderTicketRow(ticket,cols){
     : esc(ticket.jira_key||'');
 
   return `<tr class="dt-ticket-row" data-ticket-id="${esc(ticket.id)}">
-    <td class="dt-sticky-col" style="width:${TIMELINE_COL_WIDTHS.project}px;left:${TIMELINE_COL_LEFT.project}px">
+    <td class="dt-sticky-col" data-col="project" style="width:${ganttColumnWidths.project}px;left:${timelineColLeft('project')}px" title="${esc(ticket.project_name)}">
       <span class="dt-ticket-swatch" style="background:${color}"></span>${esc(ticket.project_name)}
       <button class="dt-ticket-edit-btn" onclick="openTicketModal('${escJs(ticket.id)}')" title="Edit ticket">✎</button>
     </td>
-    <td class="dt-sticky-col" style="width:${TIMELINE_COL_WIDTHS.jira}px;left:${TIMELINE_COL_LEFT.jira}px">${jiraCell}</td>
-    <td class="dt-sticky-col" style="width:${TIMELINE_COL_WIDTHS.scope}px;left:${TIMELINE_COL_LEFT.scope}px">${esc(ticket.mon_scope||'')}</td>
-    <td class="dt-sticky-col dt-status-cell" style="width:${TIMELINE_COL_WIDTHS.status}px;left:${TIMELINE_COL_LEFT.status}px"><span class="dt-status-badge dt-status-${esc(ticket.status.replace(/\s+/g,''))}">${esc(ticket.status)}</span></td>
-    <td class="dt-sticky-col dt-note-cell" style="width:${TIMELINE_COL_WIDTHS.note}px;left:${TIMELINE_COL_LEFT.note}px" title="${esc(ticket.note||'')}">${esc(ticket.note||'')}</td>
+    <td class="dt-sticky-col" data-col="jira" style="width:${ganttColumnWidths.jira}px;left:${timelineColLeft('jira')}px" title="${esc(ticket.jira_key||'')}">${jiraCell}</td>
+    <td class="dt-sticky-col" data-col="scope" style="width:${ganttColumnWidths.scope}px;left:${timelineColLeft('scope')}px" title="${esc(ticket.mon_scope||'')}">${esc(ticket.mon_scope||'')}</td>
+    <td class="dt-sticky-col dt-status-cell" data-col="status" style="width:${ganttColumnWidths.status}px;left:${timelineColLeft('status')}px"><span class="dt-status-badge dt-status-${esc(ticket.status.replace(/\s+/g,''))}">${esc(ticket.status)}</span></td>
+    <td class="dt-sticky-col dt-note-cell" data-col="note" style="width:${ganttColumnWidths.note}px;left:${timelineColLeft('note')}px" title="${esc(ticket.note||'')}">${esc(ticket.note||'')}</td>
     ${dayCells}
   </tr>`;
 }
@@ -553,6 +636,9 @@ export async function saveTaskTypes(){
 const CALENDAR_COL_WIDTH=140;
 const CAL_MAX_LANES=3;
 
+// overall ticket span (earliest start / latest end across ALL entries) — used only for the
+// popover's summary fields, which stay ticket-level even though the visual bars are now
+// segmented (see computeTicketClusters below)
 function computeTicketSpans(tickets,entries){
   const spans=new Map();
   entries.forEach(e=>{
@@ -565,19 +651,45 @@ function computeTicketSpans(tickets,entries){
   });
   return spans;
 }
-function computeWeekSegments(weekRow,spans,tickets){
-  const segments=[];
+// per-ticket activity CLUSTERS — walks each ticket's entries (sorted by start_date) and
+// groups adjacent/overlapping ones into segments; a real gap (next entry starts later than
+// the immediate next business day after the current segment's end) closes the segment and
+// starts a new one. A ticket can therefore produce multiple disjoint bars instead of one
+// span that visually papers over gaps with no activity.
+function computeTicketClusters(tickets,entries){
+  const clusters=new Map();
   tickets.forEach(t=>{
-    const span=spans.get(t.id);
-    if(!span) return;
-    const weekStart=weekRow.days[0],weekEnd=weekRow.days[weekRow.days.length-1];
-    if(span.maxDate<weekStart||span.minDate>weekEnd) return;
-    const segStart=span.minDate>weekStart?span.minDate:weekStart;
-    const segEnd=span.maxDate<weekEnd?span.maxDate:weekEnd;
-    const startIdx=weekdayIndexInRow(segStart,weekRow);
-    const endIdx=weekdayIndexInRow(segEnd,weekRow);
-    if(startIdx<0||endIdx<0) return;
-    segments.push({ticket:t,startIdx,endIdx});
+    const es=entries.filter(e=>e.ticket_id===t.id).sort((a,b)=>a.start_date<b.start_date?-1:a.start_date>b.start_date?1:0);
+    const segs=[];
+    es.forEach(e=>{
+      const last=segs[segs.length-1];
+      if(last&&e.start_date<=nextBusinessDay(last.maxDate)){
+        if(e.end_date>last.maxDate) last.maxDate=e.end_date;
+      }else{
+        segs.push({minDate:e.start_date,maxDate:e.end_date});
+      }
+    });
+    if(segs.length) clusters.set(t.id,segs);
+  });
+  return clusters;
+}
+function computeWeekSegments(weekRow,clusters,tickets){
+  const segments=[];
+  const weekStart=weekRow.days[0],weekEnd=weekRow.days[weekRow.days.length-1];
+  tickets.forEach(t=>{
+    const segs=clusters.get(t.id);
+    if(!segs) return;
+    segs.forEach(seg=>{
+      if(seg.maxDate<weekStart||seg.minDate>weekEnd) return;
+      const clipStart=seg.minDate>weekStart?seg.minDate:weekStart;
+      const clipEnd=seg.maxDate<weekEnd?seg.maxDate:weekEnd;
+      const startIdx=weekdayIndexInRow(clipStart,weekRow);
+      const endIdx=weekdayIndexInRow(clipEnd,weekRow);
+      if(startIdx<0||endIdx<0) return;
+      // segStart is the UNCLIPPED segment start — used for "Open in Timeline" so clicking a
+      // segment that spans multiple weeks always jumps to its true start, not this week's clip
+      segments.push({ticket:t,startIdx,endIdx,segStart:seg.minDate});
+    });
   });
   return segments;
 }
@@ -616,10 +728,10 @@ export function renderCalendarGrid(){
   const {year,month}=state.ganttMonthCursor;
   const weeks=buildCalendarWeeks(year,month);
   const tickets=state.ganttTickets.filter(t=>state.ganttCalendarShowInactive||isTicketActive(t));
-  const spans=computeTicketSpans(tickets,state.ganttEntries);
+  const clusters=computeTicketClusters(tickets,state.ganttEntries);
 
   grid.innerHTML=weeks.map(weekRow=>{
-    const segments=computeWeekSegments(weekRow,spans,tickets);
+    const segments=computeWeekSegments(weekRow,clusters,tickets);
     const {visible,overflow}=assignLanes(segments);
     const overflowByDay={};
     overflow.forEach(seg=>{
@@ -639,7 +751,7 @@ export function renderCalendarGrid(){
       const width=(seg.endIdx-seg.startIdx+1)*CALENDAR_COL_WIDTH-6;
       const top=seg.lane*22;
       const label=t.jira_key||t.project_name;
-      return `<div class="dt-cal-bar" style="left:${left}px;width:${width}px;top:${top}px;background:${ticketColor(t)}" onclick="openTicketPopover('${escJs(t.id)}',this)">${esc(label)}</div>`;
+      return `<div class="dt-cal-bar" style="left:${left}px;width:${width}px;top:${top}px;background:${ticketColor(t)}" onclick="openTicketPopover('${escJs(t.id)}',this,'${escJs(seg.segStart)}')">${esc(label)}</div>`;
     }).join('');
     const overflowChips=Object.keys(overflowByDay).map(idxStr=>{
       const idx=Number(idxStr);
@@ -681,20 +793,23 @@ function positionPopover(pop,anchorEl){
   pop.style.left=Math.min(rect.left,vw-w-8)+'px';
   pop.style.top=Math.min(rect.bottom+4,vh-h-8)+'px';
 }
-export function openTicketPopover(ticketId,anchorEl){
+export function openTicketPopover(ticketId,anchorEl,segStartDate){
   const t=state.ganttTickets.find(t=>t.id===ticketId);
   if(!t) return;
+  // popover summary is always the ticket's OVERALL span, regardless of which segment/bar was
+  // clicked — only the visual bars are segmented, per the fix's scope
   const span=computeTicketSpans([t],state.ganttEntries.filter(e=>e.ticket_id===ticketId)).get(ticketId);
   const pop=document.getElementById('dtCalPopover');
   if(!pop) return;
   const duration=span?countWeekdaysInclusive(span.minDate,span.maxDate):0;
+  const jumpDate=segStartDate||(span?span.minDate:'');
   pop.innerHTML=`
     <div class="dt-popover-title">${esc(t.project_name)}</div>
     ${t.jira_url?`<div><a href="${esc(t.jira_url)}" target="_blank" rel="noopener">${esc(t.jira_key||'Jira link')}</a></div>`:(t.jira_key?`<div>${esc(t.jira_key)}</div>`:'')}
     ${span?`<div>${esc(span.minDate)} → ${esc(span.maxDate)} (${duration} weekday${duration!==1?'s':''})</div>`:''}
     <div><span class="dt-status-badge dt-status-${esc(t.status.replace(/\s+/g,''))}">${esc(t.status)}</span></div>
     ${t.mon_scope?`<div>Mon. scope: ${esc(t.mon_scope)}</div>`:''}
-    <button class="btn btn-ghost" style="margin-top:8px" onclick="jumpToTimeline('${escJs(t.id)}')">Open in Timeline →</button>
+    <button class="btn btn-ghost" style="margin-top:8px" onclick="jumpToTimeline('${escJs(t.id)}','${escJs(jumpDate)}')">Open in Timeline →</button>
   `;
   pop.style.display='block';
   positionPopover(pop,anchorEl);
@@ -715,12 +830,15 @@ export function closeCalPopover(){
   const pop=document.getElementById('dtCalPopover');
   if(pop){pop.style.display='none';pop.innerHTML='';}
 }
-export function jumpToTimeline(ticketId){
+export function jumpToTimeline(ticketId,segStartDate){
   closeCalPopover();
   const t=state.ganttTickets.find(t=>t.id===ticketId);
   if(!t) return;
-  const entries=state.ganttEntries.filter(e=>e.ticket_id===ticketId);
-  const startDate=entries.length?entries.reduce((min,e)=>e.start_date<min?e.start_date:min,entries[0].start_date):today();
+  let startDate=segStartDate;
+  if(!startDate){
+    const entries=state.ganttEntries.filter(e=>e.ticket_id===ticketId);
+    startDate=entries.length?entries.reduce((min,e)=>e.start_date<min?e.start_date:min,entries[0].start_date):today();
+  }
   switchTab('deliveryTracker');
   state.ganttActiveView='timeline';
   state.ganttTimelineStartDate=mondayOf(startDate);
@@ -792,6 +910,14 @@ export function initGanttTracker(){
   wrap.addEventListener('mousedown',handleDayMouseDown);
   wrap.addEventListener('mouseover',handleDayMouseOver);
   document.addEventListener('mouseup',handleDayMouseUp);
+
+  // sticky-column resize handles — delegated on the header since header rows are re-rendered
+  // on every renderTimelineHeader() call, so per-element listeners would be lost each time
+  document.getElementById('dtTimelineHead').addEventListener('mousedown',e=>{
+    const handle=e.target.closest('.dt-col-resize-handle');
+    if(!handle) return;
+    startColumnResize(e,handle.getAttribute('data-col'));
+  });
 
   document.addEventListener('click',e=>{
     if(!e.target.closest('#dtTypePickerPopover')&&!e.target.closest('.dt-day-cell')) closeTypePicker();

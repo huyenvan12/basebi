@@ -814,18 +814,20 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
 .dt-legend-chip>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dt-legend-swatch{width:10px;height:10px;border-radius:3px;display:inline-block;flex-shrink:0}
 
-/* TIMELINE — sticky columns share pixel values with js/gantt-tracker.js's
-   TIMELINE_COL_WIDTHS/TIMELINE_COL_LEFT constants; change both together. */
+/* TIMELINE — sticky columns are user-resizable; widths/offsets are computed live in
+   js/gantt-tracker.js (ganttColumnWidths/timelineColLeft) and applied inline per cell. */
 .dt-timeline-wrap{flex:1;overflow:auto;border:1px solid var(--border);border-radius:6px;position:relative}
 .dt-timeline-table{border-collapse:separate;border-spacing:0;font-size:11px;white-space:nowrap;table-layout:fixed}
 .dt-timeline-table th,.dt-timeline-table td{border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:0;box-sizing:border-box}
 .dt-timeline-table thead th{background:var(--surface2);color:var(--text-muted);font-weight:600;padding:5px 8px;position:sticky;top:0;z-index:2}
 .dt-month-th,.dt-week-th{text-align:center;font-size:10px}
 .dt-day-th{text-align:center;font-size:9px;color:var(--text-dim);padding:4px 0!important}
-.dt-timeline-table .dt-sticky-col{position:sticky;background:var(--surface);z-index:3;padding:8px 14px;color:var(--text);overflow:hidden;text-overflow:ellipsis;height:30px;vertical-align:middle;box-sizing:border-box}
+.dt-timeline-table .dt-sticky-col{position:sticky;background:var(--surface);z-index:3;padding:8px 14px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;height:30px;vertical-align:middle;box-sizing:border-box}
 thead .dt-sticky-col{z-index:4;background:var(--surface2)}
 .dt-timeline-table td.dt-sticky-col:nth-child(5){box-shadow:2px 0 4px rgba(0,0,0,.25)}
 .dt-note-cell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-muted)}
+.dt-col-resize-handle{position:absolute;top:0;right:0;width:6px;height:100%;cursor:col-resize;z-index:5}
+.dt-col-resize-handle:hover,.dt-col-resize-handle:active{background:var(--accent)}
 .dt-ticket-swatch{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
 .dt-ticket-edit-btn{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:11px;padding:0 2px;float:right}
 .dt-ticket-edit-btn:hover{color:var(--accent)}
