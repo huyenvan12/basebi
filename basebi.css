@@ -828,6 +828,14 @@ thead .dt-sticky-col{z-index:4;background:var(--surface2)}
 .dt-note-cell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-muted)}
 .dt-col-resize-handle{position:absolute;top:0;right:0;width:6px;height:100%;cursor:col-resize;z-index:5}
 .dt-col-resize-handle:hover,.dt-col-resize-handle:active{background:var(--accent)}
+
+/* "TODAY" / "CURRENT WEEK" highlights — use --highlight (distinct from --accent-dim, which
+   is already used for drag-fill hover/selecting) so the two states never visually collide. */
+.dt-week-th-today{background:var(--highlight)!important;color:var(--accent);font-weight:700}
+.dt-day-th-today{background:var(--highlight)!important;color:var(--accent);font-weight:700}
+.dt-day-cell.dt-day-cell-today{box-shadow:inset 0 0 0 9999px rgba(91,141,238,.18)}
+[data-theme="light"] .dt-day-cell.dt-day-cell-today{box-shadow:inset 0 0 0 9999px rgba(59,111,224,.14)}
+.dt-cal-today-badge{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--accent);color:#fff;font-weight:700}
 .dt-ticket-swatch{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
 .dt-ticket-edit-btn{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:11px;padding:0 2px;float:right}
 .dt-ticket-edit-btn:hover{color:var(--accent)}
@@ -853,6 +861,10 @@ thead .dt-sticky-col{z-index:4;background:var(--surface2)}
 .dt-type-picker-popover,.dt-cal-popover{position:fixed;z-index:100;background:var(--surface2);border:1px solid var(--border);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.35);padding:6px;font-size:11px;max-width:260px}
 .dt-type-picker-row{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:4px;cursor:pointer;color:var(--text)}
 .dt-type-picker-row:hover{background:var(--accent-dim);color:var(--accent)}
+.dt-type-picker-sep{height:1px;background:var(--border);margin:4px 2px}
+.dt-type-picker-clear{color:var(--danger)}
+.dt-type-picker-clear:hover{background:var(--danger-dim);color:var(--danger)}
+.dt-type-picker-clear-icon{display:inline-flex;align-items:center;justify-content:center;width:10px;height:10px;flex-shrink:0;font-size:10px;line-height:1}
 .dt-popover-title{font-weight:600;color:var(--text);margin-bottom:6px;font-size:12px}
 .dt-cal-popover>div{padding:2px 4px;color:var(--text-muted)}
 .dt-popover-ticket-row{display:flex;align-items:center;gap:7px;padding:4px;border-radius:4px;cursor:pointer}

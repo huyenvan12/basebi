@@ -314,6 +314,7 @@ export function renderTimelineHeader(){
   const cols=walkWeekdayColumns(state.ganttTimelineStartDate,state.ganttTimelineWeeks);
   const weekGroups=groupColumnsByWeek(cols);
   const monthGroups=groupWeeksByMonth(weekGroups);
+  const todayStr=today();
 
   renderTimelineColgroup(cols.length);
 
@@ -323,12 +324,18 @@ export function renderTimelineHeader(){
     monthGroups.map(mg=>`<th colspan="${mg.weekGroups.reduce((n,wg)=>n+wg.cols.length,0)}" class="dt-month-th">${esc(mg.monthLabel)}</th>`).join('')
   }</tr>`;
 
-  const weekRow=`<tr>${weekGroups.map(wg=>`<th colspan="${wg.cols.length}" class="dt-week-th">${esc(wg.label)}</th>`).join('')}</tr>`;
+  // "current week" highlight — only when today's date actually falls within one of the
+  // currently visible week groups; never forces navigation to jump there
+  const weekRow=`<tr>${weekGroups.map(wg=>{
+    const isCurrentWeek=wg.cols.some(c=>c.date===todayStr);
+    return `<th colspan="${wg.cols.length}" class="dt-week-th${isCurrentWeek?' dt-week-th-today':''}">${esc(wg.label)}</th>`;
+  }).join('')}</tr>`;
 
   const dayRow=`<tr>${cols.map(c=>{
     const d=parseISO(c.date);
     const dow=['Su','Mo','Tu','We','Th','Fr','Sa'][c.weekday];
-    return `<th class="dt-day-th" data-date="${c.date}">${dow}<br>${String(d.getDate()).padStart(2,'0')}</th>`;
+    const isToday=c.date===todayStr;
+    return `<th class="dt-day-th${isToday?' dt-day-th-today':''}" data-date="${c.date}">${dow}<br>${String(d.getDate()).padStart(2,'0')}</th>`;
   }).join('')}</tr>`;
 
   head.innerHTML=monthRow+weekRow+dayRow;
@@ -337,6 +344,7 @@ export function renderTimelineHeader(){
 function renderTicketRow(ticket,cols){
   const color=ticketColor(ticket);
   const entries=state.ganttEntries.filter(e=>e.ticket_id===ticket.id);
+  const todayStr=today();
   const dayCells=cols.map(c=>{
     const entry=entries.find(e=>c.date>=e.start_date&&c.date<=e.end_date);
     let inner='',style='';
@@ -344,7 +352,10 @@ function renderTicketRow(ticket,cols){
       const tt=state.ganttTaskTypes.find(t=>t.id===entry.task_type_id);
       if(tt){style=`background:${esc(tt.color)}`;inner=`<span class="dt-day-code">${esc(tt.code)}</span>`;}
     }
-    return `<td class="dt-day-cell" data-ticket-id="${esc(ticket.id)}" data-date="${c.date}" style="${style}">${inner}</td>`;
+    // today-column tint is a distinct CSS class (not the drag-fill dt-day-selecting state) so
+    // it never visually collides with hover/selecting during drag-to-fill
+    const todayClass=c.date===todayStr?' dt-day-cell-today':'';
+    return `<td class="dt-day-cell${todayClass}" data-ticket-id="${esc(ticket.id)}" data-date="${c.date}" style="${style}">${inner}</td>`;
   }).join('');
 
   const jiraCell=ticket.jira_url
@@ -447,6 +458,9 @@ export function handleDayMouseOver(e){
   state.ganttDragState.currentDate=cell.getAttribute('data-date');
   highlightRange(state.ganttDragState.ticketId,state.ganttDragState.anchorDate,state.ganttDragState.currentDate);
 }
+function findEntryAtCell(ticketId,dateStr){
+  return state.ganttEntries.find(e=>e.ticket_id===ticketId&&dateStr>=e.start_date&&dateStr<=e.end_date);
+}
 export function handleDayMouseUp(e){
   const drag=state.ganttDragState;
   state.ganttDragState=null;
@@ -454,6 +468,16 @@ export function handleDayMouseUp(e){
   if(!drag) return;
   const cell=e.target.closest('.dt-day-cell');
   if(!cell){ return; } // released outside a day cell — cancel with no popover
+  // plain click (no drag movement) on an already-assigned cell — open the lighter-weight
+  // "Change type / Remove" popover scoped to that entry's own range, instead of the
+  // assign-a-new-range flow. Dragging (even a 1-day drag onto empty space) keeps old behavior.
+  if(drag.anchorDate===drag.currentDate){
+    const existingEntry=findEntryAtCell(drag.ticketId,drag.anchorDate);
+    if(existingEntry){
+      openEntryManagePopover(existingEntry,e.clientX,e.clientY);
+      return;
+    }
+  }
   const startDate=drag.anchorDate<drag.currentDate?drag.anchorDate:drag.currentDate;
   const endDate=drag.anchorDate<drag.currentDate?drag.currentDate:drag.anchorDate;
   const overlaps=computeOverlaps(drag.ticketId,startDate,endDate);
@@ -464,12 +488,19 @@ export function handleDayMouseUp(e){
 export function openTypePicker(x,y){
   const pop=document.getElementById('dtTypePickerPopover');
   if(!pop) return;
-  pop.innerHTML=state.ganttTaskTypes.map(tt=>
+  const pending=state.ganttPendingEntryWrite;
+  const hasExisting=!!(pending&&pending.overlaps&&pending.overlaps.length);
+  const typeRows=state.ganttTaskTypes.map(tt=>
     `<div class="dt-type-picker-row" onclick="selectTaskType('${escJs(tt.id)}')"><span class="dt-legend-swatch" style="background:${esc(tt.color)}"></span>${esc(tt.code)} — ${esc(tt.label)}</div>`
   ).join('');
+  // "Clear" only shown when the range being acted on actually contains existing entries —
+  // there's nothing to clear on an empty range
+  const clearRow=hasExisting?`<div class="dt-type-picker-sep"></div><div class="dt-type-picker-row dt-type-picker-clear" onclick="clearAssignment()"><span class="dt-type-picker-clear-icon">✕</span>Clear assignment</div>`:'';
+  pop.innerHTML=typeRows+clearRow;
   pop.style.display='block';
   const vw=window.innerWidth,vh=window.innerHeight;
-  const w=220,h=Math.min(300,state.ganttTaskTypes.length*32+8);
+  const rowCount=state.ganttTaskTypes.length+(hasExisting?1:0);
+  const w=220,h=Math.min(340,rowCount*32+16);
   pop.style.left=Math.min(x,vw-w-8)+'px';
   pop.style.top=Math.min(y,vh-h-8)+'px';
 }
@@ -494,6 +525,70 @@ async function commitEntryWrite(pending,taskTypeId){
     await replaceEntryRange(pending.ticketId,taskTypeId,pending.startDate,pending.endDate,(pending.overlaps||[]).map(o=>o.id));
   }catch(err){alert('Could not save schedule: '+(err.message||err));}
   state.ganttPendingEntryWrite=null;
+  renderTimelineBody();
+}
+// "Clear assignment" — drag-to-fill flow, range may cover multiple existing entries.
+// No new type being written, so this skips the overlap-confirm-and-replace flow entirely
+// and goes straight to a delete-focused confirm.
+export async function clearAssignment(){
+  const pending=state.ganttPendingEntryWrite;
+  closeTypePicker();
+  if(!pending||!pending.overlaps||!pending.overlaps.length) return;
+  const n=pending.overlaps.length;
+  if(!confirm(`Remove ${n} ${n===1?'entry':'entries'} in this range?`)) return;
+  const ids=pending.overlaps.map(o=>o.id);
+  try{
+    await deleteEntriesDB(ids);
+    state.ganttEntries=state.ganttEntries.filter(e=>!ids.includes(e.id));
+  }catch(err){alert('Could not clear entries: '+(err.message||err));}
+  state.ganttPendingEntryWrite=null;
+  renderTimelineBody();
+}
+
+// ══════════════════════════════════════════════════
+// SINGLE-ENTRY MANAGE POPOVER — plain (no-drag) click on an already-assigned cell.
+// Reuses the same #dtTypePickerPopover element/outside-click-to-close wiring as the
+// drag-to-fill type picker; "Change type" re-enters that same picker scoped to this
+// entry's own date range, "Remove" deletes just this one row.
+// ══════════════════════════════════════════════════
+export function openEntryManagePopover(entry,x,y){
+  state.ganttPendingEntryManage={entry,x,y};
+  const pop=document.getElementById('dtTypePickerPopover');
+  if(!pop) return;
+  const tt=state.ganttTaskTypes.find(t=>t.id===entry.task_type_id);
+  pop.innerHTML=`
+    <div class="dt-type-picker-row" onclick="changeEntryType()"><span class="dt-legend-swatch" style="background:${tt?esc(tt.color):'#888'}"></span>Change type →</div>
+    <div class="dt-type-picker-sep"></div>
+    <div class="dt-type-picker-row dt-type-picker-clear" onclick="removeSingleEntry()"><span class="dt-type-picker-clear-icon">✕</span>Remove</div>
+  `;
+  pop.style.display='block';
+  const vw=window.innerWidth,vh=window.innerHeight;
+  const w=220,h=90;
+  pop.style.left=Math.min(x,vw-w-8)+'px';
+  pop.style.top=Math.min(y,vh-h-8)+'px';
+}
+export function changeEntryType(){
+  const pending=state.ganttPendingEntryManage;
+  state.ganttPendingEntryManage=null;
+  closeTypePicker();
+  if(!pending) return;
+  const{entry,x,y}=pending;
+  state.ganttPendingEntryWrite={ticketId:entry.ticket_id,startDate:entry.start_date,endDate:entry.end_date,overlaps:[entry]};
+  openTypePicker(x,y);
+}
+export async function removeSingleEntry(){
+  const pending=state.ganttPendingEntryManage;
+  state.ganttPendingEntryManage=null;
+  closeTypePicker();
+  if(!pending) return;
+  const{entry}=pending;
+  const tt=state.ganttTaskTypes.find(t=>t.id===entry.task_type_id);
+  const rangeLabel=entry.start_date===entry.end_date?fmtDM(entry.start_date):`${fmtDM(entry.start_date)}–${fmtDM(entry.end_date)}`;
+  if(!confirm(`Remove ${tt?tt.code:'this entry'} from ${rangeLabel}?`)) return;
+  try{
+    await deleteEntriesDB([entry.id]);
+    state.ganttEntries=state.ganttEntries.filter(e=>e.id!==entry.id);
+  }catch(err){alert('Could not remove entry: '+(err.message||err));return;}
   renderTimelineBody();
 }
 
@@ -729,6 +824,10 @@ export function renderCalendarGrid(){
   const weeks=buildCalendarWeeks(year,month);
   const tickets=state.ganttTickets.filter(t=>state.ganttCalendarShowInactive||isTicketActive(t));
   const clusters=computeTicketClusters(tickets,state.ganttEntries);
+  // "today" badge only renders when the displayed month/year actually matches today's —
+  // never forces navigation to jump there
+  const now=new Date();
+  const todayStr=(now.getFullYear()===year&&now.getMonth()===month)?today():null;
 
   grid.innerHTML=weeks.map(weekRow=>{
     const segments=computeWeekSegments(weekRow,clusters,tickets);
@@ -743,14 +842,15 @@ export function renderCalendarGrid(){
     const dayLabels=weekRow.days.map(dateStr=>{
       const d=parseISO(dateStr);
       const inMonth=d.getMonth()===month;
-      return `<div class="dt-cal-day-label ${inMonth?'':'dt-cal-day-muted'}" style="width:${CALENDAR_COL_WIDTH}px">${d.getDate()}</div>`;
+      const isToday=dateStr===todayStr;
+      return `<div class="dt-cal-day-label ${inMonth?'':'dt-cal-day-muted'}" style="width:${CALENDAR_COL_WIDTH}px">${isToday?`<span class="dt-cal-today-badge">${d.getDate()}</span>`:d.getDate()}</div>`;
     }).join('');
     const bars=visible.map(seg=>{
       const t=seg.ticket;
       const left=seg.startIdx*CALENDAR_COL_WIDTH;
       const width=(seg.endIdx-seg.startIdx+1)*CALENDAR_COL_WIDTH-6;
       const top=seg.lane*22;
-      const label=t.jira_key||t.project_name;
+      const label=t.project_name||t.jira_key;
       return `<div class="dt-cal-bar" style="left:${left}px;width:${width}px;top:${top}px;background:${ticketColor(t)}" onclick="openTicketPopover('${escJs(t.id)}',this,'${escJs(seg.segStart)}')">${esc(label)}</div>`;
     }).join('');
     const overflowChips=Object.keys(overflowByDay).map(idxStr=>{
@@ -883,6 +983,9 @@ export function initGanttTracker(){
   window.updateTaskTypeField=updateTaskTypeField;
   window.saveTaskTypes=saveTaskTypes;
   window.selectTaskType=selectTaskType;
+  window.clearAssignment=clearAssignment;
+  window.changeEntryType=changeEntryType;
+  window.removeSingleEntry=removeSingleEntry;
   window.closeOverlapModal=closeOverlapModal;
   window.openTicketPopover=openTicketPopover;
   window.openOverflowPopover=openOverflowPopover;
