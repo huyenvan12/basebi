@@ -557,9 +557,9 @@ export function openEntryManagePopover(entry,x,y){
   if(!pop) return;
   const tt=state.ganttTaskTypes.find(t=>t.id===entry.task_type_id);
   pop.innerHTML=`
-    <div class="dt-type-picker-row" onclick="changeEntryType()"><span class="dt-legend-swatch" style="background:${tt?esc(tt.color):'#888'}"></span>Change type →</div>
+    <div class="dt-type-picker-row" onclick="event.stopPropagation();changeEntryType()"><span class="dt-legend-swatch" style="background:${tt?esc(tt.color):'#888'}"></span>Change type →</div>
     <div class="dt-type-picker-sep"></div>
-    <div class="dt-type-picker-row dt-type-picker-clear" onclick="removeSingleEntry()"><span class="dt-type-picker-clear-icon">✕</span>Remove</div>
+    <div class="dt-type-picker-row dt-type-picker-clear" onclick="event.stopPropagation();removeSingleEntry()"><span class="dt-type-picker-clear-icon">✕</span>Remove</div>
   `;
   pop.style.display='block';
   const vw=window.innerWidth,vh=window.innerHeight;
