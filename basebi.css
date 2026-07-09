@@ -8,7 +8,7 @@
   --text:#e2e8f0;--text-muted:#7a8599;--text-dim:#4a556b;
   --tag-bg:#1a2540;--folder-active:#1e2d52;
   --highlight:#3d5a99;--code-bg:#131720;
-  --sql:#f59e0b;--danger:#f87171;--danger-dim:#3d1515;--success:#4ade80;
+  --sql:#f59e0b;--danger:#f87171;--danger-dim:#3d1515;--success:#4ade80;--amber:#d9a94f;
   --search-bg:#0f1117;--search-text:#e2e8f0;--search-border:#5b8dee;
   --search-card:#181c27;--search-card-border:#2a3047;--search-muted:#7a8599;
 
@@ -39,7 +39,7 @@
   --text:#1a1d2e;--text-muted:#5a6380;--text-dim:#9099b5;
   --tag-bg:#eef0f8;--folder-active:#dde8ff;
   --highlight:#bfcff7;--code-bg:#1a1d2e;
-  --sql:#c47d0e;--danger:#dc2626;--danger-dim:#fee2e2;--success:#16a34a;
+  --sql:#c47d0e;--danger:#dc2626;--danger-dim:#fee2e2;--success:#16a34a;--amber:#d9a94f;
   --search-bg:#f2f3f7;--search-text:#1a1d2e;--search-border:#3b6fe0;
   --search-card:#ffffff;--search-card-border:#d4d8e8;--search-muted:#5a6380;
 
@@ -814,18 +814,26 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
 .dt-legend-chip>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dt-legend-swatch{width:10px;height:10px;border-radius:3px;display:inline-block;flex-shrink:0}
 
-/* TIMELINE — sticky columns share pixel values with js/gantt-tracker.js's
-   TIMELINE_COL_WIDTHS/TIMELINE_COL_LEFT constants; change both together. */
+/* TIMELINE — sticky columns are user-resizable; widths/offsets are computed live in
+   js/gantt-tracker.js (ganttColumnWidths/timelineColLeft) and applied inline per cell. */
 .dt-timeline-wrap{flex:1;overflow:auto;border:1px solid var(--border);border-radius:6px;position:relative}
 .dt-timeline-table{border-collapse:separate;border-spacing:0;font-size:11px;white-space:nowrap;table-layout:fixed}
 .dt-timeline-table th,.dt-timeline-table td{border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:0;box-sizing:border-box}
 .dt-timeline-table thead th{background:var(--surface2);color:var(--text-muted);font-weight:600;padding:5px 8px;position:sticky;top:0;z-index:2}
 .dt-month-th,.dt-week-th{text-align:center;font-size:10px}
 .dt-day-th{text-align:center;font-size:9px;color:var(--text-dim);padding:4px 0!important}
-.dt-timeline-table .dt-sticky-col{position:sticky;background:var(--surface);z-index:3;padding:8px 14px;color:var(--text);overflow:hidden;text-overflow:ellipsis;height:30px;vertical-align:middle;box-sizing:border-box}
+.dt-timeline-table .dt-sticky-col{position:sticky;background:var(--surface);z-index:3;padding:8px 14px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;height:30px;vertical-align:middle;box-sizing:border-box}
 thead .dt-sticky-col{z-index:4;background:var(--surface2)}
 .dt-timeline-table td.dt-sticky-col:nth-child(5){box-shadow:2px 0 4px rgba(0,0,0,.25)}
 .dt-note-cell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-muted)}
+.dt-col-resize-handle{position:absolute;top:0;right:0;width:6px;height:100%;cursor:col-resize;z-index:5}
+.dt-col-resize-handle:hover,.dt-col-resize-handle:active{background:var(--accent)}
+
+/* "TODAY" / "CURRENT WEEK" highlights — amber border outline only, so background/text
+   colors underneath (task-type fills, header styling) are never washed out. */
+.dt-timeline-table thead th.dt-week-th-today,.dt-timeline-table thead th.dt-day-th-today{box-shadow:inset 0 0 0 2px var(--amber);color:var(--amber);font-weight:700}
+.dt-day-cell.dt-day-cell-today{border-left:1px solid var(--amber);border-right:1px solid var(--amber)}
+.dt-cal-today-badge{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--accent);color:#fff;font-weight:700}
 .dt-ticket-swatch{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
 .dt-ticket-edit-btn{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:11px;padding:0 2px;float:right}
 .dt-ticket-edit-btn:hover{color:var(--accent)}
@@ -851,6 +859,10 @@ thead .dt-sticky-col{z-index:4;background:var(--surface2)}
 .dt-type-picker-popover,.dt-cal-popover{position:fixed;z-index:100;background:var(--surface2);border:1px solid var(--border);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.35);padding:6px;font-size:11px;max-width:260px}
 .dt-type-picker-row{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:4px;cursor:pointer;color:var(--text)}
 .dt-type-picker-row:hover{background:var(--accent-dim);color:var(--accent)}
+.dt-type-picker-sep{height:1px;background:var(--border);margin:4px 2px}
+.dt-type-picker-clear{color:var(--danger)}
+.dt-type-picker-clear:hover{background:var(--danger-dim);color:var(--danger)}
+.dt-type-picker-clear-icon{display:inline-flex;align-items:center;justify-content:center;width:10px;height:10px;flex-shrink:0;font-size:10px;line-height:1}
 .dt-popover-title{font-weight:600;color:var(--text);margin-bottom:6px;font-size:12px}
 .dt-cal-popover>div{padding:2px 4px;color:var(--text-muted)}
 .dt-popover-ticket-row{display:flex;align-items:center;gap:7px;padding:4px;border-radius:4px;cursor:pointer}

@@ -166,6 +166,12 @@ export function buildCalendarWeeks(year,month){
 export function weekdayIndexInRow(dateStr,weekRow){
   return weekRow.days.indexOf(dateStr);
 }
+// next business day after dateStr — Friday rolls to the following Monday, matching the
+// weekend-skip already used by walkWeekdayColumns (cur=addDays(cur,2) after 5 weekdays)
+export function nextBusinessDay(dateStr){
+  const dow=parseISO(dateStr).getDay();
+  return addDays(dateStr,dow===5?3:1);
+}
 export function countWeekdaysInclusive(startDateStr,endDateStr){
   let count=0,cur=startDateStr;
   while(cur<=endDateStr){
@@ -190,12 +196,89 @@ export function ticketColor(ticket){
 }
 
 // ══════════════════════════════════════════════════
-// TIMELINE — shared width/offset constants (single source of truth; both header-row and
-// body-row generators read exclusively from these, no pixel value hardcoded a second time).
+// TIMELINE — user-resizable sticky columns. ganttColumnWidths is the single source of truth
+// for widths (persisted to localStorage); left offsets are always DERIVED from it as a live
+// cumulative sum (never stored/hardcoded) so header and body cells can never drift out of sync.
 // ══════════════════════════════════════════════════
-const TIMELINE_COL_WIDTHS={project:170,jira:110,scope:90,status:118,note:160};
-const TIMELINE_COL_LEFT={project:0,jira:170,scope:280,status:370,note:488};
+const TIMELINE_COL_ORDER=['project','jira','scope','status','note'];
+const TIMELINE_COL_DEFAULTS={project:170,jira:110,scope:90,status:118,note:160};
+const TIMELINE_COL_MIN={project:100,jira:60,scope:60,status:60,note:100};
+const TIMELINE_COL_MAX=400;
+const TIMELINE_COL_STORAGE_KEY='gantt-timeline-column-widths';
 const TIMELINE_DAY_COL_WIDTH=36;
+
+function loadColumnWidths(){
+  try{
+    const raw=localStorage.getItem(TIMELINE_COL_STORAGE_KEY);
+    if(raw){
+      const parsed=JSON.parse(raw);
+      const out={...TIMELINE_COL_DEFAULTS};
+      TIMELINE_COL_ORDER.forEach(k=>{ if(typeof parsed[k]==='number') out[k]=parsed[k]; });
+      return out;
+    }
+  }catch(e){/* ignore malformed/unavailable localStorage, fall back to defaults */}
+  return {...TIMELINE_COL_DEFAULTS};
+}
+let ganttColumnWidths=loadColumnWidths();
+function saveColumnWidths(){
+  try{ localStorage.setItem(TIMELINE_COL_STORAGE_KEY,JSON.stringify(ganttColumnWidths)); }catch(e){/* ignore */}
+}
+// left offset of a sticky column = live cumulative sum of all preceding columns' CURRENT widths
+function timelineColLeft(key){
+  let left=0;
+  for(const k of TIMELINE_COL_ORDER){
+    if(k===key) return left;
+    left+=ganttColumnWidths[k];
+  }
+  return left;
+}
+// Re-applies widths/offsets to already-rendered header+body cells without a full re-render,
+// so drag-move stays smooth. Header and body read the exact same ganttColumnWidths/timelineColLeft,
+// so they can never show a stale/mismatched state mid-drag.
+function applyColumnLayout(){
+  let cum=0;
+  TIMELINE_COL_ORDER.forEach(k=>{
+    const w=ganttColumnWidths[k];
+    document.querySelectorAll(`.dt-sticky-col[data-col="${k}"]`).forEach(el=>{
+      el.style.width=w+'px';
+      el.style.left=cum+'px';
+    });
+    cum+=w;
+  });
+  const table=document.getElementById('dtTimelineTable');
+  if(!table) return;
+  const colgroup=table.querySelector('colgroup');
+  if(colgroup){
+    TIMELINE_COL_ORDER.forEach((k,i)=>{
+      const col=colgroup.children[i];
+      if(col) col.style.width=ganttColumnWidths[k]+'px';
+    });
+    let total=0;
+    Array.from(colgroup.children).forEach(col=>{ total+=parseFloat(col.style.width)||0; });
+    table.style.width=total+'px';
+  }
+}
+function startColumnResize(e,key){
+  e.preventDefault();
+  e.stopPropagation();
+  const startX=e.clientX;
+  const startWidth=ganttColumnWidths[key];
+  const min=TIMELINE_COL_MIN[key]||60;
+  function onMove(ev){
+    const dx=ev.clientX-startX;
+    let w=startWidth+dx;
+    w=Math.max(min,Math.min(TIMELINE_COL_MAX,w));
+    ganttColumnWidths[key]=w;
+    applyColumnLayout();
+  }
+  function onUp(){
+    document.removeEventListener('mousemove',onMove);
+    document.removeEventListener('mouseup',onUp);
+    saveColumnWidths();
+  }
+  document.addEventListener('mousemove',onMove);
+  document.addEventListener('mouseup',onUp);
+}
 
 function isTicketActive(t){ return !INACTIVE_STATUSES.includes(t.status); }
 
@@ -215,13 +298,13 @@ function renderTimelineColgroup(dayCount){
   if(!table) return;
   let colgroup=table.querySelector('colgroup');
   if(!colgroup){colgroup=document.createElement('colgroup');table.insertBefore(colgroup,table.firstChild);}
-  const stickyCols=Object.keys(TIMELINE_COL_WIDTHS).map(k=>`<col style="width:${TIMELINE_COL_WIDTHS[k]}px">`).join('');
+  const stickyCols=TIMELINE_COL_ORDER.map(k=>`<col style="width:${ganttColumnWidths[k]}px">`).join('');
   const dayCols=Array.from({length:dayCount},()=>`<col style="width:${TIMELINE_DAY_COL_WIDTH}px">`).join('');
   colgroup.innerHTML=stickyCols+dayCols;
   // table-layout:fixed with width:auto still shrinks the table to fit its scrollable
   // container instead of honoring the colgroup — pin the table's own width to the sum of
   // declared column widths so .dt-timeline-wrap's overflow:auto scrolls instead of squeezing.
-  const stickyTotal=Object.values(TIMELINE_COL_WIDTHS).reduce((a,b)=>a+b,0);
+  const stickyTotal=TIMELINE_COL_ORDER.reduce((a,k)=>a+ganttColumnWidths[k],0);
   table.style.width=(stickyTotal+dayCount*TIMELINE_DAY_COL_WIDTH)+'px';
 }
 
@@ -231,21 +314,28 @@ export function renderTimelineHeader(){
   const cols=walkWeekdayColumns(state.ganttTimelineStartDate,state.ganttTimelineWeeks);
   const weekGroups=groupColumnsByWeek(cols);
   const monthGroups=groupWeeksByMonth(weekGroups);
+  const todayStr=today();
 
   renderTimelineColgroup(cols.length);
 
-  const stickyTh=(key,label)=>`<th class="dt-sticky-col" style="left:${TIMELINE_COL_LEFT[key]}px" rowspan="3">${esc(label)}</th>`;
+  const stickyTh=(key,label)=>`<th class="dt-sticky-col" data-col="${key}" style="left:${timelineColLeft(key)}px;width:${ganttColumnWidths[key]}px" rowspan="3">${esc(label)}<span class="dt-col-resize-handle" data-col="${key}" title="Drag to resize"></span></th>`;
 
   const monthRow=`<tr>${stickyTh('project','Project')}${stickyTh('jira','Jira')}${stickyTh('scope','Mon. Scope')}${stickyTh('status','Status')}${stickyTh('note','Note')}${
     monthGroups.map(mg=>`<th colspan="${mg.weekGroups.reduce((n,wg)=>n+wg.cols.length,0)}" class="dt-month-th">${esc(mg.monthLabel)}</th>`).join('')
   }</tr>`;
 
-  const weekRow=`<tr>${weekGroups.map(wg=>`<th colspan="${wg.cols.length}" class="dt-week-th">${esc(wg.label)}</th>`).join('')}</tr>`;
+  // "current week" highlight — only when today's date actually falls within one of the
+  // currently visible week groups; never forces navigation to jump there
+  const weekRow=`<tr>${weekGroups.map(wg=>{
+    const isCurrentWeek=wg.cols.some(c=>c.date===todayStr);
+    return `<th colspan="${wg.cols.length}" class="dt-week-th${isCurrentWeek?' dt-week-th-today':''}">${esc(wg.label)}</th>`;
+  }).join('')}</tr>`;
 
   const dayRow=`<tr>${cols.map(c=>{
     const d=parseISO(c.date);
     const dow=['Su','Mo','Tu','We','Th','Fr','Sa'][c.weekday];
-    return `<th class="dt-day-th" data-date="${c.date}">${dow}<br>${String(d.getDate()).padStart(2,'0')}</th>`;
+    const isToday=c.date===todayStr;
+    return `<th class="dt-day-th${isToday?' dt-day-th-today':''}" data-date="${c.date}">${dow}<br>${String(d.getDate()).padStart(2,'0')}</th>`;
   }).join('')}</tr>`;
 
   head.innerHTML=monthRow+weekRow+dayRow;
@@ -254,6 +344,7 @@ export function renderTimelineHeader(){
 function renderTicketRow(ticket,cols){
   const color=ticketColor(ticket);
   const entries=state.ganttEntries.filter(e=>e.ticket_id===ticket.id);
+  const todayStr=today();
   const dayCells=cols.map(c=>{
     const entry=entries.find(e=>c.date>=e.start_date&&c.date<=e.end_date);
     let inner='',style='';
@@ -261,7 +352,10 @@ function renderTicketRow(ticket,cols){
       const tt=state.ganttTaskTypes.find(t=>t.id===entry.task_type_id);
       if(tt){style=`background:${esc(tt.color)}`;inner=`<span class="dt-day-code">${esc(tt.code)}</span>`;}
     }
-    return `<td class="dt-day-cell" data-ticket-id="${esc(ticket.id)}" data-date="${c.date}" style="${style}">${inner}</td>`;
+    // today-column tint is a distinct CSS class (not the drag-fill dt-day-selecting state) so
+    // it never visually collides with hover/selecting during drag-to-fill
+    const todayClass=c.date===todayStr?' dt-day-cell-today':'';
+    return `<td class="dt-day-cell${todayClass}" data-ticket-id="${esc(ticket.id)}" data-date="${c.date}" style="${style}">${inner}</td>`;
   }).join('');
 
   const jiraCell=ticket.jira_url
@@ -269,14 +363,14 @@ function renderTicketRow(ticket,cols){
     : esc(ticket.jira_key||'');
 
   return `<tr class="dt-ticket-row" data-ticket-id="${esc(ticket.id)}">
-    <td class="dt-sticky-col" style="width:${TIMELINE_COL_WIDTHS.project}px;left:${TIMELINE_COL_LEFT.project}px">
+    <td class="dt-sticky-col" data-col="project" style="width:${ganttColumnWidths.project}px;left:${timelineColLeft('project')}px" title="${esc(ticket.project_name)}">
       <span class="dt-ticket-swatch" style="background:${color}"></span>${esc(ticket.project_name)}
       <button class="dt-ticket-edit-btn" onclick="openTicketModal('${escJs(ticket.id)}')" title="Edit ticket">✎</button>
     </td>
-    <td class="dt-sticky-col" style="width:${TIMELINE_COL_WIDTHS.jira}px;left:${TIMELINE_COL_LEFT.jira}px">${jiraCell}</td>
-    <td class="dt-sticky-col" style="width:${TIMELINE_COL_WIDTHS.scope}px;left:${TIMELINE_COL_LEFT.scope}px">${esc(ticket.mon_scope||'')}</td>
-    <td class="dt-sticky-col dt-status-cell" style="width:${TIMELINE_COL_WIDTHS.status}px;left:${TIMELINE_COL_LEFT.status}px"><span class="dt-status-badge dt-status-${esc(ticket.status.replace(/\s+/g,''))}">${esc(ticket.status)}</span></td>
-    <td class="dt-sticky-col dt-note-cell" style="width:${TIMELINE_COL_WIDTHS.note}px;left:${TIMELINE_COL_LEFT.note}px" title="${esc(ticket.note||'')}">${esc(ticket.note||'')}</td>
+    <td class="dt-sticky-col" data-col="jira" style="width:${ganttColumnWidths.jira}px;left:${timelineColLeft('jira')}px" title="${esc(ticket.jira_key||'')}">${jiraCell}</td>
+    <td class="dt-sticky-col" data-col="scope" style="width:${ganttColumnWidths.scope}px;left:${timelineColLeft('scope')}px" title="${esc(ticket.mon_scope||'')}">${esc(ticket.mon_scope||'')}</td>
+    <td class="dt-sticky-col dt-status-cell" data-col="status" style="width:${ganttColumnWidths.status}px;left:${timelineColLeft('status')}px"><span class="dt-status-badge dt-status-${esc(ticket.status.replace(/\s+/g,''))}">${esc(ticket.status)}</span></td>
+    <td class="dt-sticky-col dt-note-cell" data-col="note" style="width:${ganttColumnWidths.note}px;left:${timelineColLeft('note')}px" title="${esc(ticket.note||'')}">${esc(ticket.note||'')}</td>
     ${dayCells}
   </tr>`;
 }
@@ -350,27 +444,71 @@ function highlightRange(ticketId,start,end){
     if(d>=lo&&d<=hi) el.classList.add('dt-day-selecting');
   });
 }
-export function handleDayMouseDown(e){
+// Drag-to-fill uses Pointer Events (not mouse events) deliberately. mouseover-based delegation
+// is unreliable mid-drag in real browsers: once a mousedown starts inside a <td>, the browser's
+// native cell/text-selection machinery can take over hit-testing for the remainder of the
+// gesture, so 'mouseover' silently stops firing on cells the pointer passes over until
+// mouseup — even with preventDefault() on mousedown, this is inconsistent across
+// browsers/input devices (trackpads especially). Pointer Events + explicit
+// document.elementFromPoint() on every 'pointermove' sidesteps that entirely — we're directly
+// querying what's under the pointer instead of relying on the browser to tell us via bubbling.
+export function handleDayPointerDown(e){
   const cell=e.target.closest('.dt-day-cell');
   if(!cell) return;
+  e.preventDefault();
   state.ganttDragState={ticketId:cell.getAttribute('data-ticket-id'),anchorDate:cell.getAttribute('data-date'),currentDate:cell.getAttribute('data-date')};
   highlightRange(state.ganttDragState.ticketId,state.ganttDragState.anchorDate,state.ganttDragState.currentDate);
 }
-export function handleDayMouseOver(e){
+export function handleDayPointerMove(e){
   if(!state.ganttDragState) return;
-  const cell=e.target.closest('.dt-day-cell');
+  const el=document.elementFromPoint(e.clientX,e.clientY);
+  const cell=el&&el.closest('.dt-day-cell');
   if(!cell) return;
   if(cell.getAttribute('data-ticket-id')!==state.ganttDragState.ticketId) return;
   state.ganttDragState.currentDate=cell.getAttribute('data-date');
   highlightRange(state.ganttDragState.ticketId,state.ganttDragState.anchorDate,state.ganttDragState.currentDate);
 }
-export function handleDayMouseUp(e){
+function findEntryAtCell(ticketId,dateStr){
+  return state.ganttEntries.find(e=>e.ticket_id===ticketId&&dateStr>=e.start_date&&dateStr<=e.end_date);
+}
+// Guards the type-picker/manage-popover against a same-gesture close: when a drag's
+// pointerdown and pointerup land on different cells, the browser still synthesizes a
+// trailing native 'click' event, targeted at the nearest common ancestor of the two cells
+// (e.g. the <tr>) rather than either .dt-day-cell — so the outside-click-to-dismiss listener
+// (which only allow-lists clicks inside '.dt-day-cell'/'#dtTypePickerPopover') doesn't
+// recognize it as "inside" and immediately closes the popover we just opened, in the same
+// event-loop tick. We set this flag right before opening the popover and consume it (skip
+// exactly one close) in the document click listener; a queued microtask/timeout clears it
+// afterward as a safety net in case the trailing click never arrives.
+let suppressNextOutsideClick=false;
+export function armPopoverOpenGuard(){
+  suppressNextOutsideClick=true;
+  setTimeout(()=>{suppressNextOutsideClick=false;},0);
+}
+export function consumeOutsideClickSuppression(){
+  if(!suppressNextOutsideClick) return false;
+  suppressNextOutsideClick=false;
+  return true;
+}
+export function handleDayPointerUp(e){
   const drag=state.ganttDragState;
   state.ganttDragState=null;
   clearDayHighlight();
   if(!drag) return;
-  const cell=e.target.closest('.dt-day-cell');
+  const el=document.elementFromPoint(e.clientX,e.clientY);
+  const cell=(el&&el.closest('.dt-day-cell'))||e.target.closest('.dt-day-cell');
   if(!cell){ return; } // released outside a day cell — cancel with no popover
+  armPopoverOpenGuard();
+  // plain click (no drag movement) on an already-assigned cell — open the lighter-weight
+  // "Change type / Remove" popover scoped to that entry's own range, instead of the
+  // assign-a-new-range flow. Dragging (even a 1-day drag onto empty space) keeps old behavior.
+  if(drag.anchorDate===drag.currentDate){
+    const existingEntry=findEntryAtCell(drag.ticketId,drag.anchorDate);
+    if(existingEntry){
+      openEntryManagePopover(existingEntry,e.clientX,e.clientY);
+      return;
+    }
+  }
   const startDate=drag.anchorDate<drag.currentDate?drag.anchorDate:drag.currentDate;
   const endDate=drag.anchorDate<drag.currentDate?drag.currentDate:drag.anchorDate;
   const overlaps=computeOverlaps(drag.ticketId,startDate,endDate);
@@ -381,12 +519,19 @@ export function handleDayMouseUp(e){
 export function openTypePicker(x,y){
   const pop=document.getElementById('dtTypePickerPopover');
   if(!pop) return;
-  pop.innerHTML=state.ganttTaskTypes.map(tt=>
+  const pending=state.ganttPendingEntryWrite;
+  const hasExisting=!!(pending&&pending.overlaps&&pending.overlaps.length);
+  const typeRows=state.ganttTaskTypes.map(tt=>
     `<div class="dt-type-picker-row" onclick="selectTaskType('${escJs(tt.id)}')"><span class="dt-legend-swatch" style="background:${esc(tt.color)}"></span>${esc(tt.code)} — ${esc(tt.label)}</div>`
   ).join('');
+  // "Clear" only shown when the range being acted on actually contains existing entries —
+  // there's nothing to clear on an empty range
+  const clearRow=hasExisting?`<div class="dt-type-picker-sep"></div><div class="dt-type-picker-row dt-type-picker-clear" onclick="clearAssignment()"><span class="dt-type-picker-clear-icon">✕</span>Clear assignment</div>`:'';
+  pop.innerHTML=typeRows+clearRow;
   pop.style.display='block';
   const vw=window.innerWidth,vh=window.innerHeight;
-  const w=220,h=Math.min(300,state.ganttTaskTypes.length*32+8);
+  const rowCount=state.ganttTaskTypes.length+(hasExisting?1:0);
+  const w=220,h=Math.min(340,rowCount*32+16);
   pop.style.left=Math.min(x,vw-w-8)+'px';
   pop.style.top=Math.min(y,vh-h-8)+'px';
 }
@@ -411,6 +556,70 @@ async function commitEntryWrite(pending,taskTypeId){
     await replaceEntryRange(pending.ticketId,taskTypeId,pending.startDate,pending.endDate,(pending.overlaps||[]).map(o=>o.id));
   }catch(err){alert('Could not save schedule: '+(err.message||err));}
   state.ganttPendingEntryWrite=null;
+  renderTimelineBody();
+}
+// "Clear assignment" — drag-to-fill flow, range may cover multiple existing entries.
+// No new type being written, so this skips the overlap-confirm-and-replace flow entirely
+// and goes straight to a delete-focused confirm.
+export async function clearAssignment(){
+  const pending=state.ganttPendingEntryWrite;
+  closeTypePicker();
+  if(!pending||!pending.overlaps||!pending.overlaps.length) return;
+  const n=pending.overlaps.length;
+  if(!confirm(`Remove ${n} ${n===1?'entry':'entries'} in this range?`)) return;
+  const ids=pending.overlaps.map(o=>o.id);
+  try{
+    await deleteEntriesDB(ids);
+    state.ganttEntries=state.ganttEntries.filter(e=>!ids.includes(e.id));
+  }catch(err){alert('Could not clear entries: '+(err.message||err));}
+  state.ganttPendingEntryWrite=null;
+  renderTimelineBody();
+}
+
+// ══════════════════════════════════════════════════
+// SINGLE-ENTRY MANAGE POPOVER — plain (no-drag) click on an already-assigned cell.
+// Reuses the same #dtTypePickerPopover element/outside-click-to-close wiring as the
+// drag-to-fill type picker; "Change type" re-enters that same picker scoped to this
+// entry's own date range, "Remove" deletes just this one row.
+// ══════════════════════════════════════════════════
+export function openEntryManagePopover(entry,x,y){
+  state.ganttPendingEntryManage={entry,x,y};
+  const pop=document.getElementById('dtTypePickerPopover');
+  if(!pop) return;
+  const tt=state.ganttTaskTypes.find(t=>t.id===entry.task_type_id);
+  pop.innerHTML=`
+    <div class="dt-type-picker-row" onclick="event.stopPropagation();changeEntryType()"><span class="dt-legend-swatch" style="background:${tt?esc(tt.color):'#888'}"></span>Change type →</div>
+    <div class="dt-type-picker-sep"></div>
+    <div class="dt-type-picker-row dt-type-picker-clear" onclick="event.stopPropagation();removeSingleEntry()"><span class="dt-type-picker-clear-icon">✕</span>Remove</div>
+  `;
+  pop.style.display='block';
+  const vw=window.innerWidth,vh=window.innerHeight;
+  const w=220,h=90;
+  pop.style.left=Math.min(x,vw-w-8)+'px';
+  pop.style.top=Math.min(y,vh-h-8)+'px';
+}
+export function changeEntryType(){
+  const pending=state.ganttPendingEntryManage;
+  state.ganttPendingEntryManage=null;
+  closeTypePicker();
+  if(!pending) return;
+  const{entry,x,y}=pending;
+  state.ganttPendingEntryWrite={ticketId:entry.ticket_id,startDate:entry.start_date,endDate:entry.end_date,overlaps:[entry]};
+  openTypePicker(x,y);
+}
+export async function removeSingleEntry(){
+  const pending=state.ganttPendingEntryManage;
+  state.ganttPendingEntryManage=null;
+  closeTypePicker();
+  if(!pending) return;
+  const{entry}=pending;
+  const tt=state.ganttTaskTypes.find(t=>t.id===entry.task_type_id);
+  const rangeLabel=entry.start_date===entry.end_date?fmtDM(entry.start_date):`${fmtDM(entry.start_date)}–${fmtDM(entry.end_date)}`;
+  if(!confirm(`Remove ${tt?tt.code:'this entry'} from ${rangeLabel}?`)) return;
+  try{
+    await deleteEntriesDB([entry.id]);
+    state.ganttEntries=state.ganttEntries.filter(e=>e.id!==entry.id);
+  }catch(err){alert('Could not remove entry: '+(err.message||err));return;}
   renderTimelineBody();
 }
 
@@ -553,6 +762,9 @@ export async function saveTaskTypes(){
 const CALENDAR_COL_WIDTH=140;
 const CAL_MAX_LANES=3;
 
+// overall ticket span (earliest start / latest end across ALL entries) — used only for the
+// popover's summary fields, which stay ticket-level even though the visual bars are now
+// segmented (see computeTicketClusters below)
 function computeTicketSpans(tickets,entries){
   const spans=new Map();
   entries.forEach(e=>{
@@ -565,19 +777,45 @@ function computeTicketSpans(tickets,entries){
   });
   return spans;
 }
-function computeWeekSegments(weekRow,spans,tickets){
-  const segments=[];
+// per-ticket activity CLUSTERS — walks each ticket's entries (sorted by start_date) and
+// groups adjacent/overlapping ones into segments; a real gap (next entry starts later than
+// the immediate next business day after the current segment's end) closes the segment and
+// starts a new one. A ticket can therefore produce multiple disjoint bars instead of one
+// span that visually papers over gaps with no activity.
+function computeTicketClusters(tickets,entries){
+  const clusters=new Map();
   tickets.forEach(t=>{
-    const span=spans.get(t.id);
-    if(!span) return;
-    const weekStart=weekRow.days[0],weekEnd=weekRow.days[weekRow.days.length-1];
-    if(span.maxDate<weekStart||span.minDate>weekEnd) return;
-    const segStart=span.minDate>weekStart?span.minDate:weekStart;
-    const segEnd=span.maxDate<weekEnd?span.maxDate:weekEnd;
-    const startIdx=weekdayIndexInRow(segStart,weekRow);
-    const endIdx=weekdayIndexInRow(segEnd,weekRow);
-    if(startIdx<0||endIdx<0) return;
-    segments.push({ticket:t,startIdx,endIdx});
+    const es=entries.filter(e=>e.ticket_id===t.id).sort((a,b)=>a.start_date<b.start_date?-1:a.start_date>b.start_date?1:0);
+    const segs=[];
+    es.forEach(e=>{
+      const last=segs[segs.length-1];
+      if(last&&e.start_date<=nextBusinessDay(last.maxDate)){
+        if(e.end_date>last.maxDate) last.maxDate=e.end_date;
+      }else{
+        segs.push({minDate:e.start_date,maxDate:e.end_date});
+      }
+    });
+    if(segs.length) clusters.set(t.id,segs);
+  });
+  return clusters;
+}
+function computeWeekSegments(weekRow,clusters,tickets){
+  const segments=[];
+  const weekStart=weekRow.days[0],weekEnd=weekRow.days[weekRow.days.length-1];
+  tickets.forEach(t=>{
+    const segs=clusters.get(t.id);
+    if(!segs) return;
+    segs.forEach(seg=>{
+      if(seg.maxDate<weekStart||seg.minDate>weekEnd) return;
+      const clipStart=seg.minDate>weekStart?seg.minDate:weekStart;
+      const clipEnd=seg.maxDate<weekEnd?seg.maxDate:weekEnd;
+      const startIdx=weekdayIndexInRow(clipStart,weekRow);
+      const endIdx=weekdayIndexInRow(clipEnd,weekRow);
+      if(startIdx<0||endIdx<0) return;
+      // segStart is the UNCLIPPED segment start — used for "Open in Timeline" so clicking a
+      // segment that spans multiple weeks always jumps to its true start, not this week's clip
+      segments.push({ticket:t,startIdx,endIdx,segStart:seg.minDate});
+    });
   });
   return segments;
 }
@@ -616,10 +854,14 @@ export function renderCalendarGrid(){
   const {year,month}=state.ganttMonthCursor;
   const weeks=buildCalendarWeeks(year,month);
   const tickets=state.ganttTickets.filter(t=>state.ganttCalendarShowInactive||isTicketActive(t));
-  const spans=computeTicketSpans(tickets,state.ganttEntries);
+  const clusters=computeTicketClusters(tickets,state.ganttEntries);
+  // "today" badge only renders when the displayed month/year actually matches today's —
+  // never forces navigation to jump there
+  const now=new Date();
+  const todayStr=(now.getFullYear()===year&&now.getMonth()===month)?today():null;
 
   grid.innerHTML=weeks.map(weekRow=>{
-    const segments=computeWeekSegments(weekRow,spans,tickets);
+    const segments=computeWeekSegments(weekRow,clusters,tickets);
     const {visible,overflow}=assignLanes(segments);
     const overflowByDay={};
     overflow.forEach(seg=>{
@@ -631,15 +873,16 @@ export function renderCalendarGrid(){
     const dayLabels=weekRow.days.map(dateStr=>{
       const d=parseISO(dateStr);
       const inMonth=d.getMonth()===month;
-      return `<div class="dt-cal-day-label ${inMonth?'':'dt-cal-day-muted'}" style="width:${CALENDAR_COL_WIDTH}px">${d.getDate()}</div>`;
+      const isToday=dateStr===todayStr;
+      return `<div class="dt-cal-day-label ${inMonth?'':'dt-cal-day-muted'}" style="width:${CALENDAR_COL_WIDTH}px">${isToday?`<span class="dt-cal-today-badge">${d.getDate()}</span>`:d.getDate()}</div>`;
     }).join('');
     const bars=visible.map(seg=>{
       const t=seg.ticket;
       const left=seg.startIdx*CALENDAR_COL_WIDTH;
       const width=(seg.endIdx-seg.startIdx+1)*CALENDAR_COL_WIDTH-6;
       const top=seg.lane*22;
-      const label=t.jira_key||t.project_name;
-      return `<div class="dt-cal-bar" style="left:${left}px;width:${width}px;top:${top}px;background:${ticketColor(t)}" onclick="openTicketPopover('${escJs(t.id)}',this)">${esc(label)}</div>`;
+      const label=t.project_name||t.jira_key;
+      return `<div class="dt-cal-bar" style="left:${left}px;width:${width}px;top:${top}px;background:${ticketColor(t)}" onclick="openTicketPopover('${escJs(t.id)}',this,'${escJs(seg.segStart)}')">${esc(label)}</div>`;
     }).join('');
     const overflowChips=Object.keys(overflowByDay).map(idxStr=>{
       const idx=Number(idxStr);
@@ -681,20 +924,23 @@ function positionPopover(pop,anchorEl){
   pop.style.left=Math.min(rect.left,vw-w-8)+'px';
   pop.style.top=Math.min(rect.bottom+4,vh-h-8)+'px';
 }
-export function openTicketPopover(ticketId,anchorEl){
+export function openTicketPopover(ticketId,anchorEl,segStartDate){
   const t=state.ganttTickets.find(t=>t.id===ticketId);
   if(!t) return;
+  // popover summary is always the ticket's OVERALL span, regardless of which segment/bar was
+  // clicked — only the visual bars are segmented, per the fix's scope
   const span=computeTicketSpans([t],state.ganttEntries.filter(e=>e.ticket_id===ticketId)).get(ticketId);
   const pop=document.getElementById('dtCalPopover');
   if(!pop) return;
   const duration=span?countWeekdaysInclusive(span.minDate,span.maxDate):0;
+  const jumpDate=segStartDate||(span?span.minDate:'');
   pop.innerHTML=`
     <div class="dt-popover-title">${esc(t.project_name)}</div>
     ${t.jira_url?`<div><a href="${esc(t.jira_url)}" target="_blank" rel="noopener">${esc(t.jira_key||'Jira link')}</a></div>`:(t.jira_key?`<div>${esc(t.jira_key)}</div>`:'')}
     ${span?`<div>${esc(span.minDate)} → ${esc(span.maxDate)} (${duration} weekday${duration!==1?'s':''})</div>`:''}
     <div><span class="dt-status-badge dt-status-${esc(t.status.replace(/\s+/g,''))}">${esc(t.status)}</span></div>
     ${t.mon_scope?`<div>Mon. scope: ${esc(t.mon_scope)}</div>`:''}
-    <button class="btn btn-ghost" style="margin-top:8px" onclick="jumpToTimeline('${escJs(t.id)}')">Open in Timeline →</button>
+    <button class="btn btn-ghost" style="margin-top:8px" onclick="jumpToTimeline('${escJs(t.id)}','${escJs(jumpDate)}')">Open in Timeline →</button>
   `;
   pop.style.display='block';
   positionPopover(pop,anchorEl);
@@ -715,12 +961,15 @@ export function closeCalPopover(){
   const pop=document.getElementById('dtCalPopover');
   if(pop){pop.style.display='none';pop.innerHTML='';}
 }
-export function jumpToTimeline(ticketId){
+export function jumpToTimeline(ticketId,segStartDate){
   closeCalPopover();
   const t=state.ganttTickets.find(t=>t.id===ticketId);
   if(!t) return;
-  const entries=state.ganttEntries.filter(e=>e.ticket_id===ticketId);
-  const startDate=entries.length?entries.reduce((min,e)=>e.start_date<min?e.start_date:min,entries[0].start_date):today();
+  let startDate=segStartDate;
+  if(!startDate){
+    const entries=state.ganttEntries.filter(e=>e.ticket_id===ticketId);
+    startDate=entries.length?entries.reduce((min,e)=>e.start_date<min?e.start_date:min,entries[0].start_date):today();
+  }
   switchTab('deliveryTracker');
   state.ganttActiveView='timeline';
   state.ganttTimelineStartDate=mondayOf(startDate);
@@ -765,6 +1014,9 @@ export function initGanttTracker(){
   window.updateTaskTypeField=updateTaskTypeField;
   window.saveTaskTypes=saveTaskTypes;
   window.selectTaskType=selectTaskType;
+  window.clearAssignment=clearAssignment;
+  window.changeEntryType=changeEntryType;
+  window.removeSingleEntry=removeSingleEntry;
   window.closeOverlapModal=closeOverlapModal;
   window.openTicketPopover=openTicketPopover;
   window.openOverflowPopover=openOverflowPopover;
@@ -789,11 +1041,25 @@ export function initGanttTracker(){
   // drag-to-fill: mousedown/mouseup delegated on the table, mouseover delegated (native
   // mouseenter doesn't bubble) for live range highlighting during drag
   const wrap=document.getElementById('dtTimelineWrap');
-  wrap.addEventListener('mousedown',handleDayMouseDown);
-  wrap.addEventListener('mouseover',handleDayMouseOver);
-  document.addEventListener('mouseup',handleDayMouseUp);
+  wrap.addEventListener('pointerdown',handleDayPointerDown);
+  document.addEventListener('pointermove',handleDayPointerMove);
+  document.addEventListener('pointerup',handleDayPointerUp);
+
+  // sticky-column resize handles — delegated on the header since header rows are re-rendered
+  // on every renderTimelineHeader() call, so per-element listeners would be lost each time
+  document.getElementById('dtTimelineHead').addEventListener('mousedown',e=>{
+    const handle=e.target.closest('.dt-col-resize-handle');
+    if(!handle) return;
+    startColumnResize(e,handle.getAttribute('data-col'));
+  });
 
   document.addEventListener('click',e=>{
+    // A drag whose pointerdown/pointerup land on different .dt-day-cells still produces a
+    // trailing native 'click', targeted at their common ancestor (e.g. the <tr>) rather than
+    // either cell — which would otherwise look like an "outside" click on the very same
+    // gesture that just opened the popover and close it before it's ever seen. See
+    // armPopoverOpenGuard()/consumeOutsideClickSuppression() above.
+    if(consumeOutsideClickSuppression()) return;
     if(!e.target.closest('#dtTypePickerPopover')&&!e.target.closest('.dt-day-cell')) closeTypePicker();
     if(!e.target.closest('#dtCalPopover')&&!e.target.closest('.dt-cal-bar')&&!e.target.closest('.dt-cal-overflow-chip')) closeCalPopover();
   });
