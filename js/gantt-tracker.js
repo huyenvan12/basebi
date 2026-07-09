@@ -447,6 +447,11 @@ function highlightRange(ticketId,start,end){
 export function handleDayMouseDown(e){
   const cell=e.target.closest('.dt-day-cell');
   if(!cell) return;
+  // Without this, real (non-synthetic) mouse drags across table cells can trigger the
+  // browser's native text-selection/drag behavior, which swallows the mouseover/mouseup
+  // sequence the drag-to-fill state machine relies on — so the range picker/"Clear
+  // assignment" flow silently never fires.
+  e.preventDefault();
   state.ganttDragState={ticketId:cell.getAttribute('data-ticket-id'),anchorDate:cell.getAttribute('data-date'),currentDate:cell.getAttribute('data-date')};
   highlightRange(state.ganttDragState.ticketId,state.ganttDragState.anchorDate,state.ganttDragState.currentDate);
 }
