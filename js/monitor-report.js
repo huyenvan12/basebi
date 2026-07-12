@@ -84,7 +84,7 @@ export async function createMonitorReportFromTemplate(){
 
   const linesPayload=tplLines.map(l=>({
     criterion_id:newCriterionIdBySortOrder[tplCriterionSortOrderById[l.template_criterion_id]],
-    sort_order:l.sort_order, category:l.category, value:null
+    sort_order:l.sort_order, category:l.category, value:l.sample_value
   })).filter(l=>l.criterion_id);
   if(linesPayload.length){
     const{error:lineErr}=await sb.from('monitor_report_lines').insert(linesPayload);
