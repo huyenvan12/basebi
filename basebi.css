@@ -803,7 +803,16 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
    MONITOR LOG
    ══════════════════════════════════════════════════ */
 .monitor-log-list-table td:last-child{width:64px;text-align:right}
-.monitor-report-table{table-layout:fixed}
+/* #monitorLogDetailScroll carries no padding of its own (unlike the generic
+   .checklist-detail-scroll it otherwise reuses) so the sticky table header below can sit
+   flush against the top of the scrollport with no gap — padding lives on
+   .monitor-report-detail-content instead, which is a non-scrolling descendant and so doesn't
+   affect the sticky offset calculation. */
+#monitorLogDetailScroll{padding:0}
+.monitor-report-detail-content{padding:18px;max-width:560px}
+/* .camp-table sets min-width:860px for the wide campaigns list — override it here since this
+   is a fixed 2-column table and doesn't need anywhere near that width. */
+table.monitor-report-table{table-layout:fixed;width:100%;min-width:0}
 .monitor-report-table th:first-child,.monitor-report-table td.monitor-criterion-cell{width:220px}
 .monitor-section-header-row{background:var(--surface2);color:var(--text-muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:8px 12px!important}
 .monitor-criterion-cell{vertical-align:top;font-weight:600;color:var(--text)}

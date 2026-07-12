@@ -111,14 +111,16 @@ export function renderMonitorReportDetail(){
   });
 
   el.innerHTML=`
-    <div class="monitor-report-header">
-      <div class="monitor-report-date">${esc(fmtMonitorReportDate(report.report_date))}</div>
-      <span class="monitor-readonly-badge">View only</span>
-    </div>
-    <table class="camp-table monitor-report-table">
-      <thead><tr><th>Categories</th><th>Value</th></tr></thead>
-      <tbody>${rowsHtml}</tbody>
-    </table>`;
+    <div class="monitor-report-detail-content">
+      <div class="monitor-report-header">
+        <div class="monitor-report-date">${esc(fmtMonitorReportDate(report.report_date))}</div>
+        <span class="monitor-readonly-badge">View only</span>
+      </div>
+      <table class="camp-table monitor-report-table">
+        <thead><tr><th>Categories</th><th>Value</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>`;
 }
 
 // ══════════════════════════════════════════════════
