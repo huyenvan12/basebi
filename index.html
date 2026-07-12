@@ -245,6 +245,7 @@
       <div class="tab-group team-subtab-group">
         <button class="tab-btn active" id="teamSubTabNotes" onclick="switchTeamSubTab('notes')">🌐 Shared Notes</button>
         <button class="tab-btn" id="teamSubTabChecklists" onclick="switchTeamSubTab('checklists')">✅ Checklists</button>
+        <button class="tab-btn" id="teamSubTabMonitorLog" onclick="switchTeamSubTab('monitorlog')">📈 Monitor Log</button>
       </div>
     </div>
 
@@ -316,6 +317,30 @@
             <button class="btn btn-ghost" onclick="backToSharedWithMe()">← Back to Shared with me</button>
           </div>
           <div class="checklist-detail-scroll" id="checklistReviewerScroll"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MONITOR LOG SUB-VIEW -->
+    <div class="team-subview" id="teamMonitorLogSubview">
+      <div class="checklist-panel" id="monitorLogPanel">
+        <!-- LIST VIEW -->
+        <div class="checklist-page active" id="monitorLogListView">
+          <div class="note-list-header">
+            <span class="note-list-title">📈 Monitor Log</span>
+          </div>
+          <table class="camp-table monitor-log-list-table">
+            <thead><tr><th>Report Date</th><th>Created By</th><th></th></tr></thead>
+            <tbody id="monitorLogListBody"></tbody>
+          </table>
+        </div>
+
+        <!-- DETAIL VIEW -->
+        <div class="checklist-page" id="monitorLogDetailView">
+          <div class="checklist-detail-topbar">
+            <button class="btn btn-ghost" onclick="backToMonitorLogList()">← Back to Monitor Log</button>
+          </div>
+          <div class="checklist-detail-scroll" id="monitorLogDetailScroll"></div>
         </div>
       </div>
     </div>

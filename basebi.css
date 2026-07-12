@@ -800,6 +800,21 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
 .graph-open-btn{margin-top:auto;padding:8px;text-align:center;background:var(--accent);color:#fff;font-size:12px;font-weight:500;border:none;border-radius:6px;cursor:pointer;font-family:inherit}
 
 /* ══════════════════════════════════════════════════
+   MONITOR LOG
+   ══════════════════════════════════════════════════ */
+.monitor-log-list-table td:last-child{width:64px;text-align:right}
+.monitor-report-table{table-layout:fixed}
+.monitor-report-table th:first-child,.monitor-report-table td.monitor-criterion-cell{width:220px}
+.monitor-section-header-row{background:var(--surface2);color:var(--text-muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:8px 12px!important}
+.monitor-criterion-cell{vertical-align:top;font-weight:600;color:var(--text)}
+.monitor-value-cell{display:flex;gap:8px}
+.monitor-cell-input{flex:1;min-width:0;border:1px solid var(--border);border-radius:4px;padding:5px 8px;font-family:inherit;font-size:11px;background:var(--surface);color:var(--text-muted)}
+.monitor-cell-input[disabled]{opacity:.75;cursor:default}
+.monitor-report-header{display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.monitor-report-date{font-size:15px;font-weight:600;color:var(--text)}
+.monitor-readonly-badge{font-size:10px;padding:3px 9px;border-radius:10px;background:var(--tag-bg);color:var(--text-dim);font-weight:600}
+
+/* ══════════════════════════════════════════════════
    DELIVERY TRACKER
    ══════════════════════════════════════════════════ */
 .dt-view-switcher{display:flex;gap:2px;padding:8px 14px 0;flex-shrink:0}
