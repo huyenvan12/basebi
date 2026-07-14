@@ -328,6 +328,7 @@
         <div class="checklist-page active" id="monitorLogListView">
           <div class="note-list-header">
             <span class="note-list-title">📈 Monitor Log</span>
+            <button class="btn btn-primary" onclick="createMonitorReportFromTemplate()">+ New from template</button>
           </div>
           <table class="camp-table monitor-log-list-table">
             <thead><tr><th>Report Date</th><th>Created By</th><th></th></tr></thead>
@@ -339,6 +340,7 @@
         <div class="checklist-page" id="monitorLogDetailView">
           <div class="checklist-detail-topbar">
             <button class="btn btn-ghost" onclick="backToMonitorLogList()">← Back to Monitor Log</button>
+            <button class="btn btn-ghost" onclick="copyMonitorReportAsTable(this)">Copy as table</button>
           </div>
           <div class="checklist-detail-scroll" id="monitorLogDetailScroll"></div>
         </div>

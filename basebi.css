@@ -85,6 +85,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 .btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:#4a7de0}
 .btn-primary.code-save{background:var(--sql)}.btn-primary.code-save:hover{background:#d68a0a}
 .btn-ghost{background:transparent;color:var(--text-muted);border:1px solid var(--border)}.btn-ghost:hover{background:var(--surface2);color:var(--text)}
+.btn-ghost.copied{color:var(--success);border-color:var(--success)}
 .btn-danger{background:var(--danger-dim);color:var(--danger);border:1px solid transparent}.btn-danger:hover{border-color:var(--danger)}
 .btn-success{background:rgba(74,222,128,.15);color:var(--success);border:1px solid transparent}.btn-success:hover{border-color:var(--success)}
 
@@ -570,7 +571,7 @@ pre.popup-code-body{padding:12px;font-family:'JetBrains Mono',monospace;font-siz
 .checklist-flag-badge{font-size:10px;color:var(--danger);font-weight:600;white-space:nowrap}
 
 /* Checklist detail view */
-.checklist-detail-topbar{padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
+.checklist-detail-topbar{padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;gap:8px}
 .checklist-detail-scroll{flex:1;overflow-y:auto;padding:18px}
 .checklist-detail-header{display:flex;flex-direction:column;gap:8px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border)}
 .checklist-detail-title-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
