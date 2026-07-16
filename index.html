@@ -87,7 +87,52 @@
 
 </div>
 
+<!-- MOBILE SHELL — is-native-app (Capacitor Android) only. Hidden on web/desktop via CSS. -->
+<div id="mobileShell" class="mobile-shell">
+  <div class="mob-header" id="mobHeader">
+    <div class="mob-header-title">Notes</div>
+    <div class="mob-header-actions">
+      <button class="mob-icon-btn" id="mobSearchBtn" title="Search">⌕</button>
+      <button class="mob-icon-btn" id="mobDailyBtn" title="Today's note">📅</button>
+    </div>
+  </div>
 
+  <div class="mob-screens" id="mobScreens">
+    <div class="mob-screen active" id="mobNotesListScreen">
+      <div class="mob-folder-chips" id="mobFolderChips"></div>
+      <div class="mob-note-cards" id="mobNoteCards"></div>
+    </div>
+
+    <div class="mob-screen" id="mobNoteDetailScreen">
+      <div class="mob-detail-topbar">
+        <button class="mob-back-btn" id="mobDetailBackBtn">‹ Notes</button>
+        <div class="mob-detail-actions" id="mobDetailActions"></div>
+      </div>
+      <div class="mob-detail-body" id="mobDetailBody"></div>
+    </div>
+
+    <div class="mob-screen" id="mobDailyScreen">
+      <div class="mob-detail-topbar">
+        <button class="mob-back-btn" id="mobDailyBackBtn">‹ Notes</button>
+      </div>
+      <div class="mob-detail-body" id="mobDailyBody"></div>
+      <div class="mob-capture-bar">
+        <input type="text" id="mobDailyCaptureInput" placeholder="Log a timestamped entry…" autocomplete="off">
+        <button class="btn btn-primary" id="mobDailyCaptureBtn">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <button class="mob-fab" id="mobFabBtn" title="New note">＋</button>
+
+  <div class="mob-bottom-nav" id="mobBottomNav">
+    <button class="mob-nav-item active" id="mobNavNotes" data-tab="notes">📋<span>Notes</span></button>
+    <button class="mob-nav-item disabled" id="mobNavCampaign" data-tab="campaign">📊<span>Campaign</span></button>
+    <button class="mob-nav-item disabled" id="mobNavDelivery" data-tab="delivery">🚀<span>Delivery</span></button>
+    <button class="mob-nav-item disabled" id="mobNavChecklist" data-tab="checklist">✅<span>Checklist</span></button>
+    <button class="mob-nav-item disabled" id="mobNavMore" data-tab="more">⋯<span>More</span></button>
+  </div>
+</div>
 
 <!-- MAIN -->
 <div class="main">

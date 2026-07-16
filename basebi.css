@@ -913,3 +913,67 @@ thead .dt-sticky-col{z-index:4;background:var(--surface2)}
 .dt-cal-overflow-chip{position:absolute;font-size:9px;color:var(--text-dim);cursor:pointer;padding:1px 6px}
 .dt-cal-overflow-chip:hover{color:var(--accent)}
 .graph-open-btn:hover{opacity:.9}
+
+/* ══════════════════════════════════════════════════
+   MOBILE SHELL — is-native-app (Capacitor Android) only. No-op on web/desktop:
+   scoped entirely under body.is-native-app, which is never set outside the
+   native app shell (see js/main.js). Reuses existing tokens/classes above
+   (colors, fonts, note-type-badge, detail-tag, code-block, linked-chip, etc.)
+   rather than introducing new ones.
+   ══════════════════════════════════════════════════ */
+#mobileShell{display:none}
+body.is-native-app .topbar,
+body.is-native-app .main,
+body.is-native-app .fab,
+body.is-native-app .fab-tooltip{display:none!important}
+body.is-native-app #mobileShell{
+  display:flex;flex-direction:column;height:100vh;background:var(--bg);color:var(--text);
+  position:fixed;inset:0;z-index:10;
+}
+
+.mob-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;flex-shrink:0}
+.mob-header-title{font-size:17px;font-weight:600;color:var(--text)}
+.mob-header-actions{display:flex;gap:8px}
+.mob-icon-btn{width:34px;height:34px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text-muted);font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.mob-icon-btn:active{background:var(--surface2)}
+
+.mob-screens{flex:1;overflow:hidden;position:relative}
+.mob-screen{display:none;flex-direction:column;height:100%;overflow-y:auto}
+.mob-screen.active{display:flex}
+
+.mob-folder-chips{display:flex;gap:8px;padding:0 16px 12px;overflow-x:auto;flex-shrink:0}
+.mob-folder-chip{flex-shrink:0;font-size:12px;color:var(--text-muted);background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:6px 14px;cursor:pointer;white-space:nowrap}
+.mob-folder-chip.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+
+.mob-note-cards{flex:1;overflow-y:auto;padding:0 16px 90px;display:flex;flex-direction:column;gap:10px}
+.mob-note-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;cursor:pointer}
+.mob-note-card:active{background:var(--surface2)}
+.mob-note-card-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px}
+.mob-note-card-meta{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.mob-note-card-excerpt{font-size:12px;color:var(--text-dim);line-height:1.5;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.mob-empty{padding:40px 16px;text-align:center;color:var(--text-dim);font-size:13px}
+
+.mob-detail-topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
+.mob-back-btn{background:none;border:none;color:var(--accent);font-size:14px;font-weight:500;cursor:pointer;padding:6px 4px}
+.mob-detail-actions{display:flex;gap:8px}
+.mob-detail-body{flex:1;overflow-y:auto;padding:16px 16px 32px}
+.mob-detail-title{font-size:19px;font-weight:600;color:var(--text);margin-bottom:8px}
+.mob-detail-meta{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.mob-detail-dates{font-size:10px;color:var(--text-dim);margin-bottom:14px}
+
+.mob-fab{position:fixed;right:18px;bottom:78px;width:52px;height:52px;border-radius:50%;background:var(--accent);border:none;color:#fff;font-size:24px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(91,141,238,.45);z-index:20;cursor:pointer}
+.mob-fab:active{background:#4a7de0}
+.mob-bottom-nav{display:flex;border-top:1px solid var(--border);background:var(--surface);flex-shrink:0;padding-bottom:env(safe-area-inset-bottom)}
+.mob-nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 0 8px;background:none;border:none;color:var(--text-dim);font-size:9px;cursor:pointer}
+.mob-nav-item span{font-size:9px}
+.mob-nav-item.active{color:var(--accent)}
+.mob-nav-item.disabled{opacity:.4;cursor:default}
+
+.mob-capture-bar{display:flex;gap:8px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.mob-capture-bar input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none}
+.mob-capture-bar input:focus{border-color:var(--accent)}
+
+/* shared overlays (note modal, search screen, note popup) are reused as-is on mobile — widen to fit narrow viewports */
+body.is-native-app .modal{width:calc(100vw - 32px);max-width:480px}
+body.is-native-app .note-popup{width:calc(100vw - 32px)}
+body.is-native-app .search-screen{padding-top:calc(50px + env(safe-area-inset-top))}
