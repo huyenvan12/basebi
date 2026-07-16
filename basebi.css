@@ -85,6 +85,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 .btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:#4a7de0}
 .btn-primary.code-save{background:var(--sql)}.btn-primary.code-save:hover{background:#d68a0a}
 .btn-ghost{background:transparent;color:var(--text-muted);border:1px solid var(--border)}.btn-ghost:hover{background:var(--surface2);color:var(--text)}
+.btn-ghost.copied{color:var(--success);border-color:var(--success)}
 .btn-danger{background:var(--danger-dim);color:var(--danger);border:1px solid transparent}.btn-danger:hover{border-color:var(--danger)}
 .btn-success{background:rgba(74,222,128,.15);color:var(--success);border:1px solid transparent}.btn-success:hover{border-color:var(--success)}
 
@@ -570,7 +571,7 @@ pre.popup-code-body{padding:12px;font-family:'JetBrains Mono',monospace;font-siz
 .checklist-flag-badge{font-size:10px;color:var(--danger);font-weight:600;white-space:nowrap}
 
 /* Checklist detail view */
-.checklist-detail-topbar{padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
+.checklist-detail-topbar{padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;gap:8px}
 .checklist-detail-scroll{flex:1;overflow-y:auto;padding:18px}
 .checklist-detail-header{display:flex;flex-direction:column;gap:8px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border)}
 .checklist-detail-title-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -798,6 +799,30 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
 .graph-link-item{font-size:12px;color:var(--accent);cursor:pointer;padding:4px 0}
 .graph-link-item:hover{text-decoration:underline}
 .graph-open-btn{margin-top:auto;padding:8px;text-align:center;background:var(--accent);color:#fff;font-size:12px;font-weight:500;border:none;border-radius:6px;cursor:pointer;font-family:inherit}
+
+/* ══════════════════════════════════════════════════
+   MONITOR LOG
+   ══════════════════════════════════════════════════ */
+.monitor-log-list-table td:last-child{width:64px;text-align:right}
+/* #monitorLogDetailScroll carries no padding of its own (unlike the generic
+   .checklist-detail-scroll it otherwise reuses) so the sticky table header below can sit
+   flush against the top of the scrollport with no gap — padding lives on
+   .monitor-report-detail-content instead, which is a non-scrolling descendant and so doesn't
+   affect the sticky offset calculation. */
+#monitorLogDetailScroll{padding:0}
+.monitor-report-detail-content{padding:18px;max-width:560px}
+/* .camp-table sets min-width:860px for the wide campaigns list — override it here since this
+   is a fixed 2-column table and doesn't need anywhere near that width. */
+table.monitor-report-table{table-layout:fixed;width:100%;min-width:0}
+.monitor-report-table th:first-child,.monitor-report-table td.monitor-criterion-cell{width:220px}
+.monitor-section-header-row{background:var(--surface2);color:var(--text-muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:8px 12px!important}
+.monitor-criterion-cell{vertical-align:top;font-weight:600;color:var(--text)}
+.monitor-value-cell{display:flex;gap:8px}
+.monitor-cell-input{flex:1;min-width:0;border:1px solid var(--border);border-radius:4px;padding:5px 8px;font-family:inherit;font-size:11px;background:var(--surface);color:var(--text-muted)}
+.monitor-cell-input[disabled]{opacity:.75;cursor:default}
+.monitor-report-header{display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.monitor-report-date{font-size:15px;font-weight:600;color:var(--text)}
+.monitor-readonly-badge{font-size:10px;padding:3px 9px;border-radius:10px;background:var(--tag-bg);color:var(--text-dim);font-weight:600}
 
 /* ══════════════════════════════════════════════════
    DELIVERY TRACKER

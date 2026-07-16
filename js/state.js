@@ -32,7 +32,7 @@ export const state = {
 
   // checklist state
   checklistTemplates: [], checklistInstances: [],
-  currentTeamSubTab: 'notes',                 // 'notes' | 'checklists'
+  currentTeamSubTab: 'notes',                 // 'notes' | 'checklists' | 'monitorlog'
   currentChecklistView: 'mine',               // 'templates' | 'mine' | 'detail'
   activeChecklistInstanceId: null,
   checklistPhaseOpen: {},                     // { [phaseName]: bool } — persists manual expand/collapse across re-renders
@@ -73,6 +73,13 @@ export const state = {
   ganttCalendarShowInactive: false,
   ganttDragState: null,                       // {ticketId, anchorDate, currentDate} while a drag-to-fill is in progress
   ganttPendingEntryWrite: null,               // {ticketId, startDate, endDate, overlaps} staged between type-pick and overlap-confirm
+
+  // monitor report state
+  monitorReports: [], activeMonitorReportId: null,
+  monitorReportCriteria: [], monitorReportLines: [],
+  monitorSaveTimer: null,      // single shared debounce timer for owner inline-edit — only one
+                                // input can hold focus at a time, so one timer is sufficient
+                                // (mirrors checklistNoteSaveTimer)
 
   // tab/nav state
   currentTab: 'notes',

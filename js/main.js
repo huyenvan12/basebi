@@ -23,7 +23,7 @@ import {
   loadChecklistShares, loadSharedWithMeInstances, loadOrgMembers,
   updateSharedWithMeBadge, renderMyChecklists, renderSharedWithMeList, renderReviewerChecklist, initChecklistShare
 } from './checklist-share.js';
-import { initMonitorReport } from './monitor-report.js';
+import { loadMonitorReports, renderMonitorLogList, initMonitorReport } from './monitor-report.js';
 import { graphLoadLabelScale, renderGraph, initGraphView } from './graph-view.js';
 import { loadFeatureVisibility, isFeatureVisible } from './feature-flags.js';
 import { loadFeatureFlags, renderAdminHub, initAdminHub } from './admin-hub.js';
@@ -44,7 +44,7 @@ const TAB_FEATURE_KEY = { notes:'notes', campaigns:'campaign', graph:'graph_view
 // directly (console, stale onclick, etc.) rather than through a nav click.
 function isTabAllowed(tab){
   if(tab==='admin') return state.currentUserRole==='admin';
-  if(tab==='team') return isFeatureVisible('teamshared_notes')||isFeatureVisible('checklist');
+  if(tab==='team') return isFeatureVisible('teamshared_notes')||isFeatureVisible('checklist')||isFeatureVisible('monitor_log');
   const key=TAB_FEATURE_KEY[tab];
   return !key || isFeatureVisible(key);
 }
@@ -80,12 +80,16 @@ export function switchTab(tab){
     // land on whichever Team Shared sub-tab is actually visible — e.g. if teamshared_notes
     // is off but checklist is on, don't default into a hidden "Shared Notes" sub-view
     if(!isFeatureVisible('teamshared_notes')&&state.currentTeamSubTab==='notes') state.currentTeamSubTab='checklists';
-    if(!isFeatureVisible('checklist')&&state.currentTeamSubTab==='checklists') state.currentTeamSubTab='notes';
+    if(!isFeatureVisible('checklist')&&state.currentTeamSubTab==='checklists') state.currentTeamSubTab='monitorlog';
+    if(!isFeatureVisible('monitor_log')&&state.currentTeamSubTab==='monitorlog') state.currentTeamSubTab='notes';
     document.getElementById('teamSubTabNotes').classList.toggle('active',state.currentTeamSubTab==='notes');
     document.getElementById('teamSubTabChecklists').classList.toggle('active',state.currentTeamSubTab==='checklists');
+    document.getElementById('teamSubTabMonitorLog').classList.toggle('active',state.currentTeamSubTab==='monitorlog');
     document.getElementById('teamNotesSubview').classList.toggle('active',state.currentTeamSubTab==='notes');
     document.getElementById('teamChecklistsSubview').classList.toggle('active',state.currentTeamSubTab==='checklists');
+    document.getElementById('teamMonitorLogSubview').classList.toggle('active',state.currentTeamSubTab==='monitorlog');
     renderTeamList(); renderTeamSubnav();
+    if(state.currentTeamSubTab==='monitorlog') renderMonitorLogList();
   }
   if(tab==='admin') renderAdminHub();
   if(tab==='deliveryTracker'){
@@ -99,12 +103,16 @@ export function switchTab(tab){
 // ══════════════════════════════════════════════════
 export function switchTeamSubTab(sub){
   if(sub==='checklists'&&!isFeatureVisible('checklist')) return;
+  if(sub==='monitorlog'&&!isFeatureVisible('monitor_log')) return;
   state.currentTeamSubTab=sub;
   document.getElementById('teamSubTabNotes').classList.toggle('active',sub==='notes');
   document.getElementById('teamSubTabChecklists').classList.toggle('active',sub==='checklists');
+  document.getElementById('teamSubTabMonitorLog').classList.toggle('active',sub==='monitorlog');
   document.getElementById('teamNotesSubview').classList.toggle('active',sub==='notes');
   document.getElementById('teamChecklistsSubview').classList.toggle('active',sub==='checklists');
+  document.getElementById('teamMonitorLogSubview').classList.toggle('active',sub==='monitorlog');
   if(sub==='checklists') renderTeamSubnav();
+  if(sub==='monitorlog') renderMonitorLogList();
 }
 // Renders the admin-only inner pill toggle (Templates | My Checklists) and
 // makes sure non-admins land directly on My Checklists with no toggle shown.
@@ -391,7 +399,10 @@ async function initApp(){
 
     if(isFeatureVisible('notes')) initNotes();
     if(isFeatureVisible('graph_view')) initGraphView();
-    if(isFeatureVisible('monitor_log')) initMonitorReport();
+    if(isFeatureVisible('monitor_log')){
+      state.monitorReports = await loadMonitorReports();
+      initMonitorReport();
+    }
     if(state.currentUserRole==='admin') state.featureFlags = await loadFeatureFlags();
 
     if(isFeatureVisible('gantt_tracker')){
@@ -425,9 +436,10 @@ function applyNavGating(){
   document.getElementById('tabNotes').style.display = isFeatureVisible('notes')?'':'none';
   document.getElementById('tabCampaigns').style.display = isFeatureVisible('campaign')?'':'none';
   document.getElementById('tabGraph').style.display = isFeatureVisible('graph_view')?'':'none';
-  document.getElementById('tabTeam').style.display = (isFeatureVisible('teamshared_notes')||isFeatureVisible('checklist'))?'':'none';
+  document.getElementById('tabTeam').style.display = (isFeatureVisible('teamshared_notes')||isFeatureVisible('checklist')||isFeatureVisible('monitor_log'))?'':'none';
   document.getElementById('teamSubTabNotes').style.display = isFeatureVisible('teamshared_notes')?'':'none';
   document.getElementById('teamSubTabChecklists').style.display = isFeatureVisible('checklist')?'':'none';
+  document.getElementById('teamSubTabMonitorLog').style.display = isFeatureVisible('monitor_log')?'':'none';
   document.getElementById('tabAdmin').style.display = state.currentUserRole==='admin'?'':'none';
   document.getElementById('tabGantt').style.display = isFeatureVisible('gantt_tracker')?'':'none';
   document.getElementById('dtManageTypesBtn').style.display = state.currentUserRole==='admin'?'':'none';
