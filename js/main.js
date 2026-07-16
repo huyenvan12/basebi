@@ -530,6 +530,12 @@ function initMain(){
 // initApp() — they must run only after loadFeatureVisibility() resolves, which itself
 // depends on state.currentUserId being set by auth. Wiring calls with no feature gate
 // (folders, daily note, nav shell, admin hub globals) still run unconditionally at bootstrap.
+// Capacitor injects window.Capacitor into the WebView only inside the native app shell;
+// on GitHub Pages this is always undefined, so this is a no-op there. No import needed.
+if (window.Capacitor?.isNativePlatform?.()) {
+  document.body.classList.add('is-native-app');
+}
+
 initUiHelpers();
 initSupabaseClient(initApp);
 initFolders();
