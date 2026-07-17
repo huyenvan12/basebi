@@ -74,6 +74,7 @@ function appendLoginLog(panel,lines,cb){
 }
 
 let onAuthenticated=null;
+let onFreshLogin=null;   // fired only on a fresh password login, never on a silently-restored session — see setOnFreshLogin
 
 async function submitLoginJob(){
   const btn=document.getElementById('loginRunBtn');
@@ -102,7 +103,10 @@ async function submitLoginJob(){
       {text:'NOTE: Credentials verified. 1 row returned.',cls:'login-log-note',delay:850},
       {text:'NOTE: PROCEDURE LOGIN used (Total process time): 0.41 seconds',cls:'login-log-plain',delay:1150},
       {text:`NOTE: Welcome back, ${email.split('@')[0]}. Loading workspace…`,cls:'login-log-note',delay:1500},
-    ],()=>{ if(onAuthenticated)onAuthenticated(); });
+    ],()=>{
+      if(onAuthenticated)onAuthenticated();
+      if(onFreshLogin&&data.session)onFreshLogin(data.session,email);
+    });
   }
 }
 
@@ -126,6 +130,10 @@ export async function doLogout(){
 // session found by checkAuthAndInit, or a fresh sign-in via submitLoginJob). This indirection
 // avoids supabase-client.js importing main.js's initApp directly (would be a real import cycle,
 // unlike the safe function-body-only folders.js<->notes.js cycle).
+export function setOnFreshLogin(cb){
+  onFreshLogin=cb;
+}
+
 export function initSupabaseClient(cb){
   onAuthenticated=cb;
 
