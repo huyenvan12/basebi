@@ -119,12 +119,16 @@ export function renderMonitorLogList(){
     return;
   }
   tbody.innerHTML=state.monitorReports.map(r=>{
+    // Trash always renders — as the real button when deletable, or as a same-size invisible
+    // placeholder when not — so "View →" (the alignment anchor, always last/rightmost) never
+    // shifts horizontally depending on the viewer's permissions for that row.
     const delBtn=canDeleteMonitorReport(r)
-      ?`<button class="monitor-delete-btn" title="Delete report" onclick="confirmDeleteMonitorReport('${r.id}','list')">${MONITOR_TRASH_SVG}</button>`:'';
+      ?`<button class="monitor-delete-btn" title="Delete report" onclick="confirmDeleteMonitorReport('${r.id}','list')">${MONITOR_TRASH_SVG}</button>`
+      :`<span class="monitor-delete-btn-placeholder" aria-hidden="true"></span>`;
     return `<tr>
       <td>${esc(fmtMonitorReportDate(r.report_date))}</td>
       <td>${esc(authorName(r.created_by))}</td>
-      <td><button class="ci-view-detail-btn" onclick="openMonitorReportDetail('${r.id}')">View →</button>${delBtn}</td>
+      <td class="monitor-log-actions-cell">${delBtn}<button class="ci-view-detail-btn" onclick="openMonitorReportDetail('${r.id}')">View →</button></td>
     </tr>`;
   }).join('');
 }
@@ -346,8 +350,30 @@ export function confirmDeleteMonitorReport(id,context){
   anchor.insertAdjacentElement('afterend',box);
 }
 export async function deleteMonitorReport(id,context){
+  const el=document.getElementById(context==='list'?'monitorLogListView':'monitorLogDetailView');
+  const box=el?.querySelector('.confirm-box');
+  const confirmBtn=box?.querySelector('.btn-danger');
+  if(confirmBtn){ confirmBtn.disabled=true; confirmBtn.textContent='Deleting…'; }
+
   const{error}=await sb.from('monitor_reports').delete().eq('id',id);
-  if(error){ console.error(error); alert("You don't have permission to delete this report."); return; }
+
+  if(error){
+    // Keep the dialog open on failure and surface an inline error instead of closing silently —
+    // matches confirm-box's existing <p>/<div class="confirm-actions"> structure.
+    console.error(error);
+    if(box){
+      let errEl=box.querySelector('.confirm-error');
+      if(!errEl){
+        errEl=document.createElement('p'); errEl.className='confirm-error';
+        box.querySelector('.confirm-actions').insertAdjacentElement('beforebegin',errEl);
+      }
+      errEl.textContent="You don't have permission to delete this report.";
+    }
+    if(confirmBtn){ confirmBtn.disabled=false; confirmBtn.textContent='Yes, delete'; }
+    return;
+  }
+
+  box?.remove();                                     // dialog must unmount on success, in both contexts
   state.monitorReports=state.monitorReports.filter(r=>r.id!==id);
   if(context==='detail'){ backToMonitorLogList(); }
   else{ renderMonitorLogList(); }
