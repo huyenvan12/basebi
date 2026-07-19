@@ -28,7 +28,7 @@ import { graphLoadLabelScale, renderGraph, initGraphView } from './graph-view.js
 import { loadFeatureVisibility, isFeatureVisible } from './feature-flags.js';
 import { loadFeatureFlags, renderAdminHub, initAdminHub } from './admin-hub.js';
 import { initMobileShell, renderMobileShell } from './mobile-shell.js';
-import { maybeShowSaveAccountPrompt } from './saved-accounts.js';
+import { maybeShowSaveAccountPrompt, initTokenRefreshSync } from './saved-accounts.js';
 import {
   loadTaskTypes, loadTickets, loadEntries, switchGanttView, initGanttTracker,
   closeTicketModal, closeTaskTypeModal, closeOverlapModal, closeTypePicker, closeCalPopover
@@ -539,6 +539,7 @@ if (window.Capacitor?.isNativePlatform?.()) {
   document.body.classList.add('is-native-app');
   initMobileShell();
   setOnFreshLogin(maybeShowSaveAccountPrompt);
+  initTokenRefreshSync();
 }
 
 initUiHelpers();
