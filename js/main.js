@@ -27,6 +27,7 @@ import { loadMonitorReports, renderMonitorLogList, initMonitorReport } from './m
 import { graphLoadLabelScale, renderGraph, initGraphView } from './graph-view.js';
 import { loadFeatureVisibility, isFeatureVisible } from './feature-flags.js';
 import { loadFeatureFlags, renderAdminHub, initAdminHub } from './admin-hub.js';
+import { initMobileShell, renderMobileShell } from './mobile-shell.js';
 import {
   loadTaskTypes, loadTickets, loadEntries, switchGanttView, initGanttTracker,
   closeTicketModal, closeTaskTypeModal, closeOverlapModal, closeTypePicker, closeCalPopover
@@ -420,6 +421,7 @@ async function initApp(){
     document.getElementById('loadingScreen').style.display='none';
 
     buildIndex(); renderAll();
+    if (window.Capacitor?.isNativePlatform?.()) renderMobileShell();
   } catch(err){
     msg.textContent='Connection failed — check your Supabase URL and key.';
     msg.style.color='#f87171';
@@ -534,6 +536,7 @@ function initMain(){
 // on GitHub Pages this is always undefined, so this is a no-op there. No import needed.
 if (window.Capacitor?.isNativePlatform?.()) {
   document.body.classList.add('is-native-app');
+  initMobileShell();
 }
 
 initUiHelpers();

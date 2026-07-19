@@ -37,7 +37,7 @@ export async function openDailyNote(){
   const dailyFolderId=await ensureFolder('Daily');
   const t=today();
   const note={id:Date.now(),title:fmtDailyTitle(t),folder:'Daily',folder_id:dailyFolderId,type:'plain',
-    tags:[],links:[],body:'',code:null,daily_date:t,
+    tags:[],links:[],body:'',code:null,daily_date:t,owner_id:state.currentUserId,
     created:t,modified:t};
   state.notes.unshift(note);
   saveOneNote(note);buildIndex();renderAll();selectNote(note.id);
