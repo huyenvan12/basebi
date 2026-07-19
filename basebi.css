@@ -239,6 +239,7 @@ textarea.code-input{font-family:'JetBrains Mono',monospace;font-size:12px;min-he
 /* CONFIRM */
 .confirm-box{background:var(--surface2);border:1px solid var(--danger);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px;margin:0 20px}
 .confirm-box p{font-size:12px;color:var(--text-muted)}
+.confirm-error{font-size:11px;color:var(--danger);margin:0}
 .share-modal-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}
 .share-modal-row:last-child{border-bottom:none}
 .share-modal-name{color:var(--text)}
@@ -803,7 +804,19 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
 /* ══════════════════════════════════════════════════
    MONITOR LOG
    ══════════════════════════════════════════════════ */
-.monitor-log-list-table td:last-child{width:64px;text-align:right}
+/* table-layout:fixed (+ min-width:0 to drop .camp-table's 860px floor) so the actions column
+   width is locked to the value below regardless of whether a given row renders a trash icon —
+   under the default 'auto' layout the browser sizes columns from row content, so a column that's
+   sometimes just "View →" and sometimes "[trash] View →" would visibly shift row to row. */
+table.monitor-log-list-table{table-layout:fixed;width:100%;min-width:0}
+.monitor-log-list-table th:last-child,.monitor-log-list-table td:last-child{width:104px}
+.monitor-log-actions-cell{display:flex;align-items:center;justify-content:flex-end;gap:10px}
+/* "View →" is the alignment anchor and always sits last (rightmost); the trash button/
+   placeholder — same footprint whether the real button or the invisible placeholder — sits
+   immediately to its left so the right edge of "View →" never moves between rows. */
+.monitor-delete-btn{background:none;border:none;padding:2px;font-family:inherit;color:var(--danger);cursor:pointer;display:inline-flex;align-items:center;flex:none}
+.monitor-delete-btn:hover{opacity:.75}
+.monitor-delete-btn-placeholder{width:18px;height:18px;flex:none;visibility:hidden}
 /* #monitorLogDetailScroll carries no padding of its own (unlike the generic
    .checklist-detail-scroll it otherwise reuses) so the sticky table header below can sit
    flush against the top of the scrollport with no gap — padding lives on
@@ -820,6 +833,9 @@ table.monitor-report-table{table-layout:fixed;width:100%;min-width:0}
 .monitor-value-cell{display:flex;gap:8px}
 .monitor-cell-input{flex:1;min-width:0;border:1px solid var(--border);border-radius:4px;padding:5px 8px;font-family:inherit;font-size:11px;background:var(--surface);color:var(--text-muted)}
 .monitor-cell-input[disabled]{opacity:.75;cursor:default}
+.monitor-val-wrap{position:relative;flex:1;min-width:0;display:flex}
+.monitor-val-wrap.monitor-cell-edited .monitor-cell-input{border-left:3px solid #BA7517}
+.monitor-val-wrap.monitor-cell-edited::after{content:'';position:absolute;top:2px;right:2px;width:6px;height:6px;border-radius:50%;background:#BA7517;pointer-events:none}
 .monitor-report-header{display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border)}
 .monitor-report-date{font-size:15px;font-weight:600;color:var(--text)}
 .monitor-readonly-badge{font-size:10px;padding:3px 9px;border-radius:10px;background:var(--tag-bg);color:var(--text-dim);font-weight:600}

@@ -1,14 +1,16 @@
 // ══════════════════════════════════════════════════
 // MONITOR REPORT — recurring daily comm/campaign monitoring report. v2 adds create-from-
-// template, owner-only inline edit, and copy-as-table on top of the v1 read layer. Add/delete
-// of lines or criteria beyond the seeded template is out of scope (deferred to v3).
-// Only invoked from main.js's initApp() behind the already-resolved monitor_log feature
+// template, owner-only inline edit, copy-as-table, and report deletion on top of the v1 read
+// layer. Add/delete of lines or criteria beyond the seeded template is out of scope (deferred
+// to v3). Only invoked from main.js's initApp() behind the already-resolved monitor_log feature
 // flag (isFeatureVisible('monitor_log')) — this module never re-checks the flag itself.
 // ══════════════════════════════════════════════════
 import { state } from './state.js';
 import { esc, authorName } from './ui-helpers.js';
 import { sb } from './supabase-client.js';
 import { fallbackCopy } from './notes.js';
+
+const MONITOR_TRASH_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
 
 // ══════════════════════════════════════════════════
 // DATA LAYER
@@ -84,7 +86,7 @@ export async function createMonitorReportFromTemplate(){
 
   const linesPayload=tplLines.map(l=>({
     criterion_id:newCriterionIdBySortOrder[tplCriterionSortOrderById[l.template_criterion_id]],
-    sort_order:l.sort_order, category:l.category, value:l.sample_value
+    sort_order:l.sort_order, category:l.category, value:l.sample_value, sample_value:l.sample_value
   })).filter(l=>l.criterion_id);
   if(linesPayload.length){
     const{error:lineErr}=await sb.from('monitor_report_lines').insert(linesPayload);
@@ -116,12 +118,19 @@ export function renderMonitorLogList(){
     tbody.innerHTML='<tr><td colspan="3" class="note-empty">No monitor reports yet</td></tr>';
     return;
   }
-  tbody.innerHTML=state.monitorReports.map(r=>`
-    <tr>
+  tbody.innerHTML=state.monitorReports.map(r=>{
+    // Trash always renders — as the real button when deletable, or as a same-size invisible
+    // placeholder when not — so "View →" (the alignment anchor, always last/rightmost) never
+    // shifts horizontally depending on the viewer's permissions for that row.
+    const delBtn=canDeleteMonitorReport(r)
+      ?`<button class="monitor-delete-btn" title="Delete report" onclick="confirmDeleteMonitorReport('${r.id}','list')">${MONITOR_TRASH_SVG}</button>`
+      :`<span class="monitor-delete-btn-placeholder" aria-hidden="true"></span>`;
+    return `<tr>
       <td>${esc(fmtMonitorReportDate(r.report_date))}</td>
       <td>${esc(authorName(r.created_by))}</td>
-      <td><button class="ci-view-detail-btn" onclick="openMonitorReportDetail('${r.id}')">View →</button></td>
-    </tr>`).join('');
+      <td class="monitor-log-actions-cell">${delBtn}<button class="ci-view-detail-btn" onclick="openMonitorReportDetail('${r.id}')">View →</button></td>
+    </tr>`;
+  }).join('');
 }
 
 // ══════════════════════════════════════════════════
@@ -132,6 +141,21 @@ export function getActiveMonitorReport(){
 }
 function isMonitorReportOwner(report){
   return !!report && report.created_by===state.currentUserId;
+}
+// US-style thousands separator for numeric values; non-numeric text (e.g. "On-time at 7h48")
+// passes through untouched. Display-only — never affects what's stored in state/DB.
+function formatNumber(value){
+  if(value===''||value==null) return value;
+  const n=Number(value);
+  return isNaN(n)?value:n.toLocaleString('en-US');
+}
+// Whether the current value has drifted from the template's sample_value baseline. No baseline
+// (older reports predating the sample_value column) means nothing to compare against.
+function isLineEdited(line){
+  if(line.sample_value==null) return false;
+  const a=parseFloat(line.value), b=parseFloat(line.sample_value);
+  const bothNumeric=line.value!==''&&line.value!=null&&!isNaN(a)&&line.sample_value!==''&&!isNaN(b);
+  return bothNumeric?a!==b:String(line.value??'')!==String(line.sample_value);
 }
 export async function loadAndRenderMonitorReportDetail(){
   const el=document.getElementById('monitorLogDetailScroll');
@@ -173,9 +197,13 @@ export function renderMonitorReportDetail(){
         const dis=owner?'':'disabled';
         const catHandlers=owner?`oninput="onMonitorFieldInput('${line.id}','category',this)" onblur="onMonitorFieldBlur('${line.id}','category',this)"`:'';
         const valHandlers=owner?`oninput="onMonitorFieldInput('${line.id}','value',this)" onblur="onMonitorFieldBlur('${line.id}','value',this)"`:'';
+        const editedCls=isLineEdited(line)?' monitor-cell-edited':'';
+        const editedTitle=isLineEdited(line)?' title="Edited"':'';
         rowsHtml+=`<td class="monitor-value-cell">
             <input class="monitor-cell-input monitor-cat-input" value="${esc(line.category||'')}" ${dis} ${catHandlers}>
-            <input class="monitor-cell-input monitor-val-input" value="${esc(line.value||'')}" ${dis} ${valHandlers}>
+            <span class="monitor-val-wrap${editedCls}"${editedTitle}>
+              <input class="monitor-cell-input monitor-val-input" value="${esc(formatNumber(line.value)||'')}" ${dis} ${valHandlers}>
+            </span>
           </td>`;
         rowsHtml+='</tr>';
       });
@@ -193,6 +221,12 @@ export function renderMonitorReportDetail(){
         <tbody>${rowsHtml}</tbody>
       </table>
     </div>`;
+
+  const delBtn=document.getElementById('monitorDeleteReportBtn');
+  if(delBtn){
+    delBtn.style.display=canDeleteMonitorReport(report)?'':'none';
+    delBtn.onclick=()=>confirmDeleteMonitorReport(report.id,'detail');
+  }
 }
 
 // ══════════════════════════════════════════════════
@@ -209,6 +243,10 @@ export function onMonitorFieldBlur(lineId,field,inputEl){
   line[field]=inputEl.value;
   clearTimeout(state.monitorSaveTimer);
   saveMonitorReportLine(line);                      // flush immediately
+  if(field==='value'){
+    inputEl.value=formatNumber(line.value)||'';       // display-only reformat; DB/state keep raw value
+    inputEl.closest('.monitor-val-wrap')?.classList.toggle('monitor-cell-edited',isLineEdited(line));
+  }
 }
 async function saveMonitorReportLine(line){
   const{error}=await sb.from('monitor_report_lines')
@@ -256,7 +294,7 @@ function buildMonitorReportCopyHtml(report){
     if(lines.length<=1){
       const line=lines[0];
       const category=line?(line.category||''):'';
-      const value=line?(line.value||''):'';
+      const value=line?(formatNumber(line.value)||''):'';
       bodyHtml+=`<tr>
         <td style="${MONITOR_TD_STYLE}">${esc(c.label)}</td>
         <td style="${MONITOR_TD_STYLE}">${esc(category)}</td>
@@ -270,9 +308,9 @@ function buildMonitorReportCopyHtml(report){
           bodyHtml+=`<td style="${MONITOR_TD_STYLE}" rowspan="${lines.length}">${esc(c.label)}</td>`;
         }
         bodyHtml+=`<td style="${MONITOR_TD_STYLE}">${esc(line.category||'')}</td>
-          <td style="${MONITOR_TD_STYLE}">${esc(line.value||'')}</td>`;
+          <td style="${MONITOR_TD_STYLE}">${esc(formatNumber(line.value)||'')}</td>`;
         bodyHtml+='</tr>';
-        plainRows.push([li===0?c.label:'',line.category||'',line.value||''].join('\t'));
+        plainRows.push([li===0?c.label:'',line.category||'',formatNumber(line.value)||''].join('\t'));
       });
     }
   });
@@ -285,6 +323,60 @@ function buildMonitorReportCopyHtml(report){
     </table>`;
   const plain=[dateLabel,['Criteria','Categories','Value'].join('\t'),...plainRows].join('\n');
   return{html,plain};
+}
+
+// ══════════════════════════════════════════════════
+// DELETE REPORT — RLS already restricts deletes to created_by/org-admin; this client-side
+// gate just hides the button from the UI for everyone else (second layer of defense, not the
+// enforcement point).
+// ══════════════════════════════════════════════════
+function canDeleteMonitorReport(report){
+  return !!report && (report.created_by===state.currentUserId || state.currentUserRole==='admin');
+}
+function fmtMonitorReportTimestamp(iso){
+  return iso?new Date(iso).toLocaleString('en-US'):'unknown time';
+}
+export function confirmDeleteMonitorReport(id,context){
+  const report=state.monitorReports.find(r=>r.id===id); if(!report) return;
+  const el=document.getElementById(context==='list'?'monitorLogListView':'monitorLogDetailView');
+  const existing=el.querySelector('.confirm-box'); if(existing) existing.remove();
+  const box=document.createElement('div'); box.className='confirm-box';
+  box.innerHTML=`<p>Delete report for <strong>${esc(fmtMonitorReportDate(report.report_date))}</strong>, created at <strong>${esc(fmtMonitorReportTimestamp(report.created_at))}</strong> by <strong>${esc(authorName(report.created_by))}</strong>? This cannot be undone.</p>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" style="font-size:11px" onclick="this.closest('.confirm-box').remove()">Cancel</button>
+      <button class="btn btn-danger" style="font-size:11px" onclick="deleteMonitorReport('${id}','${context}')">Yes, delete</button>
+    </div>`;
+  const anchor=context==='list'?el.querySelector('.note-list-header'):el.querySelector('.checklist-detail-topbar');
+  anchor.insertAdjacentElement('afterend',box);
+}
+export async function deleteMonitorReport(id,context){
+  const el=document.getElementById(context==='list'?'monitorLogListView':'monitorLogDetailView');
+  const box=el?.querySelector('.confirm-box');
+  const confirmBtn=box?.querySelector('.btn-danger');
+  if(confirmBtn){ confirmBtn.disabled=true; confirmBtn.textContent='Deleting…'; }
+
+  const{error}=await sb.from('monitor_reports').delete().eq('id',id);
+
+  if(error){
+    // Keep the dialog open on failure and surface an inline error instead of closing silently —
+    // matches confirm-box's existing <p>/<div class="confirm-actions"> structure.
+    console.error(error);
+    if(box){
+      let errEl=box.querySelector('.confirm-error');
+      if(!errEl){
+        errEl=document.createElement('p'); errEl.className='confirm-error';
+        box.querySelector('.confirm-actions').insertAdjacentElement('beforebegin',errEl);
+      }
+      errEl.textContent="You don't have permission to delete this report.";
+    }
+    if(confirmBtn){ confirmBtn.disabled=false; confirmBtn.textContent='Yes, delete'; }
+    return;
+  }
+
+  box?.remove();                                     // dialog must unmount on success, in both contexts
+  state.monitorReports=state.monitorReports.filter(r=>r.id!==id);
+  if(context==='detail'){ backToMonitorLogList(); }
+  else{ renderMonitorLogList(); }
 }
 
 // ══════════════════════════════════════════════════
@@ -315,4 +407,6 @@ export function initMonitorReport(){
   window.onMonitorFieldInput=onMonitorFieldInput;
   window.onMonitorFieldBlur=onMonitorFieldBlur;
   window.copyMonitorReportAsTable=copyMonitorReportAsTable;
+  window.confirmDeleteMonitorReport=confirmDeleteMonitorReport;
+  window.deleteMonitorReport=deleteMonitorReport;
 }
