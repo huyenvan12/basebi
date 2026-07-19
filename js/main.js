@@ -4,7 +4,7 @@
 // ══════════════════════════════════════════════════
 import { state } from './state.js';
 import { loadTheme, closeGearMenu, closeShortcutsModal, initUiHelpers } from './ui-helpers.js';
-import { sb, initSupabaseClient, checkAuthAndInit, loadProfilesMap, loadCurrentUserIsAdmin, renderGearUserInfo, closePasswordModal } from './supabase-client.js';
+import { sb, initSupabaseClient, checkAuthAndInit, loadProfilesMap, loadCurrentUserIsAdmin, renderGearUserInfo, closePasswordModal, setOnFreshLogin } from './supabase-client.js';
 import { loadFolders, closeFolderModal, initFolders } from './folders.js';
 import {
   loadNotes, myNotes, buildIndex, renderAll, selectNote, closeNoteModal,
@@ -28,6 +28,7 @@ import { graphLoadLabelScale, renderGraph, initGraphView } from './graph-view.js
 import { loadFeatureVisibility, isFeatureVisible } from './feature-flags.js';
 import { loadFeatureFlags, renderAdminHub, initAdminHub } from './admin-hub.js';
 import { initMobileShell, renderMobileShell } from './mobile-shell.js';
+import { maybeShowSaveAccountPrompt } from './saved-accounts.js';
 import {
   loadTaskTypes, loadTickets, loadEntries, switchGanttView, initGanttTracker,
   closeTicketModal, closeTaskTypeModal, closeOverlapModal, closeTypePicker, closeCalPopover
@@ -537,6 +538,7 @@ function initMain(){
 if (window.Capacitor?.isNativePlatform?.()) {
   document.body.classList.add('is-native-app');
   initMobileShell();
+  setOnFreshLogin(maybeShowSaveAccountPrompt);
 }
 
 initUiHelpers();

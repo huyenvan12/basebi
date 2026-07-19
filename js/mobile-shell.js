@@ -15,8 +15,10 @@ import {
 import { today, getTodayNote, openDailyNote } from './daily-note.js';
 import { esc } from './ui-helpers.js';
 import { isFeatureVisible } from './feature-flags.js';
+import { doLogout } from './supabase-client.js';
+import { renderMobSavedAccountsList } from './saved-accounts.js';
 
-let mobScreen = 'list';   // 'list' | 'detail' | 'daily'
+let mobScreen = 'list';   // 'list' | 'detail' | 'daily' | 'profile'
 let mobActiveNoteId = null;
 
 function showMobScreen(name){
@@ -24,6 +26,7 @@ function showMobScreen(name){
   document.getElementById('mobNotesListScreen').classList.toggle('active', name==='list');
   document.getElementById('mobNoteDetailScreen').classList.toggle('active', name==='detail');
   document.getElementById('mobDailyScreen').classList.toggle('active', name==='daily');
+  document.getElementById('mobProfileScreen').classList.toggle('active', name==='profile');
   document.getElementById('mobFabBtn').style.display = name==='list' ? '' : 'none';
   document.getElementById('mobHeader').style.display = name==='list' ? '' : 'none';
 }
@@ -160,6 +163,24 @@ function mobAppendDailyEntry(){
 }
 
 // ══════════════════════════════════════════════════
+// PROFILE / SETTINGS
+// ══════════════════════════════════════════════════
+function mobOpenProfile(){
+  renderMobProfileScreen();
+  showMobScreen('profile');
+}
+function renderMobProfileScreen(){
+  const name = state.profilesMap[state.currentUserId] || 'Unknown';
+  const role = state.currentUserRole || 'member';
+  document.getElementById('mobProfileName').textContent = name;
+  document.getElementById('mobProfileEmail').textContent = state.currentUserEmail || '';
+  document.getElementById('mobProfileRolePill').textContent = role;
+  document.getElementById('mobProfileRole').textContent = role;
+  document.getElementById('mobProfileQaSeat').textContent = state.currentUserIsQaSeat ? 'Yes' : 'No';
+  renderMobSavedAccountsList();
+}
+
+// ══════════════════════════════════════════════════
 // PUBLIC — called from main.js after auth/data load completes, and again
 // whenever the shared note-modal overlay closes (see the MutationObserver below).
 // ══════════════════════════════════════════════════
@@ -188,6 +209,12 @@ export function initMobileShell(){
   document.getElementById('mobDailyBackBtn').onclick = () => { showMobScreen('list'); renderMobNotesList(); };
   document.getElementById('mobDailyCaptureInput').addEventListener('keydown', e=>{ if(e.key==='Enter') mobAppendDailyEntry(); });
   document.getElementById('mobDailyCaptureBtn').onclick = () => mobAppendDailyEntry();
+  document.getElementById('mobProfileBtn').onclick = () => mobOpenProfile();
+  document.getElementById('mobProfileBackBtn').onclick = () => { showMobScreen('list'); renderMobNotesList(); };
+  document.getElementById('mobProfileLogoutBtn').onclick = () => {
+    if(!confirm('Log out?')) return;
+    doLogout();
+  };
 
   document.querySelectorAll('.mob-nav-item').forEach(btn=>{
     btn.onclick = () => {
