@@ -54,6 +54,23 @@ export async function removeAccount(email){
   await setSavedAccounts(list.filter(a => a.email !== email));
 }
 
+// Supabase rotates refresh tokens on every use, including silent background
+// refreshes that happen while an account just sits active (not only at the
+// moment of switching). Without this, a saved entry can go stale purely from
+// normal use — the account would work once, then fail to switch back to
+// later. Keeps the *currently active* saved entry (if any) in sync whenever
+// Supabase rotates its token in the background.
+export function initTokenRefreshSync(){
+  if(!isNative()) return;
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if(event !== 'TOKEN_REFRESHED' || !session) return;
+    const email = session.user?.email;
+    if(!email) return;
+    const list = await getSavedAccounts();
+    if(list.some(a => a.email === email)) await upsertAccount(session, email);
+  });
+}
+
 export async function switchToAccount(email){
   const list = await getSavedAccounts();
   const entry = list.find(a => a.email === email);
