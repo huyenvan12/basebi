@@ -16,6 +16,13 @@ export function skillColor(skillId){
   return SKILL_PALETTE[(idx<0?0:idx) % SKILL_PALETTE.length];
 }
 
+// Local calendar date as YYYY-MM-DD — never .toISOString() (that normalizes to UTC first,
+// which misattributes entries logged in the evening for users east of UTC to the wrong day).
+function localDateStr(d=new Date()){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
 const DEFAULT_SKILLS = ['Listening','Writing','Speaking','Reading'];
 const DEFAULT_CHECKLIST_WEEKS = 8;
 const DEFAULT_TASKS_PER_WEEK = [
@@ -89,6 +96,12 @@ export async function deleteChecklistItemDB(id){
   if(error) throw error;
 }
 
+export async function updateTestPrepExamDB(id,patch){
+  const{data,error}=await sb.from('test_prep_exams').update(patch).eq('id',id).select().single();
+  if(error) throw error;
+  return data;
+}
+
 // ══════════════════════════════════════════════════
 // RENDER — HEADER
 // ══════════════════════════════════════════════════
@@ -100,12 +113,45 @@ function renderTestPrepHeader(){
   const el=document.getElementById('tpHeader');
   if(!exam){ el.innerHTML=''; return; }
   el.innerHTML=`
-    <div class="tp-header-title">${esc(exam.name)}</div>
+    <div class="tp-header-title">${esc(exam.name)}
+      <button type="button" class="tp-header-edit-btn" title="Edit exam info" onclick="openTestPrepEditModal()">✎</button>
+    </div>
     <div class="tp-header-stats">
       <div class="tp-header-stat"><span class="tp-header-stat-label">Current</span><span class="tp-header-stat-val">${fmtScore(exam.current_score)}</span></div>
       <div class="tp-header-stat"><span class="tp-header-stat-label">Target</span><span class="tp-header-stat-val">${fmtScore(exam.target_score)}</span></div>
       <div class="tp-header-stat"><span class="tp-header-stat-label">Exam Date</span><span class="tp-header-stat-val">${esc(fmtDate(exam.exam_date))}</span></div>
     </div>`;
+}
+
+// ══════════════════════════════════════════════════
+// HEADER EDIT MODAL
+// ══════════════════════════════════════════════════
+export function openTestPrepEditModal(){
+  const exam=state.testPrepExam; if(!exam) return;
+  document.getElementById('tpEditCurrentScore').value = exam.current_score ?? '';
+  document.getElementById('tpEditTargetScore').value = exam.target_score ?? '';
+  document.getElementById('tpEditExamDate').value = exam.exam_date ?? '';
+  document.getElementById('tpEditModalOverlay').classList.add('open');
+}
+export function closeTestPrepEditModal(){
+  document.getElementById('tpEditModalOverlay').classList.remove('open');
+}
+export async function saveTestPrepExam(){
+  const exam=state.testPrepExam; if(!exam) return;
+  const curRaw=document.getElementById('tpEditCurrentScore').value;
+  const tgtRaw=document.getElementById('tpEditTargetScore').value;
+  const dateRaw=document.getElementById('tpEditExamDate').value;
+  const patch={
+    current_score: curRaw===''?null:Number(curRaw),
+    target_score: tgtRaw===''?null:Number(tgtRaw),
+    exam_date: dateRaw||null
+  };
+  try{
+    const updated=await updateTestPrepExamDB(exam.id,patch);
+    state.testPrepExam=updated;
+    closeTestPrepEditModal();
+    renderTestPrepHeader();
+  }catch(err){ alert('Could not save exam info: '+(err.message||err)); }
 }
 
 // ══════════════════════════════════════════════════
@@ -130,7 +176,7 @@ function last7Days(){
   for(let i=6;i>=0;i--){
     const d=new Date(today);
     d.setDate(d.getDate()-i);
-    days.push(d.toISOString().slice(0,10));
+    days.push(localDateStr(d));
   }
   return days;
 }
@@ -182,7 +228,7 @@ export async function logTestPrepTime(){
   const minutes=parseInt(minutesEl.value,10);
   if(!state.testPrepActiveSkillId){ alert('Pick a skill first.'); return; }
   if(!minutes||minutes<=0){ minutesEl.focus(); return; }
-  const log_date=new Date().toISOString().slice(0,10);
+  const log_date=localDateStr();
   try{
     const row=await insertTimeLogDB({exam_id:state.testPrepExam.id, skill_id:state.testPrepActiveSkillId, log_date, minutes});
     state.testPrepTimeLogs.unshift(row);
@@ -315,6 +361,9 @@ export function initTestPrep(){
   window.deleteTestPrepTask=deleteTestPrepTask;
   window.addTestPrepTask=addTestPrepTask;
   window.addTestPrepWeek=addTestPrepWeek;
+  window.openTestPrepEditModal=openTestPrepEditModal;
+  window.closeTestPrepEditModal=closeTestPrepEditModal;
+  window.saveTestPrepExam=saveTestPrepExam;
 
   document.getElementById('tpLogBtn').onclick=logTestPrepTime;
 }

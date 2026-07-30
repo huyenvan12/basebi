@@ -615,6 +615,32 @@
   </div>
 </div>
 
+<!-- TEST PREP EXAM EDIT MODAL -->
+<div class="modal-overlay" id="tpEditModalOverlay">
+  <div class="modal modal-sm">
+    <div class="modal-title">
+      <span>Edit Exam Info</span>
+      <button class="modal-close" onclick="closeTestPrepEditModal()">×</button>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Current score</label>
+      <input type="number" step="0.5" class="form-input" id="tpEditCurrentScore" placeholder="e.g. 6.5">
+    </div>
+    <div class="form-row">
+      <label class="form-label">Target score</label>
+      <input type="number" step="0.5" class="form-input" id="tpEditTargetScore" placeholder="e.g. 7.5">
+    </div>
+    <div class="form-row">
+      <label class="form-label">Exam date</label>
+      <input type="date" class="form-input" id="tpEditExamDate">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeTestPrepEditModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTestPrepExam()">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- TAG RENAME MODAL -->
 <div class="modal-overlay" id="tagModalOverlay">
   <div class="modal modal-sm">

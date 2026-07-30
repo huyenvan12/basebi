@@ -936,7 +936,9 @@ thead .dt-sticky-col{z-index:4;background:var(--surface2)}
    ══════════════════════════════════════════════════ */
 .tp-scroll{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:20px}
 .tp-header{display:flex;flex-direction:column;gap:8px;padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px}
-.tp-header-title{font-size:16px;font-weight:600;color:var(--text)}
+.tp-header-title{font-size:16px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px}
+.tp-header-edit-btn{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:4px}
+.tp-header-edit-btn:hover{color:var(--text);background:var(--tag-bg)}
 .tp-header-stats{display:flex;flex-wrap:wrap;gap:20px}
 .tp-header-stat{display:flex;flex-direction:column;gap:2px}
 .tp-header-stat-label{font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-dim)}
