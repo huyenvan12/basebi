@@ -260,12 +260,18 @@ function renderChecklistItemRow(item){
   </div>`;
 }
 
-function renderChecklist(){
+function renderChecklist(openWeeksOverride){
   const el=document.getElementById('tpChecklistBody');
+  // preserve which week accordions are open across re-renders (delete/edit/toggle would
+  // otherwise collapse everything back to closed since fresh <details> default shut)
+  const openWeeks = openWeeksOverride || new Set(
+    [...el.querySelectorAll('.checklist-phase[open]')].map(d=>d.dataset.week)
+  );
   const weeks=groupChecklistByWeek();
   el.innerHTML=weeks.map(w=>{
     const total=w.items.length, done=w.items.filter(i=>i.is_done).length;
-    return `<details class="checklist-phase" data-week="${w.week}">
+    const isOpen=openWeeks.has(String(w.week));
+    return `<details class="checklist-phase" data-week="${w.week}" ${isOpen?'open':''}>
       <summary class="checklist-phase-summary">
         <span class="checklist-phase-name">Week ${w.week}</span>
         <span class="checklist-phase-progress">${done}/${total} done</span>
