@@ -23,6 +23,7 @@
     <button class="tab-btn" id="tabTeam" onclick="switchTab('team')">🌐 Team Shared</button>
     <button class="tab-btn" id="tabAdmin" onclick="switchTab('admin')">🛠 Admin</button>
     <button class="tab-btn" id="tabGantt" onclick="switchTab('deliveryTracker')">🚀 Delivery Tracker</button>
+    <button class="tab-btn" id="tabTestPrep" onclick="switchTab('testprep')">📝 Test Prep</button>
   </div>
   <div class="search-wrap" id="notesSearchWrap">
     <span class="search-icon">⌕</span>
@@ -475,6 +476,29 @@
         <label class="checkbox-row"><input type="checkbox" id="dtCalShowInactive"> Show Inactive tickets</label>
       </div>
       <div class="dt-calendar-grid" id="dtCalendarGrid"></div>
+    </div>
+  </div>
+
+  <!-- TEST PREP HUB VIEW -->
+  <div class="team-view" id="testPrepView">
+    <div class="tp-scroll">
+      <div class="tp-header" id="tpHeader"></div>
+
+      <div class="tp-section">
+        <div class="note-list-title">Time Log</div>
+        <div class="tp-log-form">
+          <div class="tp-skill-picker" id="tpSkillPicker"></div>
+          <input type="number" min="1" class="form-input tp-minutes-input" id="tpMinutesInput" placeholder="Minutes">
+          <button type="button" class="btn btn-primary" id="tpLogBtn">+ Log</button>
+        </div>
+        <div class="tp-seven-day" id="tpSevenDay"></div>
+        <div class="tp-recent" id="tpRecentEntries"></div>
+      </div>
+
+      <div class="tp-section">
+        <div class="note-list-title">Checklist</div>
+        <div id="tpChecklistBody"></div>
+      </div>
     </div>
   </div>
 

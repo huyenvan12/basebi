@@ -61,6 +61,10 @@ export const state = {
   activeCampId: null, editingCampId: null,
   campAddRowVisible: false,
 
+  // test prep hub state
+  testPrepExam: null, testPrepSkills: [], testPrepTimeLogs: [], testPrepChecklist: [],
+  testPrepActiveSkillId: null,
+
   // delivery tracker (gantt) state
   ganttTaskTypes: [], ganttTickets: [], ganttEntries: [],
   ganttActiveView: 'timeline',                // 'timeline' | 'calendar'
