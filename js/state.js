@@ -61,6 +61,14 @@ export const state = {
   activeCampId: null, editingCampId: null,
   campAddRowVisible: false,
 
+  // test prep hub state
+  testPrepExam: null, testPrepSkills: [], testPrepTimeLogs: [], testPrepChecklist: [],
+  testPrepActiveSkillId: null,
+  testPrepKnownWeeks: [],       // week_number "shells" that still render even once emptied of tasks —
+                                 // only an explicit "Remove week" click removes an entry from this list
+
+
+
   // delivery tracker (gantt) state
   ganttTaskTypes: [], ganttTickets: [], ganttEntries: [],
   ganttActiveView: 'timeline',                // 'timeline' | 'calendar'

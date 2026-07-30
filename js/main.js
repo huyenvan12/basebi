@@ -33,6 +33,10 @@ import {
   loadTaskTypes, loadTickets, loadEntries, switchGanttView, initGanttTracker,
   closeTicketModal, closeTaskTypeModal, closeOverlapModal, closeTypePicker, closeCalPopover
 } from './gantt-tracker.js';
+import {
+  loadTestPrepExam, loadTestPrepSkills, loadTestPrepTimeLogs, loadTestPrepChecklist,
+  renderTestPrep, initTestPrep
+} from './test-prep.js';
 
 // ══════════════════════════════════════════════════
 // TAB SWITCHING
@@ -40,7 +44,7 @@ import {
 // Maps each tab to the feature_key that must resolve 'active' before entry is allowed.
 // null means the tab has no single flag (team is gated by teamshared_notes OR checklist;
 // admin is gated by role, not a feature flag).
-const TAB_FEATURE_KEY = { notes:'notes', campaigns:'campaign', graph:'graph_view', team:null, admin:null, deliveryTracker:'gantt_tracker' };
+const TAB_FEATURE_KEY = { notes:'notes', campaigns:'campaign', graph:'graph_view', team:null, admin:null, deliveryTracker:'gantt_tracker', testprep:'test_prep' };
 
 // Defense-in-depth: blocks entry into a hidden section even if switchTab() is invoked
 // directly (console, stale onclick, etc.) rather than through a nav click.
@@ -60,12 +64,14 @@ export function switchTab(tab){
   document.getElementById('tabTeam').classList.toggle('active', tab==='team');
   document.getElementById('tabAdmin').classList.toggle('active', tab==='admin');
   document.getElementById('tabGantt').classList.toggle('active', tab==='deliveryTracker');
+  document.getElementById('tabTestPrep').classList.toggle('active', tab==='testprep');
   document.getElementById('notesView').classList.toggle('hidden', tab!=='notes');
   document.getElementById('campView').classList.toggle('active', tab==='campaigns');
   document.getElementById('graphView').classList.toggle('active', tab==='graph');
   document.getElementById('teamView').classList.toggle('active', tab==='team');
   document.getElementById('adminView').classList.toggle('active', tab==='admin');
   document.getElementById('ganttView').classList.toggle('active', tab==='deliveryTracker');
+  document.getElementById('testPrepView').classList.toggle('active', tab==='testprep');
   if(tab!=='team') document.body.classList.remove('reviewer-lock-active');
   document.getElementById('notesSearchWrap').style.display = tab==='notes'?'':'none';
   document.getElementById('dailyNoteBtn').style.display = (tab==='notes'&&isFeatureVisible('daily_note'))?'':'none';
@@ -98,6 +104,7 @@ export function switchTab(tab){
     document.getElementById('dtManageTypesBtn').style.display=state.currentUserRole==='admin'?'':'none';
     switchGanttView(state.ganttActiveView);
   }
+  if(tab==='testprep') renderTestPrep();
 }
 
 // ══════════════════════════════════════════════════
@@ -414,6 +421,14 @@ async function initApp(){
       initGanttTracker();
     }
 
+    if(isFeatureVisible('test_prep')){
+      state.testPrepExam = await loadTestPrepExam();
+      state.testPrepSkills = await loadTestPrepSkills(state.testPrepExam.id);
+      state.testPrepTimeLogs = await loadTestPrepTimeLogs(state.testPrepExam.id);
+      state.testPrepChecklist = await loadTestPrepChecklist(state.testPrepExam.id);
+      initTestPrep();
+    }
+
     applyNavGating();
     startFeatureVisibilityPolling();
 
@@ -445,6 +460,7 @@ function applyNavGating(){
   document.getElementById('teamSubTabMonitorLog').style.display = isFeatureVisible('monitor_log')?'':'none';
   document.getElementById('tabAdmin').style.display = state.currentUserRole==='admin'?'':'none';
   document.getElementById('tabGantt').style.display = isFeatureVisible('gantt_tracker')?'':'none';
+  document.getElementById('tabTestPrep').style.display = isFeatureVisible('test_prep')?'':'none';
   document.getElementById('dtManageTypesBtn').style.display = state.currentUserRole==='admin'?'':'none';
   // dailyNoteBtn is otherwise only gated inside switchTab(), which never runs at bootstrap
   // unless the current tab is disallowed (see fallback below) — without this line the button
@@ -452,7 +468,7 @@ function applyNavGating(){
   document.getElementById('dailyNoteBtn').style.display = (state.currentTab==='notes' && isFeatureVisible('daily_note')) ? '' : 'none';
 
   if(!isTabAllowed(state.currentTab)){
-    const fallback=['notes','campaigns','graph','team','admin','deliveryTracker'].find(isTabAllowed);
+    const fallback=['notes','campaigns','graph','team','admin','deliveryTracker','testprep'].find(isTabAllowed);
     if(fallback) switchTab(fallback);
   }
 }
@@ -496,6 +512,7 @@ function initMain(){
   document.getElementById('tabTeam').onclick=()=>switchTab('team');
   document.getElementById('tabAdmin').onclick=()=>switchTab('admin');
   document.getElementById('tabGantt').onclick=()=>switchTab('deliveryTracker');
+  document.getElementById('tabTestPrep').onclick=()=>switchTab('testprep');
   // Wired here unconditionally (not just inside switchTab()) so #topbarActionBtn's initial-state
   // handler doesn't depend on window.openNoteModal (exposed elsewhere only for notes.js's
   // dynamically-rendered Edit-button template strings, not for this element).
