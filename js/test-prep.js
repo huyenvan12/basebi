@@ -241,13 +241,24 @@ export async function logTestPrepTime(){
 // ══════════════════════════════════════════════════
 // RENDER — CHECKLIST
 // ══════════════════════════════════════════════════
+// Weeks aren't their own DB row — they only exist implicitly as week_number values on task
+// rows — so emptying a week's last task would otherwise make its shell vanish and leave a
+// gap in the sequence. testPrepKnownWeeks tracks every week shell that should keep rendering
+// (even with 0 tasks) until explicitly removed via removeTestPrepWeek().
+function ensureKnownWeeksInitialized(){
+  if(!state.testPrepKnownWeeks||!state.testPrepKnownWeeks.length){
+    state.testPrepKnownWeeks=[...new Set(state.testPrepChecklist.map(i=>i.week_number))].sort((a,b)=>a-b);
+  }
+}
+
 function groupChecklistByWeek(){
+  ensureKnownWeeksInitialized();
   const weeks={};
   state.testPrepChecklist.forEach(it=>{
     if(!weeks[it.week_number]) weeks[it.week_number]=[];
     weeks[it.week_number].push(it);
   });
-  return Object.keys(weeks).map(Number).sort((a,b)=>a-b).map(w=>({week:w, items:weeks[w]}));
+  return state.testPrepKnownWeeks.slice().sort((a,b)=>a-b).map(w=>({week:w, items:weeks[w]||[]}));
 }
 
 function renderChecklistItemRow(item){
@@ -271,6 +282,7 @@ function renderChecklist(openWeeksOverride){
   el.innerHTML=weeks.map(w=>{
     const total=w.items.length, done=w.items.filter(i=>i.is_done).length;
     const isOpen=openWeeks.has(String(w.week));
+    const removeBtn=total===0?`<button type="button" class="tp-remove-week-btn" onclick="removeTestPrepWeek(${w.week})">Remove week</button>`:'';
     return `<details class="checklist-phase" data-week="${w.week}" ${isOpen?'open':''}>
       <summary class="checklist-phase-summary">
         <span class="checklist-phase-name">Week ${w.week}</span>
@@ -278,10 +290,21 @@ function renderChecklist(openWeeksOverride){
       </summary>
       <div class="checklist-phase-body">
         <div class="checklist-item-list">${w.items.map(renderChecklistItemRow).join('')}</div>
-        <button type="button" class="tp-add-task-btn" onclick="addTestPrepTask(${w.week})">+ Add task</button>
+        <div class="tp-week-actions">
+          <button type="button" class="tp-add-task-btn" onclick="addTestPrepTask(${w.week})">+ Add task</button>
+          ${removeBtn}
+        </div>
       </div>
     </details>`;
   }).join('') + `<button type="button" class="btn btn-ghost tp-add-week-btn" onclick="addTestPrepWeek()">+ Add week</button>`;
+}
+
+export function removeTestPrepWeek(weekNumber){
+  const hasTasks=state.testPrepChecklist.some(i=>i.week_number===weekNumber);
+  if(hasTasks) return; // guard: this control only ever appears on an empty shell
+  if(!confirm('Remove Week '+weekNumber+'? Other week numbers will not be renumbered.')) return;
+  state.testPrepKnownWeeks=(state.testPrepKnownWeeks||[]).filter(w=>w!==weekNumber);
+  renderChecklist();
 }
 
 export async function toggleTestPrepTaskDone(id,checked){
@@ -333,13 +356,15 @@ export async function addTestPrepTask(weekNumber){
 }
 
 export async function addTestPrepWeek(){
-  const weeks=state.testPrepChecklist.map(i=>i.week_number);
-  const nextWeek=(weeks.length?Math.max(...weeks):0)+1;
+  ensureKnownWeeksInitialized();
+  const known=state.testPrepKnownWeeks||[];
+  const nextWeek=(known.length?Math.max(...known):0)+1;
   const text=prompt('First task for Week '+nextWeek+':');
   if(!text||!text.trim()) return;
   try{
     const row=await insertChecklistItemDB({exam_id:state.testPrepExam.id, week_number:nextWeek, task_text:text.trim(), sort_order:0});
     state.testPrepChecklist.push(row);
+    state.testPrepKnownWeeks=[...known, nextWeek];
     renderChecklist();
     const details=document.querySelector(`.checklist-phase[data-week="${nextWeek}"]`);
     if(details) details.open=true;
@@ -367,6 +392,7 @@ export function initTestPrep(){
   window.deleteTestPrepTask=deleteTestPrepTask;
   window.addTestPrepTask=addTestPrepTask;
   window.addTestPrepWeek=addTestPrepWeek;
+  window.removeTestPrepWeek=removeTestPrepWeek;
   window.openTestPrepEditModal=openTestPrepEditModal;
   window.closeTestPrepEditModal=closeTestPrepEditModal;
   window.saveTestPrepExam=saveTestPrepExam;
