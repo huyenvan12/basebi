@@ -18,6 +18,12 @@ export function toggleGearMenu(){
 export function closeGearMenu(){
   document.getElementById('gearMenu').classList.remove('open');
 }
+export function toggleAdminGearMenu(){
+  document.getElementById('adminGearMenu').classList.toggle('open');
+}
+export function closeAdminGearMenu(){
+  document.getElementById('adminGearMenu').classList.remove('open');
+}
 
 // ══════════════════════════════════════════════════
 // SHORTCUTS MODAL
