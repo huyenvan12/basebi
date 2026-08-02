@@ -949,8 +949,17 @@ thead .dt-sticky-col{z-index:4;background:var(--surface2)}
 
 /* mobile-web accordion shell (see TP_SECTIONS/renderTpAccordionShell in test-prep.js) —
    collapsible <details> below 768px; @media (min-width:769px) override further down forces
-   always-expanded/no-chrome so desktop is unaffected. */
-.tp-accordion-section{border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden}
+   always-expanded/no-chrome so desktop is unaffected.
+   flex-shrink:0 fixes a cross-section clipping bug: .tp-accordion-section is a flex item
+   inside #tpScroll (flex column, overflow-y:auto). Per the CSS Flexbox spec, an item's
+   default min-height:auto only floors at its content size when overflow:visible — since
+   this element sets overflow:hidden (for border-radius clipping), that floor drops to 0,
+   so once total open-section content exceeds #tpScroll's box, the browser was shrinking
+   ALL sections (including ones whose own open/closed state never changed) to fit, clipping
+   whatever content no longer fit instead of just letting #tpScroll scroll. flex-shrink:0
+   keeps every section at its natural content height regardless of siblings' state, so
+   #tpScroll's own overflow-y:auto handles overflow correctly via scrolling instead. */
+.tp-accordion-section{border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden;flex-shrink:0}
 .tp-accordion-summary{cursor:pointer;list-style:none;padding:10px 12px;background:var(--surface2);font-size:12px;font-weight:600;color:var(--text)}
 .tp-accordion-summary::-webkit-details-marker{display:none}
 .tp-accordion-body{display:flex;flex-direction:column;gap:10px;padding:10px 12px}
