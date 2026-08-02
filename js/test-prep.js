@@ -341,13 +341,56 @@ export async function deleteTestPrepTask(id){
   renderChecklist();
 }
 
-export async function addTestPrepTask(weekNumber){
-  const text=prompt('New task for Week '+weekNumber+':');
-  if(!text||!text.trim()) return;
+// ══════════════════════════════════════════════════
+// "+ ADD TASK" / "+ ADD WEEK" PROMPT MODAL
+// ══════════════════════════════════════════════════
+// Replaces window.prompt(), which throws (confirmed: "prompt() is not supported.") or
+// silently no-ops in many mobile contexts (iOS standalone/home-screen PWA, Android
+// installed PWAs/WebViews) — not a viewport-width issue, so this applies on desktop too,
+// just via the same modal/.form-input pattern as openTestPrepEditModal() instead of a
+// native dialog. tpPromptContext holds which flow (task vs week, and which week number)
+// the currently-open modal is for; set by addTestPrepTask()/addTestPrepWeek() below.
+let tpPromptContext=null;
+
+function openTpPromptModal(mode, weekNumber, title){
+  tpPromptContext={mode, weekNumber};
+  document.getElementById('tpPromptModalTitle').textContent=title;
+  document.getElementById('tpPromptInput').value='';
+  document.getElementById('tpPromptModalOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('tpPromptInput').focus(),50);
+}
+export function closeTpPromptModal(){
+  tpPromptContext=null;
+  document.getElementById('tpPromptModalOverlay').classList.remove('open');
+}
+export async function submitTpPromptModal(){
+  const ctx=tpPromptContext;
+  if(!ctx) return;
+  const text=(document.getElementById('tpPromptInput').value||'').trim();
+  // Empty/whitespace-only input is a no-op — same as an empty prompt() return today —
+  // so nothing is created and the modal stays open for the user to try again or Cancel.
+  if(!text) return;
+  closeTpPromptModal();
+  if(ctx.mode==='task') await commitAddTestPrepTask(ctx.weekNumber, text);
+  else await commitAddTestPrepWeek(ctx.weekNumber, text);
+}
+
+export function addTestPrepTask(weekNumber){
+  openTpPromptModal('task', weekNumber, 'New task for Week '+weekNumber);
+}
+
+export function addTestPrepWeek(){
+  ensureKnownWeeksInitialized();
+  const known=state.testPrepKnownWeeks||[];
+  const nextWeek=(known.length?Math.max(...known):0)+1;
+  openTpPromptModal('week', nextWeek, 'First task for Week '+nextWeek);
+}
+
+async function commitAddTestPrepTask(weekNumber, text){
   const weekItems=state.testPrepChecklist.filter(i=>i.week_number===weekNumber);
   const sort_order=weekItems.length;
   try{
-    const row=await insertChecklistItemDB({exam_id:state.testPrepExam.id, week_number:weekNumber, task_text:text.trim(), sort_order});
+    const row=await insertChecklistItemDB({exam_id:state.testPrepExam.id, week_number:weekNumber, task_text:text, sort_order});
     state.testPrepChecklist.push(row);
     renderChecklist();
     const details=document.querySelector(`.checklist-phase[data-week="${weekNumber}"]`);
@@ -355,14 +398,10 @@ export async function addTestPrepTask(weekNumber){
   }catch(err){ alert('Could not add task: '+(err.message||err)); }
 }
 
-export async function addTestPrepWeek(){
-  ensureKnownWeeksInitialized();
+async function commitAddTestPrepWeek(nextWeek, text){
   const known=state.testPrepKnownWeeks||[];
-  const nextWeek=(known.length?Math.max(...known):0)+1;
-  const text=prompt('First task for Week '+nextWeek+':');
-  if(!text||!text.trim()) return;
   try{
-    const row=await insertChecklistItemDB({exam_id:state.testPrepExam.id, week_number:nextWeek, task_text:text.trim(), sort_order:0});
+    const row=await insertChecklistItemDB({exam_id:state.testPrepExam.id, week_number:nextWeek, task_text:text, sort_order:0});
     state.testPrepChecklist.push(row);
     state.testPrepKnownWeeks=[...known, nextWeek];
     renderChecklist();
@@ -372,16 +411,50 @@ export async function addTestPrepWeek(){
 }
 
 // ══════════════════════════════════════════════════
+// MOBILE-WEB ACCORDION SHELL
+// ══════════════════════════════════════════════════
+// Data-driven so a future section (e.g. "Insights") is just another array entry, not a
+// restructure. Desktop (>768px) always renders every section expanded with no accordion
+// chrome — see the @media (min-width:769px) override in basebi.css — so this shell is the
+// single source of markup for both widths; the inner content ids below are untouched by
+// renderTestPrepHeader()/renderSkillPicker()/renderSevenDayView()/renderRecentEntries()/renderChecklist().
+const TP_SECTIONS = [
+  {key:'header', label:'Overview', defaultOpen:true, bodyHtml:'<div class="tp-header" id="tpHeader"></div>'},
+  {key:'timelog', label:'Time Log', defaultOpen:false, bodyHtml:`
+    <div class="tp-log-form">
+      <div class="tp-skill-picker" id="tpSkillPicker"></div>
+      <input type="number" min="1" class="form-input tp-minutes-input" id="tpMinutesInput" placeholder="Minutes">
+      <button type="button" class="btn btn-primary" id="tpLogBtn">+ Log</button>
+    </div>
+    <div class="tp-seven-day" id="tpSevenDay"></div>
+    <div class="tp-recent" id="tpRecentEntries"></div>`},
+  {key:'checklist', label:'Checklist', defaultOpen:false, bodyHtml:'<div id="tpChecklistBody"></div>'},
+];
+function renderTpAccordionShell(){
+  const el=document.getElementById('tpScroll');
+  el.innerHTML = TP_SECTIONS.map(s=>{
+    const isOpen = Object.prototype.hasOwnProperty.call(state.testPrepSectionOpen,s.key) ? state.testPrepSectionOpen[s.key] : s.defaultOpen;
+    return `<details class="tp-accordion-section" data-section="${s.key}" ${isOpen?'open':''} ontoggle="onTpSectionToggle('${s.key}',this.open)">
+      <summary class="tp-accordion-summary">${esc(s.label)}</summary>
+      <div class="tp-accordion-body">${s.bodyHtml}</div>
+    </details>`;
+  }).join('');
+}
+export function onTpSectionToggle(key,isOpen){ state.testPrepSectionOpen[key]=isOpen; }
+
+// ══════════════════════════════════════════════════
 // TOP-LEVEL RENDER + INIT
 // ══════════════════════════════════════════════════
 export function renderTestPrep(){
   if(!state.testPrepExam) return;
   if(!state.testPrepActiveSkillId&&state.testPrepSkills.length) state.testPrepActiveSkillId=state.testPrepSkills[0].id;
+  renderTpAccordionShell();
   renderTestPrepHeader();
   renderSkillPicker();
   renderSevenDayView();
   renderRecentEntries();
   renderChecklist();
+  document.getElementById('tpLogBtn').onclick=logTestPrepTime;
 }
 
 export function initTestPrep(){
@@ -396,6 +469,7 @@ export function initTestPrep(){
   window.openTestPrepEditModal=openTestPrepEditModal;
   window.closeTestPrepEditModal=closeTestPrepEditModal;
   window.saveTestPrepExam=saveTestPrepExam;
-
-  document.getElementById('tpLogBtn').onclick=logTestPrepTime;
+  window.onTpSectionToggle=onTpSectionToggle;
+  window.closeTpPromptModal=closeTpPromptModal;
+  window.submitTpPromptModal=submitTpPromptModal;
 }

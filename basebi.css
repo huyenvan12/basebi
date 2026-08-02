@@ -946,6 +946,29 @@ thead .dt-sticky-col{z-index:4;background:var(--surface2)}
 .tp-header-stat-val{font-size:14px;font-weight:600;color:var(--text)}
 
 .tp-section{display:flex;flex-direction:column;gap:10px}
+
+/* mobile-web accordion shell (see TP_SECTIONS/renderTpAccordionShell in test-prep.js) —
+   collapsible <details> below 768px; @media (min-width:769px) override further down forces
+   always-expanded/no-chrome so desktop is unaffected.
+   flex-shrink:0 fixes a cross-section clipping bug: .tp-accordion-section is a flex item
+   inside #tpScroll (flex column, overflow-y:auto). Per the CSS Flexbox spec, an item's
+   default min-height:auto only floors at its content size when overflow:visible — since
+   this element sets overflow:hidden (for border-radius clipping), that floor drops to 0,
+   so once total open-section content exceeds #tpScroll's box, the browser was shrinking
+   ALL sections (including ones whose own open/closed state never changed) to fit, clipping
+   whatever content no longer fit instead of just letting #tpScroll scroll. flex-shrink:0
+   keeps every section at its natural content height regardless of siblings' state, so
+   #tpScroll's own overflow-y:auto handles overflow correctly via scrolling instead. */
+.tp-accordion-section{border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden;flex-shrink:0}
+.tp-accordion-summary{cursor:pointer;list-style:none;padding:10px 12px;background:var(--surface2);font-size:12px;font-weight:600;color:var(--text)}
+.tp-accordion-summary::-webkit-details-marker{display:none}
+.tp-accordion-body{display:flex;flex-direction:column;gap:10px;padding:10px 12px}
+@media (min-width:769px){
+  .tp-accordion-section{border:none;border-radius:0;margin-bottom:0}
+  .tp-accordion-summary{display:none}
+  .tp-accordion-body{padding:0}
+}
+
 .tp-log-form{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
 .tp-skill-picker{display:flex;flex-wrap:wrap;gap:6px}
 .tp-skill-pill{border:1px solid var(--border);background:var(--surface2)}
@@ -1078,6 +1101,12 @@ body.is-native-app .note-popup{width:calc(100vw - 32px)}
 }
 .mob-hamburger-btn:hover{background:var(--surface2);color:var(--text)}
 
+/* #topbarActionBtn's mobile-web mirror — hidden by default (desktop keeps using
+   #topbarActionBtn itself), shown in its place inside the @media block below. Its
+   text/onclick/visibility are set from the same switchTab() branches as
+   #topbarActionBtn (see main.js), never a separate code path. */
+#mobActionBtn{display:none}
+
 /* drawer + scrim are always in the DOM but inert (off-screen / hidden) until
    opened; the trigger button that opens them only becomes visible/clickable
    inside the media query below, so they're unreachable above 768px. */
@@ -1144,17 +1173,50 @@ body.is-native-app .note-popup{width:calc(100vw - 32px)}
 .mob-team-card-meta{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
 .mob-team-card-excerpt{font-size:12px;color:var(--text-dim);line-height:1.5;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 
+/* mobile-web folder filter for Personal Notes; hidden until the breakpoint below, same
+   convention as .mob-hamburger-btn */
+#noteFolderFilter{display:none}
+
+/* delivery tracker mobile agenda cards — only ever shown inside #dtAgendaSubview, which is
+   display:none outside the breakpoint below, so no extra gating needed here */
+.dt-agenda-week-group{margin-bottom:18px}
+.dt-agenda-week-label{font-size:12px;font-weight:700;color:var(--text);background:var(--surface2);border-radius:6px;padding:5px 10px;margin-bottom:10px;display:inline-block}
+.dt-agenda-day-group{margin-bottom:14px}
+.dt-agenda-day-label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.dt-agenda-day-tickets{display:flex;flex-direction:column;gap:6px}
+.dt-agenda-ticket-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid transparent;border-radius:8px;padding:9px 12px;cursor:pointer;display:flex;align-items:center;gap:10px}
+.dt-agenda-ticket-card:active{background:var(--surface2)}
+.dt-agenda-ticket-cd{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--text)}
+.dt-agenda-ticket-type{font-size:10.5px;font-weight:600;margin-left:auto}
+/* read-only entry detail modal (#dtAgendaEntryDetailOverlay) — plain label/value rows,
+   no inputs, matches .form-row's label styling since it's the same visual language */
+.dt-agenda-detail-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
+.dt-agenda-detail-row:last-of-type{border-bottom:none}
+.dt-agenda-detail-label{font-size:11px;color:var(--text-muted);font-weight:500}
+.dt-agenda-detail-value{font-size:13px;color:var(--text);font-weight:600;text-align:right}
+
 @media (max-width:768px){
-  /* compact topbar: hide the tab bar, search bar, daily-note + primary action
-     buttons (nav now lives in the drawer; content-create actions are deferred to a
-     later pass) — the admin/options gear buttons and logo stay, joined by the
-     hamburger, so Admin/Options keep working via their existing unmodified
-     dropdown menus with zero forked logic. */
+  /* compact topbar: hide the tab bar, search bar, daily-note button, and desktop's
+     #topbarActionBtn (nav now lives in the drawer). Header cluster order is logo,
+     +New (#mobActionBtn), ⚙ Options (#optionsGearWrap, unchanged element/behavior/
+     positioning — no drawer duplicate), ☰ Hamburger. #adminGearWrap is hidden here:
+     🛠 Admin lives only at the bottom of the drawer (#mobAdminItem), not in the header.
+     #mobActionBtn is #topbarActionBtn's mobile-web mirror (driven by the same
+     switchTab() branches, see main.js) and is shown here in its place. */
   .topbar{gap:8px;padding:10px 12px}
   .topbar .tab-group,
   .topbar .search-wrap,
   #dailyNoteBtn,
-  #topbarActionBtn{display:none}
+  #topbarActionBtn,
+  #adminGearWrap{display:none}
+  #mobActionBtn{display:inline-block}
+  /* ⚙ Options and ☰ Hamburger share the same square touch-target size on mobile;
+     desktop's .gear-btn sizing (padding:6px 10px, no fixed box) is untouched above
+     768px — this only targets the Options button inside its header wrap. */
+  #optionsGearWrap .gear-btn{
+    width:34px;height:34px;padding:0;display:flex;align-items:center;justify-content:center;
+    font-size:15px
+  }
   .mob-hamburger-btn{display:flex}
 
   .camp-table-wrap{display:none}
@@ -1175,6 +1237,24 @@ body.is-native-app .note-popup{width:calc(100vw - 32px)}
   #campCardsWrap{flex:1;overflow-y:auto}
   #teamCardsWrap{flex:1;overflow-y:auto}
 
+  /* personal notes — same 3-pane→card treatment as Team Shared above */
+  #notesView{flex-direction:column}
+  #notesView .sidebar,
+  #notesView .resizer{display:none}
+  #noteFolderFilter{display:block;width:calc(100% - 8px);margin:8px 4px 0}
+  #noteCardsWrap{display:flex;flex:1;overflow-y:auto}
+
+  /* delivery tracker — Timeline/Calendar are desktop-only; agenda replaces them */
+  .dt-view-switcher,
+  #dtTimelineSubview,
+  #dtCalendarSubview{display:none}
+  #dtAgendaSubview{display:flex;flex-direction:column;flex:1;min-height:0}
+  #dtAgendaWrap{display:flex;flex:1;overflow-y:auto}
+  /* mobile agenda is now fully read-only (see viewAgendaEntryDetail()) — no write path
+     on mobile at all, so the "+ Add entry" trigger (and the now-empty row that only ever
+     held it) is hidden here too, rather than leaving a blank padded gap */
+  #dtAgendaSubview .dt-controls-row{display:none}
+
   /* full-screen detail overlay — reuses the existing desktop side-panel
      components as-is, just repositioned; covers the fab/topbar/hamburger by
      virtue of being an opaque position:fixed layer above them */
@@ -1182,7 +1262,8 @@ body.is-native-app .note-popup{width:calc(100vw - 32px)}
   .csp-close-btn{font-size:0;order:-1;padding:6px 8px;min-height:32px}
   .csp-close-btn::before{content:'← Back';font-size:13px;font-weight:600;color:var(--text);font-family:inherit}
 
-  #teamDetail.mob-overlay-open{position:fixed;inset:0;z-index:90;width:100%;max-width:100%;min-width:0;background:var(--bg)}
+  #teamDetail.mob-overlay-open,
+  #noteDetail.mob-overlay-open{position:fixed;inset:0;z-index:90;width:100%;max-width:100%;min-width:0;background:var(--bg)}
   .note-detail-back-btn{display:inline-flex;align-items:center;gap:4px;background:none;border:none;color:var(--text);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;padding:4px 0 10px;margin:0}
 }
 
