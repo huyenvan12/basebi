@@ -341,13 +341,56 @@ export async function deleteTestPrepTask(id){
   renderChecklist();
 }
 
-export async function addTestPrepTask(weekNumber){
-  const text=prompt('New task for Week '+weekNumber+':');
-  if(!text||!text.trim()) return;
+// ══════════════════════════════════════════════════
+// "+ ADD TASK" / "+ ADD WEEK" PROMPT MODAL
+// ══════════════════════════════════════════════════
+// Replaces window.prompt(), which throws (confirmed: "prompt() is not supported.") or
+// silently no-ops in many mobile contexts (iOS standalone/home-screen PWA, Android
+// installed PWAs/WebViews) — not a viewport-width issue, so this applies on desktop too,
+// just via the same modal/.form-input pattern as openTestPrepEditModal() instead of a
+// native dialog. tpPromptContext holds which flow (task vs week, and which week number)
+// the currently-open modal is for; set by addTestPrepTask()/addTestPrepWeek() below.
+let tpPromptContext=null;
+
+function openTpPromptModal(mode, weekNumber, title){
+  tpPromptContext={mode, weekNumber};
+  document.getElementById('tpPromptModalTitle').textContent=title;
+  document.getElementById('tpPromptInput').value='';
+  document.getElementById('tpPromptModalOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('tpPromptInput').focus(),50);
+}
+export function closeTpPromptModal(){
+  tpPromptContext=null;
+  document.getElementById('tpPromptModalOverlay').classList.remove('open');
+}
+export async function submitTpPromptModal(){
+  const ctx=tpPromptContext;
+  if(!ctx) return;
+  const text=(document.getElementById('tpPromptInput').value||'').trim();
+  // Empty/whitespace-only input is a no-op — same as an empty prompt() return today —
+  // so nothing is created and the modal stays open for the user to try again or Cancel.
+  if(!text) return;
+  closeTpPromptModal();
+  if(ctx.mode==='task') await commitAddTestPrepTask(ctx.weekNumber, text);
+  else await commitAddTestPrepWeek(ctx.weekNumber, text);
+}
+
+export function addTestPrepTask(weekNumber){
+  openTpPromptModal('task', weekNumber, 'New task for Week '+weekNumber);
+}
+
+export function addTestPrepWeek(){
+  ensureKnownWeeksInitialized();
+  const known=state.testPrepKnownWeeks||[];
+  const nextWeek=(known.length?Math.max(...known):0)+1;
+  openTpPromptModal('week', nextWeek, 'First task for Week '+nextWeek);
+}
+
+async function commitAddTestPrepTask(weekNumber, text){
   const weekItems=state.testPrepChecklist.filter(i=>i.week_number===weekNumber);
   const sort_order=weekItems.length;
   try{
-    const row=await insertChecklistItemDB({exam_id:state.testPrepExam.id, week_number:weekNumber, task_text:text.trim(), sort_order});
+    const row=await insertChecklistItemDB({exam_id:state.testPrepExam.id, week_number:weekNumber, task_text:text, sort_order});
     state.testPrepChecklist.push(row);
     renderChecklist();
     const details=document.querySelector(`.checklist-phase[data-week="${weekNumber}"]`);
@@ -355,14 +398,10 @@ export async function addTestPrepTask(weekNumber){
   }catch(err){ alert('Could not add task: '+(err.message||err)); }
 }
 
-export async function addTestPrepWeek(){
-  ensureKnownWeeksInitialized();
+async function commitAddTestPrepWeek(nextWeek, text){
   const known=state.testPrepKnownWeeks||[];
-  const nextWeek=(known.length?Math.max(...known):0)+1;
-  const text=prompt('First task for Week '+nextWeek+':');
-  if(!text||!text.trim()) return;
   try{
-    const row=await insertChecklistItemDB({exam_id:state.testPrepExam.id, week_number:nextWeek, task_text:text.trim(), sort_order:0});
+    const row=await insertChecklistItemDB({exam_id:state.testPrepExam.id, week_number:nextWeek, task_text:text, sort_order:0});
     state.testPrepChecklist.push(row);
     state.testPrepKnownWeeks=[...known, nextWeek];
     renderChecklist();
@@ -431,4 +470,6 @@ export function initTestPrep(){
   window.closeTestPrepEditModal=closeTestPrepEditModal;
   window.saveTestPrepExam=saveTestPrepExam;
   window.onTpSectionToggle=onTpSectionToggle;
+  window.closeTpPromptModal=closeTpPromptModal;
+  window.submitTpPromptModal=submitTpPromptModal;
 }

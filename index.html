@@ -680,6 +680,26 @@
   </div>
 </div>
 
+<!-- TEST PREP "+ Add task" / "+ Add week" PROMPT MODAL — replaces window.prompt(), which
+     throws/no-ops in many mobile contexts (standalone/home-screen PWA, some WebViews).
+     Single shared modal for both flows; title/input are set per-use by openTpPromptModal()
+     in js/test-prep.js. -->
+<div class="modal-overlay" id="tpPromptModalOverlay">
+  <div class="modal modal-sm">
+    <div class="modal-title">
+      <span id="tpPromptModalTitle">New task</span>
+      <button class="modal-close" onclick="closeTpPromptModal()">×</button>
+    </div>
+    <div class="form-row">
+      <input type="text" class="form-input" id="tpPromptInput" placeholder="Task description">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeTpPromptModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitTpPromptModal()">Add</button>
+    </div>
+  </div>
+</div>
+
 <!-- TAG RENAME MODAL -->
 <div class="modal-overlay" id="tagModalOverlay">
   <div class="modal modal-sm">
