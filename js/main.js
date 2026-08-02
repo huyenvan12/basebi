@@ -9,11 +9,11 @@ import { loadFolders, closeFolderModal, initFolders } from './folders.js';
 import {
   loadNotes, myNotes, buildIndex, renderAll, selectNote, closeNoteModal,
   openSearchScreen, closeSearchScreen, closeNotePopup, closeTagModal, closeInlineLinkDd,
-  openNoteModal, renderTeamList, initNotes
+  openNoteModal, renderTeamList, initNotes, closeTeamDetail
 } from './notes.js';
 import { openDailyNote, initDailyNote } from './daily-note.js';
 import {
-  loadCampaignsDB, renderCampTable, openAddCampModal, hideInlineCampRow, initCampaigns
+  loadCampaignsDB, renderCampTable, openAddCampModal, hideInlineCampRow, initCampaigns, closeCampPanel
 } from './campaigns.js';
 import { loadChecklistTemplates, renderChecklistTemplates, initChecklistTemplates } from './checklist-templates.js';
 import {
@@ -362,6 +362,7 @@ function bindGlobalListeners(){
       if(state.searchScreenOpen){closeSearchScreen();return;}
       closeNoteModal();closeFolderModal();closeTagModal();closeExportModal();closePasswordModal();hideInlineCampRow();closeShortcutsModal();closeGearMenu();closeAdminGearMenu();closeInlineLinkDd();closeMobDrawer();
       closeTicketModal();closeTaskTypeModal();closeOverlapModal();closeTypePicker();closeCalPopover();
+      if(window.matchMedia('(max-width:768px)').matches){ closeCampPanel(); closeTeamDetail(); }
       document.getElementById('tagDropdown').classList.remove('open');
       document.getElementById('linkDropdown').classList.remove('open');
     }

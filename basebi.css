@@ -135,6 +135,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 
 /* NOTE DETAIL */
 .note-detail{flex:1;min-width:280px;display:flex;flex-direction:column;overflow:hidden}
+.note-detail-back-btn{display:none}
 .note-detail-header{padding:14px 20px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
 .note-detail-title{font-size:18px;font-weight:600;color:var(--text);margin-bottom:8px}
 .note-detail-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -1167,6 +1168,22 @@ body.is-native-app .note-popup{width:calc(100vw - 32px)}
   .note-items{display:none}
   #teamCardsWrap{display:flex}
   .note-detail{min-width:0}
+
+  /* give the card lists their own scroll region instead of relying on the
+     ancestor's overflow:hidden (this was the actual cause of the "scroll past
+     empty space" bug — nothing below the list had a defined scroll container) */
+  #campCardsWrap{flex:1;overflow-y:auto}
+  #teamCardsWrap{flex:1;overflow-y:auto}
+
+  /* full-screen detail overlay — reuses the existing desktop side-panel
+     components as-is, just repositioned; covers the fab/topbar/hamburger by
+     virtue of being an opaque position:fixed layer above them */
+  .camp-side-panel.open{position:fixed;inset:0;z-index:90;width:100%;max-width:100%;min-width:0;border:none}
+  .csp-close-btn{font-size:0;order:-1;padding:6px 8px;min-height:32px}
+  .csp-close-btn::before{content:'← Back';font-size:13px;font-weight:600;color:var(--text);font-family:inherit}
+
+  #teamDetail.mob-overlay-open{position:fixed;inset:0;z-index:90;width:100%;max-width:100%;min-width:0;background:var(--bg)}
+  .note-detail-back-btn{display:inline-flex;align-items:center;gap:4px;background:none;border:none;color:var(--text);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;padding:4px 0 10px;margin:0}
 }
 
 /* Capacitor-native app never runs in a browser viewport that can hit the

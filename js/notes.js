@@ -421,8 +421,14 @@ export function renderTeamList(){
   }
 }
 export function selectTeamNote(id){state.activeTeamNoteId=id;renderTeamList();renderTeamDetail(state.notes.find(n=>n.id===id));}
+export function closeTeamDetail(){
+  state.activeTeamNoteId=null;
+  renderTeamList();
+  renderTeamDetail(null);
+}
 export function renderTeamDetail(note){
   const el=document.getElementById('teamDetail');
+  el.classList.toggle('mob-overlay-open', !!note);
   if(!note){el.innerHTML=`<div class="empty-state"><div class="icon">🌐</div><p>Select a shared note to view it</p></div>`;return;}
   const tags=(note.tags||[]).map(t=>`<span class="detail-tag">#${esc(t)}</span>`).join('');
   let body='';
@@ -441,6 +447,7 @@ export function renderTeamDetail(note){
     </div>`:`<div class="detail-actions"></div>`;
   el.innerHTML=`
     <div class="note-detail-header">
+      <button class="note-detail-back-btn" onclick="closeTeamDetail()">← Back</button>
       <div class="note-detail-title">${esc(note.title)}</div>
       <div class="note-detail-meta">
         <span class="detail-folder-badge">${esc(note.folder)}</span>${tags}
@@ -922,6 +929,7 @@ export function initNotes(){
   window.handleSearch=handleSearch;
   window.jumpToLink=jumpToLink;
   window.selectTeamNote=selectTeamNote;
+  window.closeTeamDetail=closeTeamDetail;
   window.openSearchScreen=openSearchScreen;
   window.closeSearchScreen=closeSearchScreen;
   window.handleSearchScreen=handleSearchScreen;
