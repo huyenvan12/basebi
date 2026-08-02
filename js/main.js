@@ -3,7 +3,7 @@
 // shortcuts, global click-outside handling, export/import, app init + auth gate.
 // ══════════════════════════════════════════════════
 import { state } from './state.js';
-import { loadTheme, closeGearMenu, closeShortcutsModal, initUiHelpers, toggleGearMenu, toggleAdminGearMenu, closeAdminGearMenu, openMobDrawer, closeMobDrawer } from './ui-helpers.js';
+import { loadTheme, closeGearMenu, closeShortcutsModal, initUiHelpers, toggleAdminGearMenu, closeAdminGearMenu, openMobDrawer, closeMobDrawer } from './ui-helpers.js';
 import { sb, initSupabaseClient, checkAuthAndInit, loadProfilesMap, loadCurrentUserIsAdmin, renderGearUserInfo, closePasswordModal, setOnFreshLogin } from './supabase-client.js';
 import { loadFolders, closeFolderModal, initFolders } from './folders.js';
 import {
@@ -597,7 +597,9 @@ function initMain(){
   document.getElementById('mobTabGantt').onclick=()=>switchTab('deliveryTracker');
   document.getElementById('mobTabTestPrep').onclick=()=>switchTab('testprep');
   document.getElementById('mobAdminItem').onclick=()=>switchTab('admin');
-  document.getElementById('mobOptionsItem').onclick=()=>{toggleGearMenu();closeMobDrawer();};
+  // No #mobOptionsItem wiring: ⚙ Options no longer has a drawer duplicate — it lives only in
+  // its original header position (#optionsGearWrap), which stays visible on mobile and is
+  // wired independently in ui-helpers.js's initUiHelpers().
 
   bindGlobalListeners();
 }

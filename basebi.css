@@ -1188,17 +1188,26 @@ body.is-native-app .note-popup{width:calc(100vw - 32px)}
 
 @media (max-width:768px){
   /* compact topbar: hide the tab bar, search bar, daily-note button, and desktop's
-     #topbarActionBtn (nav now lives in the drawer) — the admin/options gear buttons
-     and logo stay, joined by the hamburger, so Admin/Options keep working via their
-     existing unmodified dropdown menus with zero forked logic. #mobActionBtn is
-     #topbarActionBtn's mobile-web mirror (driven by the same switchTab() branches,
-     see main.js) and is shown here in its place. */
+     #topbarActionBtn (nav now lives in the drawer). Header cluster order is logo,
+     +New (#mobActionBtn), ⚙ Options (#optionsGearWrap, unchanged element/behavior/
+     positioning — no drawer duplicate), ☰ Hamburger. #adminGearWrap is hidden here:
+     🛠 Admin lives only at the bottom of the drawer (#mobAdminItem), not in the header.
+     #mobActionBtn is #topbarActionBtn's mobile-web mirror (driven by the same
+     switchTab() branches, see main.js) and is shown here in its place. */
   .topbar{gap:8px;padding:10px 12px}
   .topbar .tab-group,
   .topbar .search-wrap,
   #dailyNoteBtn,
-  #topbarActionBtn{display:none}
+  #topbarActionBtn,
+  #adminGearWrap{display:none}
   #mobActionBtn{display:inline-block}
+  /* ⚙ Options and ☰ Hamburger share the same square touch-target size on mobile;
+     desktop's .gear-btn sizing (padding:6px 10px, no fixed box) is untouched above
+     768px — this only targets the Options button inside its header wrap. */
+  #optionsGearWrap .gear-btn{
+    width:34px;height:34px;padding:0;display:flex;align-items:center;justify-content:center;
+    font-size:15px
+  }
   .mob-hamburger-btn{display:flex}
 
   .camp-table-wrap{display:none}
