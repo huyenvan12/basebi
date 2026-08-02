@@ -3,7 +3,7 @@
 // shortcuts, global click-outside handling, export/import, app init + auth gate.
 // ══════════════════════════════════════════════════
 import { state } from './state.js';
-import { loadTheme, closeGearMenu, closeShortcutsModal, initUiHelpers } from './ui-helpers.js';
+import { loadTheme, closeGearMenu, closeShortcutsModal, initUiHelpers, toggleAdminGearMenu, closeAdminGearMenu } from './ui-helpers.js';
 import { sb, initSupabaseClient, checkAuthAndInit, loadProfilesMap, loadCurrentUserIsAdmin, renderGearUserInfo, closePasswordModal, setOnFreshLogin } from './supabase-client.js';
 import { loadFolders, closeFolderModal, initFolders } from './folders.js';
 import {
@@ -62,7 +62,6 @@ export function switchTab(tab){
   document.getElementById('tabCampaigns').classList.toggle('active', tab==='campaigns');
   document.getElementById('tabGraph').classList.toggle('active', tab==='graph');
   document.getElementById('tabTeam').classList.toggle('active', tab==='team');
-  document.getElementById('tabAdmin').classList.toggle('active', tab==='admin');
   document.getElementById('tabGantt').classList.toggle('active', tab==='deliveryTracker');
   document.getElementById('tabTestPrep').classList.toggle('active', tab==='testprep');
   document.getElementById('notesView').classList.toggle('hidden', tab!=='notes');
@@ -348,14 +347,15 @@ function bindGlobalListeners(){
     if(e.key==='Escape'){
       if(document.getElementById('notePopupOverlay').classList.contains('open')){closeNotePopup();return;}
       if(state.searchScreenOpen){closeSearchScreen();return;}
-      closeNoteModal();closeFolderModal();closeTagModal();closeExportModal();closePasswordModal();hideInlineCampRow();closeShortcutsModal();closeGearMenu();closeInlineLinkDd();
+      closeNoteModal();closeFolderModal();closeTagModal();closeExportModal();closePasswordModal();hideInlineCampRow();closeShortcutsModal();closeGearMenu();closeAdminGearMenu();closeInlineLinkDd();
       closeTicketModal();closeTaskTypeModal();closeOverlapModal();closeTypePicker();closeCalPopover();
       document.getElementById('tagDropdown').classList.remove('open');
       document.getElementById('linkDropdown').classList.remove('open');
     }
   });
   document.addEventListener('click',e=>{
-    if(!e.target.closest('.gear-wrap')) closeGearMenu();
+    if(!e.target.closest('#optionsGearWrap')) closeGearMenu();
+    if(!e.target.closest('#adminGearWrap')) closeAdminGearMenu();
     if(!document.getElementById('tagSelectorWrap').contains(e.target))document.getElementById('tagDropdown').classList.remove('open');
     if(!document.getElementById('linkSelectorWrap').contains(e.target))document.getElementById('linkDropdown').classList.remove('open');
   });
@@ -458,7 +458,7 @@ function applyNavGating(){
   document.getElementById('teamSubTabNotes').style.display = isFeatureVisible('teamshared_notes')?'':'none';
   document.getElementById('teamSubTabChecklists').style.display = isFeatureVisible('checklist')?'':'none';
   document.getElementById('teamSubTabMonitorLog').style.display = isFeatureVisible('monitor_log')?'':'none';
-  document.getElementById('tabAdmin').style.display = state.currentUserRole==='admin'?'':'none';
+  document.getElementById('adminGearWrap').style.display = state.currentUserRole==='admin'?'':'none';
   document.getElementById('tabGantt').style.display = isFeatureVisible('gantt_tracker')?'':'none';
   document.getElementById('tabTestPrep').style.display = isFeatureVisible('test_prep')?'':'none';
   document.getElementById('dtManageTypesBtn').style.display = state.currentUserRole==='admin'?'':'none';
@@ -510,7 +510,6 @@ function initMain(){
   document.getElementById('tabCampaigns').onclick=()=>switchTab('campaigns');
   document.getElementById('tabGraph').onclick=()=>switchTab('graph');
   document.getElementById('tabTeam').onclick=()=>switchTab('team');
-  document.getElementById('tabAdmin').onclick=()=>switchTab('admin');
   document.getElementById('tabGantt').onclick=()=>switchTab('deliveryTracker');
   document.getElementById('tabTestPrep').onclick=()=>switchTab('testprep');
   // Wired here unconditionally (not just inside switchTab()) so #topbarActionBtn's initial-state
@@ -524,6 +523,9 @@ function initMain(){
   document.getElementById('checklistTabShared').onclick=()=>switchChecklistSubView('shared');
   document.querySelector('#checklistDetailView .btn-ghost').onclick=backToMyChecklists;
   document.querySelector('#checklistReviewerView .btn-ghost').onclick=backToSharedWithMe;
+
+  document.getElementById('adminGearBtn').onclick=toggleAdminGearMenu;
+  document.getElementById('adminHubItem').onclick=()=>{switchTab('admin');closeAdminGearMenu();};
 
   document.getElementById('gearImportItem').onclick=()=>{openImportModal();closeGearMenu();};
   document.getElementById('gearExportItem').onclick=()=>{openExportModal();closeGearMenu();};

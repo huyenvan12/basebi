@@ -21,7 +21,6 @@
     <button class="tab-btn" id="tabCampaigns" onclick="switchTab('campaigns')">📊 Campaigns</button>
     <button class="tab-btn" id="tabGraph" onclick="switchTab('graph')">🕸 Graph</button>
     <button class="tab-btn" id="tabTeam" onclick="switchTab('team')">🌐 Team Shared</button>
-    <button class="tab-btn" id="tabAdmin" onclick="switchTab('admin')">🛠 Admin</button>
     <button class="tab-btn" id="tabGantt" onclick="switchTab('deliveryTracker')">🚀 Delivery Tracker</button>
     <button class="tab-btn" id="tabTestPrep" onclick="switchTab('testprep')">📝 Test Prep</button>
   </div>
@@ -32,7 +31,13 @@
   <div class="topbar-actions">
     <button class="gear-btn" id="dailyNoteBtn" title="Today's note (Ctrl+Alt+D)">📅</button>
     <button class="btn btn-primary" id="topbarActionBtn">+ New Note</button>
-    <div class="gear-wrap">
+    <div class="gear-wrap" id="adminGearWrap">
+      <button class="gear-btn" id="adminGearBtn" title="Admin">🛠</button>
+      <div class="gear-menu" id="adminGearMenu">
+        <div class="gear-item" id="adminHubItem">🛠 &nbsp;Admin Hub</div>
+      </div>
+    </div>
+    <div class="gear-wrap" id="optionsGearWrap">
       <button class="gear-btn" title="Options">⚙</button>
       <div class="gear-menu" id="gearMenu">
         <div class="gear-user-info" id="gearUserInfo">
