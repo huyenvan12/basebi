@@ -952,11 +952,12 @@
   </div>
 </div>
 
-<!-- AGENDA ENTRY MODAL (mobile-web only — add/edit a gantt_entries row from the mobile agenda view) -->
+<!-- AGENDA ADD-ENTRY MODAL (mobile-web only — "+ Add entry" is the only mobile write path into
+     gantt_entries; existing entries are read-only on mobile, see #dtAgendaEntryDetailOverlay) -->
 <div class="modal-overlay" id="dtAgendaEntryModalOverlay">
   <div class="modal modal-sm">
     <div class="modal-title">
-      <span>Schedule Entry</span>
+      <span>New Entry</span>
       <button class="modal-close" onclick="closeAgendaEntryForm()">×</button>
     </div>
     <div class="form-row">
@@ -974,6 +975,36 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeAgendaEntryForm()">Cancel</button>
       <button class="btn btn-primary" id="dtAgendaNextBtn" onclick="submitAgendaEntryForm()">Next: choose type →</button>
+    </div>
+  </div>
+</div>
+
+<!-- AGENDA ENTRY DETAIL MODAL (mobile-web only — read-only; tapping an existing agenda entry
+     shows this instead of an edit form. No inputs, no write path — see scope note above. -->
+<div class="modal-overlay" id="dtAgendaEntryDetailOverlay">
+  <div class="modal modal-sm">
+    <div class="modal-title">
+      <span>Entry Details</span>
+      <button class="modal-close" onclick="closeAgendaEntryDetail()">×</button>
+    </div>
+    <div class="dt-agenda-detail-row">
+      <span class="dt-agenda-detail-label">Ticket</span>
+      <span class="dt-agenda-detail-value" id="dtAgendaDetailTicket"></span>
+    </div>
+    <div class="dt-agenda-detail-row">
+      <span class="dt-agenda-detail-label">Task type</span>
+      <span class="dt-agenda-detail-value" id="dtAgendaDetailType"></span>
+    </div>
+    <div class="dt-agenda-detail-row">
+      <span class="dt-agenda-detail-label">Start date</span>
+      <span class="dt-agenda-detail-value" id="dtAgendaDetailStart"></span>
+    </div>
+    <div class="dt-agenda-detail-row">
+      <span class="dt-agenda-detail-label">End date</span>
+      <span class="dt-agenda-detail-value" id="dtAgendaDetailEnd"></span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeAgendaEntryDetail()">Close</button>
     </div>
   </div>
 </div>

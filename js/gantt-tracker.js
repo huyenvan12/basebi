@@ -1046,7 +1046,7 @@ export function renderAgenda(){
       const dayGroups=week.days.map(day=>{
         const cards=day.items.map(({entry,ticket})=>{
           const tt=state.ganttTaskTypes.find(x=>x.id===entry.task_type_id);
-          return `<div class="dt-agenda-ticket-card" style="border-left-color:${esc(ticketColor(ticket))}" onclick="openAgendaEntryForm('${escJs(entry.id)}')">
+          return `<div class="dt-agenda-ticket-card" style="border-left-color:${esc(ticketColor(ticket))}" onclick="viewAgendaEntryDetail('${escJs(entry.id)}')">
             <span class="dt-agenda-ticket-cd">${esc(ticket.jira_key||ticket.project_name)}</span>
             ${tt?`<span class="dt-agenda-ticket-type" style="color:${esc(tt.color)}">${esc(tt.code)}</span>`:''}
           </div>`;
@@ -1063,20 +1063,17 @@ export function renderAgenda(){
     }).join('');
 }
 
-export function openAgendaEntryForm(entryId){
-  // editing an existing entry pre-fills the form with its current range; submitting simply
-  // re-runs the same range through computeOverlaps()/openTypePicker(), which will find the
-  // entry being edited as its own overlap and replace it via the existing confirm-and-replace
-  // flow — no separate "edit" code path needed.
-  const editing=entryId!=null?state.ganttEntries.find(e=>String(e.id)===String(entryId)):null;
+export function openAgendaEntryForm(){
+  // Add-only: mobile has no edit path for existing entries (see viewAgendaEntryDetail()
+  // below) — this always opens a blank "new entry" form, always starting from today.
   const activeTickets=state.ganttTickets.filter(isTicketActive);
   const ticketSel=document.getElementById('dtAgendaTicketSelect');
   ticketSel.innerHTML=activeTickets.map(t=>
     `<option value="${escJs(t.id)}">${esc(t.jira_key||t.project_name)}</option>`
   ).join('');
-  ticketSel.value=editing?editing.ticket_id:(activeTickets[0]||{}).id||'';
-  document.getElementById('dtAgendaStartDate').value=editing?editing.start_date:today();
-  document.getElementById('dtAgendaEndDate').value=editing?editing.end_date:today();
+  ticketSel.value=(activeTickets[0]||{}).id||'';
+  document.getElementById('dtAgendaStartDate').value=today();
+  document.getElementById('dtAgendaEndDate').value=today();
   document.getElementById('dtAgendaEntryModalOverlay').classList.add('open');
 }
 export function closeAgendaEntryForm(){
@@ -1085,6 +1082,23 @@ export function closeAgendaEntryForm(){
   // a type being chosen (e.g. Cancel, or Escape) — openTypePicker()'s own flows clear this
   // on completion, but the modal-close path didn't.
   state.ganttPendingEntryWrite=null;
+}
+// Read-only detail view for an existing agenda entry — mobile has no path to modify an
+// existing gantt_entries row (only "+ Add entry" -> openAgendaEntryForm() writes), so this
+// just displays the entry's data with a close control, no inputs, no openTypePicker().
+export function viewAgendaEntryDetail(entryId){
+  const entry=state.ganttEntries.find(e=>String(e.id)===String(entryId));
+  if(!entry) return;
+  const ticket=state.ganttTickets.find(t=>t.id===entry.ticket_id);
+  const tt=state.ganttTaskTypes.find(x=>x.id===entry.task_type_id);
+  document.getElementById('dtAgendaDetailTicket').textContent=ticket?(ticket.jira_key||ticket.project_name):'—';
+  document.getElementById('dtAgendaDetailType').textContent=tt?`${tt.code} — ${tt.label}`:'—';
+  document.getElementById('dtAgendaDetailStart').textContent=fmtDM(entry.start_date);
+  document.getElementById('dtAgendaDetailEnd').textContent=fmtDM(entry.end_date);
+  document.getElementById('dtAgendaEntryDetailOverlay').classList.add('open');
+}
+export function closeAgendaEntryDetail(){
+  document.getElementById('dtAgendaEntryDetailOverlay').classList.remove('open');
 }
 export function submitAgendaEntryForm(){
   const ticketId=document.getElementById('dtAgendaTicketSelect').value;
@@ -1148,6 +1162,8 @@ export function initGanttTracker(){
   window.openAgendaEntryForm=openAgendaEntryForm;
   window.closeAgendaEntryForm=closeAgendaEntryForm;
   window.submitAgendaEntryForm=submitAgendaEntryForm;
+  window.viewAgendaEntryDetail=viewAgendaEntryDetail;
+  window.closeAgendaEntryDetail=closeAgendaEntryDetail;
 
   document.getElementById('dtStartDate').onchange=e=>setTimelineStartDate(e.target.value);
   document.getElementById('dtWeeksInput').onchange=e=>setTimelineWeeks(e.target.value);
