@@ -1058,4 +1058,121 @@ body.is-native-app #mobileShell{
 /* shared overlays (note modal, search screen, note popup) are reused as-is on mobile — widen to fit narrow viewports */
 body.is-native-app .modal{width:calc(100vw - 32px);max-width:480px}
 body.is-native-app .note-popup{width:calc(100vw - 32px)}
+
+/* ══════════════════════════════════════════════════
+   MOBILE-WEB LAYOUT — genuine responsive layer for any narrow browser
+   viewport (phone/tablet web, desktop window resize), triggered by a real
+   @media(max-width:768px) breakpoint. Completely independent of, and does
+   not modify, the is-native-app/Capacitor block above — that one only
+   activates inside the native app WebView; this one activates in any
+   browser whenever the viewport is narrow. 768px = standard tablet-portrait/
+   phone boundary (iPad portrait is exactly 768px and keeps the desktop
+   topbar; phones and smaller tablets get the compact layout).
+   ══════════════════════════════════════════════════ */
+
+.mob-hamburger-btn{
+  display:none;width:34px;height:34px;border-radius:8px;border:1px solid var(--border);
+  background:transparent;color:var(--text-muted);font-size:15px;cursor:pointer;
+  align-items:center;justify-content:center;transition:all .15s
+}
+.mob-hamburger-btn:hover{background:var(--surface2);color:var(--text)}
+
+/* drawer + scrim are always in the DOM but inert (off-screen / hidden) until
+   opened; the trigger button that opens them only becomes visible/clickable
+   inside the media query below, so they're unreachable above 768px. */
+.mob-drawer-scrim{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:519;opacity:0;transition:opacity .2s}
+.mob-drawer-scrim.open{display:block;opacity:1}
+.mob-drawer{
+  position:fixed;top:0;bottom:0;left:0;width:280px;max-width:82vw;
+  background:var(--surface);border-right:1px solid var(--border);
+  z-index:520;transform:translateX(-100%);transition:transform .2s ease;
+  display:flex;flex-direction:column;overflow-y:auto
+}
+.mob-drawer.open{transform:translateX(0)}
+.mob-drawer-head{padding:16px 16px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.mob-drawer-head .logo{font-size:16px;font-weight:600;color:var(--accent);letter-spacing:-.3px}
+.mob-drawer-head .logo em{color:var(--text-muted);font-style:normal;font-weight:300}
+.mob-drawer-close{width:30px;height:30px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--text-muted);cursor:pointer;font-size:14px}
+.mob-drawer-close:hover{background:var(--surface2);color:var(--text)}
+
+.mob-drawer-nav{flex:1;padding:8px 8px 0}
+.mob-drawer-item{
+  display:flex;align-items:center;gap:10px;width:100%;padding:11px 10px;
+  border-radius:7px;border:none;background:transparent;color:var(--text-muted);
+  font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;text-align:left;
+  transition:background .12s
+}
+.mob-drawer-item:hover{background:var(--surface2);color:var(--text)}
+.mob-drawer-item.active{background:var(--accent-dim);color:var(--accent)}
+.mob-drawer-item .chev{margin-left:auto;font-size:10px;color:var(--text-dim);transition:transform .15s}
+.mob-drawer-item.expanded .chev{transform:rotate(90deg)}
+
+.mob-drawer-subnav{padding-left:14px;overflow:hidden;max-height:0;transition:max-height .18s ease}
+.mob-drawer-subnav.open{max-height:200px}
+.mob-drawer-subitem{
+  display:flex;align-items:center;gap:9px;width:100%;padding:9px 10px 9px 20px;
+  border-radius:7px;border:none;background:transparent;color:var(--text-dim);
+  font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;text-align:left;
+  border-left:2px solid var(--border);margin-left:14px
+}
+.mob-drawer-subitem:hover{background:var(--surface2);color:var(--text)}
+.mob-drawer-subitem.active{color:var(--accent);border-left-color:var(--accent)}
+
+.mob-drawer-bottom{padding:8px;border-top:1px solid var(--border);margin-top:auto}
+
+/* card list container shared by Campaigns + Team Shared → Shared Notes; hidden by
+   default (desktop keeps the existing table/list), shown only under the breakpoint */
+.mob-card-list{display:none;flex-direction:column;gap:10px;padding:12px 4px 90px}
+
+.mob-camp-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;cursor:pointer}
+.mob-camp-card:active{background:var(--surface2)}
+.mob-camp-card.camp-row-active{border-color:var(--accent)}
+.mob-camp-card-date{font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;margin-bottom:6px}
+.mob-camp-card-title-row{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.mob-camp-card-cd{font-family:'JetBrains Mono',monospace;color:#c4b5fd;font-weight:600;font-size:11px}
+.mob-camp-card-nm{font-size:14px;font-weight:600;color:var(--text)}
+.mob-camp-card-event{font-size:12px;color:var(--text-muted);margin-bottom:8px}
+.mob-camp-card-badges{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.mob-camp-card-note{font-size:12px;color:var(--text-dim);font-style:italic;line-height:1.4;padding-top:8px;border-top:1px solid var(--border)}
+.mob-camp-card-note.empty{opacity:.5}
+
+.mob-team-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;cursor:pointer}
+.mob-team-card:active{background:var(--surface2)}
+.mob-team-card.active{border-color:var(--accent)}
+.mob-team-card-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px}
+.mob-team-card-meta{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+.mob-team-card-excerpt{font-size:12px;color:var(--text-dim);line-height:1.5;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+
+@media (max-width:768px){
+  /* compact topbar: hide the tab bar, search bar, daily-note + primary action
+     buttons (nav now lives in the drawer; content-create actions are deferred to a
+     later pass) — the admin/options gear buttons and logo stay, joined by the
+     hamburger, so Admin/Options keep working via their existing unmodified
+     dropdown menus with zero forked logic. */
+  .topbar{gap:8px;padding:10px 12px}
+  .topbar .tab-group,
+  .topbar .search-wrap,
+  #dailyNoteBtn,
+  #topbarActionBtn{display:none}
+  .mob-hamburger-btn{display:flex}
+
+  .camp-table-wrap{display:none}
+  #campCardsWrap{display:flex}
+  .camp-table-area{flex-direction:column}
+  .camp-side-panel{width:100%;max-width:100%;min-width:0;border-left:none;border-top:1px solid var(--border)}
+  .camp-resizer{display:none}
+
+  #teamNotesSubview{flex-direction:column}
+  .note-list{width:100%;max-width:100%;min-width:0}
+  .note-items{display:none}
+  #teamCardsWrap{display:flex}
+  .note-detail{min-width:0}
+}
+
+/* Capacitor-native app never runs in a browser viewport that can hit the
+   breakpoint above, but keep the mobile-web drawer explicitly inert there too
+   so the two responsive layers can never interact. */
+body.is-native-app #mobDrawer,
+body.is-native-app #mobDrawerScrim,
+body.is-native-app .mob-hamburger-btn{display:none!important}
 body.is-native-app .search-screen{padding-top:calc(50px + env(safe-area-inset-top))}

@@ -3,7 +3,7 @@
 // shortcuts, global click-outside handling, export/import, app init + auth gate.
 // ══════════════════════════════════════════════════
 import { state } from './state.js';
-import { loadTheme, closeGearMenu, closeShortcutsModal, initUiHelpers, toggleAdminGearMenu, closeAdminGearMenu } from './ui-helpers.js';
+import { loadTheme, closeGearMenu, closeShortcutsModal, initUiHelpers, toggleGearMenu, toggleAdminGearMenu, closeAdminGearMenu, openMobDrawer, closeMobDrawer } from './ui-helpers.js';
 import { sb, initSupabaseClient, checkAuthAndInit, loadProfilesMap, loadCurrentUserIsAdmin, renderGearUserInfo, closePasswordModal, setOnFreshLogin } from './supabase-client.js';
 import { loadFolders, closeFolderModal, initFolders } from './folders.js';
 import {
@@ -57,6 +57,7 @@ function isTabAllowed(tab){
 
 export function switchTab(tab){
   if(!isTabAllowed(tab)) return;
+  closeMobDrawer();
   state.currentTab = tab;
   document.getElementById('tabNotes').classList.toggle('active', tab==='notes');
   document.getElementById('tabCampaigns').classList.toggle('active', tab==='campaigns');
@@ -64,6 +65,14 @@ export function switchTab(tab){
   document.getElementById('tabTeam').classList.toggle('active', tab==='team');
   document.getElementById('tabGantt').classList.toggle('active', tab==='deliveryTracker');
   document.getElementById('tabTestPrep').classList.toggle('active', tab==='testprep');
+  // mobile-web drawer mirrors (same tab state, second set of elements — see basebi.css @media block)
+  document.getElementById('mobTabNotes').classList.toggle('active', tab==='notes');
+  document.getElementById('mobTabCampaigns').classList.toggle('active', tab==='campaigns');
+  document.getElementById('mobTabGraph').classList.toggle('active', tab==='graph');
+  document.getElementById('mobTabTeam').classList.toggle('active', tab==='team');
+  document.getElementById('mobTabGantt').classList.toggle('active', tab==='deliveryTracker');
+  document.getElementById('mobTabTestPrep').classList.toggle('active', tab==='testprep');
+  document.getElementById('mobAdminItem').classList.toggle('active', tab==='admin');
   document.getElementById('notesView').classList.toggle('hidden', tab!=='notes');
   document.getElementById('campView').classList.toggle('active', tab==='campaigns');
   document.getElementById('graphView').classList.toggle('active', tab==='graph');
@@ -119,6 +128,10 @@ export function switchTeamSubTab(sub){
   document.getElementById('teamNotesSubview').classList.toggle('active',sub==='notes');
   document.getElementById('teamChecklistsSubview').classList.toggle('active',sub==='checklists');
   document.getElementById('teamMonitorLogSubview').classList.toggle('active',sub==='monitorlog');
+  // mobile-web drawer mirrors (see switchTab() comment above)
+  document.getElementById('mobTeamSubTabNotes').classList.toggle('active',sub==='notes');
+  document.getElementById('mobTeamSubTabChecklists').classList.toggle('active',sub==='checklists');
+  document.getElementById('mobTeamSubTabMonitorLog').classList.toggle('active',sub==='monitorlog');
   if(sub==='checklists') renderTeamSubnav();
   if(sub==='monitorlog') renderMonitorLogList();
 }
@@ -347,7 +360,7 @@ function bindGlobalListeners(){
     if(e.key==='Escape'){
       if(document.getElementById('notePopupOverlay').classList.contains('open')){closeNotePopup();return;}
       if(state.searchScreenOpen){closeSearchScreen();return;}
-      closeNoteModal();closeFolderModal();closeTagModal();closeExportModal();closePasswordModal();hideInlineCampRow();closeShortcutsModal();closeGearMenu();closeAdminGearMenu();closeInlineLinkDd();
+      closeNoteModal();closeFolderModal();closeTagModal();closeExportModal();closePasswordModal();hideInlineCampRow();closeShortcutsModal();closeGearMenu();closeAdminGearMenu();closeInlineLinkDd();closeMobDrawer();
       closeTicketModal();closeTaskTypeModal();closeOverlapModal();closeTypePicker();closeCalPopover();
       document.getElementById('tagDropdown').classList.remove('open');
       document.getElementById('linkDropdown').classList.remove('open');
@@ -356,6 +369,7 @@ function bindGlobalListeners(){
   document.addEventListener('click',e=>{
     if(!e.target.closest('#optionsGearWrap')) closeGearMenu();
     if(!e.target.closest('#adminGearWrap')) closeAdminGearMenu();
+    if(!e.target.closest('#mobDrawer')&&!e.target.closest('#mobHamburgerBtn')) closeMobDrawer();
     if(!document.getElementById('tagSelectorWrap').contains(e.target))document.getElementById('tagDropdown').classList.remove('open');
     if(!document.getElementById('linkSelectorWrap').contains(e.target))document.getElementById('linkDropdown').classList.remove('open');
   });
@@ -461,6 +475,18 @@ function applyNavGating(){
   document.getElementById('adminGearWrap').style.display = state.currentUserRole==='admin'?'':'none';
   document.getElementById('tabGantt').style.display = isFeatureVisible('gantt_tracker')?'':'none';
   document.getElementById('tabTestPrep').style.display = isFeatureVisible('test_prep')?'':'none';
+  // mobile-web drawer mirrors — same conditions as the desktop elements just above,
+  // applied to the drawer's own row elements (see index.html #mobDrawer).
+  document.getElementById('mobTabNotes').style.display = isFeatureVisible('notes')?'':'none';
+  document.getElementById('mobTabCampaigns').style.display = isFeatureVisible('campaign')?'':'none';
+  document.getElementById('mobTabGraph').style.display = isFeatureVisible('graph_view')?'':'none';
+  document.getElementById('mobTabTeam').style.display = (isFeatureVisible('teamshared_notes')||isFeatureVisible('checklist')||isFeatureVisible('monitor_log'))?'':'none';
+  document.getElementById('mobTeamSubTabNotes').style.display = isFeatureVisible('teamshared_notes')?'':'none';
+  document.getElementById('mobTeamSubTabChecklists').style.display = isFeatureVisible('checklist')?'':'none';
+  document.getElementById('mobTeamSubTabMonitorLog').style.display = isFeatureVisible('monitor_log')?'':'none';
+  document.getElementById('mobAdminItem').style.display = state.currentUserRole==='admin'?'':'none';
+  document.getElementById('mobTabGantt').style.display = isFeatureVisible('gantt_tracker')?'':'none';
+  document.getElementById('mobTabTestPrep').style.display = isFeatureVisible('test_prep')?'':'none';
   document.getElementById('dtManageTypesBtn').style.display = state.currentUserRole==='admin'?'':'none';
   // dailyNoteBtn is otherwise only gated inside switchTab(), which never runs at bootstrap
   // unless the current tab is disallowed (see fallback below) — without this line the button
@@ -543,6 +569,25 @@ function initMain(){
   const exportActions=document.querySelectorAll('#exportOverlay .modal-actions .btn');
   exportActions[0].onclick=closeExportModal;
   exportActions[1].onclick=doExport;
+
+  // mobile-web drawer (see index.html #mobDrawer, basebi.css @media(max-width:768px))
+  document.getElementById('mobHamburgerBtn').onclick=openMobDrawer;
+  document.getElementById('mobDrawerCloseBtn').onclick=closeMobDrawer;
+  document.getElementById('mobDrawerScrim').onclick=closeMobDrawer;
+  document.getElementById('mobTabNotes').onclick=()=>switchTab('notes');
+  document.getElementById('mobTabCampaigns').onclick=()=>switchTab('campaigns');
+  document.getElementById('mobTabGraph').onclick=()=>switchTab('graph');
+  document.getElementById('mobTabTeam').onclick=()=>{
+    document.getElementById('mobTabTeam').classList.toggle('expanded');
+    document.getElementById('mobTeamSubnav').classList.toggle('open');
+  };
+  document.getElementById('mobTeamSubTabNotes').onclick=()=>{switchTab('team');switchTeamSubTab('notes');closeMobDrawer();};
+  document.getElementById('mobTeamSubTabChecklists').onclick=()=>{switchTab('team');switchTeamSubTab('checklists');closeMobDrawer();};
+  document.getElementById('mobTeamSubTabMonitorLog').onclick=()=>{switchTab('team');switchTeamSubTab('monitorlog');closeMobDrawer();};
+  document.getElementById('mobTabGantt').onclick=()=>switchTab('deliveryTracker');
+  document.getElementById('mobTabTestPrep').onclick=()=>switchTab('testprep');
+  document.getElementById('mobAdminItem').onclick=()=>switchTab('admin');
+  document.getElementById('mobOptionsItem').onclick=()=>{toggleGearMenu();closeMobDrawer();};
 
   bindGlobalListeners();
 }

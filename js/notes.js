@@ -400,6 +400,25 @@ export function renderTeamList(){
         <div class="note-item-excerpt">${esc(excerpt)}</div>
       </div>`;
     }).join('');
+
+  // mobile-web card view (<=768px, see basebi.css @media block) — mirrors teamItems above
+  const cardsWrap=document.getElementById('teamCardsWrap');
+  if(cardsWrap){
+    cardsWrap.innerHTML=list.length===0
+      ?'<div class="note-empty">No team-shared notes yet</div>'
+      :list.map(n=>{
+        const excerpt=(n.body||n.code||'').slice(0,55).replace(/\n/g,' ');
+        return`<div class="mob-team-card ${n.id===state.activeTeamNoteId?'active':''}" onclick="selectTeamNote(${n.id})">
+          <div class="mob-team-card-title">${hl(n.title,'')}</div>
+          <div class="mob-team-card-meta">
+            <span class="note-type-badge ${n.type==='code'?'type-code':'type-plain'}">${n.type==='code'?'Code':'Plain'}</span>
+            <span class="note-item-folder">${esc(n.folder)}</span>
+            <span class="author-badge">${esc(authorName(n.owner_id))}</span>
+          </div>
+          <div class="mob-team-card-excerpt">${esc(excerpt)}</div>
+        </div>`;
+      }).join('');
+  }
 }
 export function selectTeamNote(id){state.activeTeamNoteId=id;renderTeamList();renderTeamDetail(state.notes.find(n=>n.id===id));}
 export function renderTeamDetail(note){

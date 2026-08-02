@@ -26,6 +26,18 @@ export function closeAdminGearMenu(){
 }
 
 // ══════════════════════════════════════════════════
+// MOBILE-WEB NAV DRAWER (<=768px browser viewports — see basebi.css @media block)
+// ══════════════════════════════════════════════════
+export function openMobDrawer(){
+  document.getElementById('mobDrawer').classList.add('open');
+  document.getElementById('mobDrawerScrim').classList.add('open');
+}
+export function closeMobDrawer(){
+  document.getElementById('mobDrawer').classList.remove('open');
+  document.getElementById('mobDrawerScrim').classList.remove('open');
+}
+
+// ══════════════════════════════════════════════════
 // SHORTCUTS MODAL
 // ══════════════════════════════════════════════════
 export function openShortcutsModal(){ document.getElementById('shortcutsOverlay').classList.add('open'); }
