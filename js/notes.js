@@ -11,7 +11,7 @@ import { sb } from './supabase-client.js';
 // from this file (via renderAll), and this file needs myNotes/saveNotes/renderAll from
 // notes.js. Safe because every cross-call below happens inside event-handler function
 // bodies, never at module top-level. Do not "fix" this by inlining logic.
-import { renderFolders } from './folders.js';
+import { renderFolders, selectFolder } from './folders.js';
 // Second narrow, intentional circular import: daily-note.js needs saveOneNote/buildIndex/
 // renderAll/selectNote/renderDetail/focusDailyCapture from this file, and saveNote() here
 // needs daily-note.js's today() for created/modified timestamps. Safe under the same
@@ -284,6 +284,25 @@ export function renderNoteList(){
         <div class="note-item-excerpt">${hl(excerpt,state.searchQuery)}</div>
       </div>`;
     }).join('');
+
+  // mobile-web card view (<=768px, see basebi.css @media block) — mirrors noteItems above
+  const cardsWrap=document.getElementById('noteCardsWrap');
+  if(cardsWrap){
+    cardsWrap.innerHTML=filtered.length===0
+      ?'<div class="note-empty">No notes found</div>'
+      :filtered.map(n=>{
+        const excerpt=(n.body||n.code||'').slice(0,55).replace(/\n/g,' ');
+        return`<div class="mob-team-card ${n.id===state.activeNoteId?'active':''}" onclick="selectNote(${n.id})">
+          <div class="mob-team-card-title">${n.pinned?'📌 ':''}${hl(n.title,state.searchQuery)}</div>
+          <div class="mob-team-card-meta">
+            <span class="note-type-badge ${n.type==='code'?'type-code':'type-plain'}">${n.type==='code'?'Code':'Plain'}</span>
+            <span class="note-item-folder">${esc(n.folder)}</span>
+            <span class="note-item-modified">${fmtDate(n.modified||n.created)}</span>
+          </div>
+          <div class="mob-team-card-excerpt">${hl(excerpt,state.searchQuery)}</div>
+        </div>`;
+      }).join('');
+  }
 }
 
 // ══════════════════════════════════════════════════
@@ -291,6 +310,7 @@ export function renderNoteList(){
 // ══════════════════════════════════════════════════
 export function renderDetail(note){
   const el=document.getElementById('noteDetail');
+  el.classList.toggle('mob-overlay-open', !!note);
   if(!note){el.innerHTML=`<div class="empty-state"><div class="icon">📋</div><p>Select a note to view it</p><p style="font-size:11px">or press + New Note</p></div>`;return;}
   const tags=(note.tags||[]).map(t=>`<span class="detail-tag">#${esc(t)}</span>`).join('');
   const links=(note.links||[]).filter(Boolean);
@@ -324,6 +344,7 @@ export function renderDetail(note){
       <button class="btn btn-danger" style="font-size:11px" onclick="confirmDeleteNote(${note.id})">✕ Delete</button>`:'';
   el.innerHTML=`
     <div class="note-detail-header">
+      <button class="note-detail-back-btn" onclick="closeNoteDetail()">← Back</button>
       <div class="note-detail-title">${hl(note.title,state.searchQuery)}</div>
       <div class="note-detail-meta">
         <span class="detail-folder-badge">${esc(note.folder)}</span>
@@ -375,6 +396,12 @@ export function selectNote(id){
 export function selectTag(t){state.activeTag=state.activeTag===t?null:t;renderAll();}
 export function handleSearch(){state.searchQuery=document.getElementById('searchInput').value;renderNoteList();if(state.activeNoteId)renderDetail(state.notes.find(n=>n.id===state.activeNoteId));}
 export function jumpToLink(title){const n=visibleNotes().find(n=>n.title.toLowerCase()===title.toLowerCase());if(n)selectNote(n.id);}
+// mobile-web full-screen detail overlay close — mirrors closeTeamDetail()
+export function closeNoteDetail(){
+  state.activeNoteId=null;
+  renderNoteList();
+  renderDetail(null);
+}
 
 // ══════════════════════════════════════════════════
 // TEAM SHARED
@@ -930,6 +957,7 @@ export function initNotes(){
   window.jumpToLink=jumpToLink;
   window.selectTeamNote=selectTeamNote;
   window.closeTeamDetail=closeTeamDetail;
+  window.closeNoteDetail=closeNoteDetail;
   window.openSearchScreen=openSearchScreen;
   window.closeSearchScreen=closeSearchScreen;
   window.handleSearchScreen=handleSearchScreen;
@@ -969,6 +997,7 @@ export function initNotes(){
 
   document.getElementById('searchInput').addEventListener('input',handleSearch);
   document.querySelector('.fab[title^="Search mode"]').onclick=openSearchScreen;
+  document.getElementById('noteFolderFilter').onchange=e=>selectFolder(e.target.value);
   document.getElementById('searchScreenInput').addEventListener('input',handleSearchScreen);
   document.getElementById('searchScreenInput').addEventListener('keydown',searchScreenKey);
   document.getElementById('notePopupOverlay').onclick=handlePopupOverlayClick;

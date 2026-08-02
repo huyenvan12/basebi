@@ -227,7 +227,11 @@
         <span class="note-count" id="noteCount">0 notes</span>
         <button class="pane-collapse-btn" id="collapseB" title="Collapse note list">‹</button>
       </div>
+      <!-- mobile-web folder filter (<=768px) — reuses selectFolder(), populated in renderFolders() -->
+      <select class="camp-filter-select" id="noteFolderFilter"></select>
       <div class="note-items" id="noteItems"></div>
+      <!-- mobile-web card view (<=768px) — same data/render source as .note-items, see renderNoteList() -->
+      <div class="mob-card-list" id="noteCardsWrap"></div>
     </div>
     <div class="resizer" id="resizerB"></div>
     <div class="note-detail" id="noteDetail">
@@ -515,29 +519,23 @@
       </div>
       <div class="dt-calendar-grid" id="dtCalendarGrid"></div>
     </div>
+
+    <!-- AGENDA SUB-VIEW (mobile-web only, <=768px — see basebi.css @media block; Timeline/
+         Calendar above stay desktop-only and unchanged) -->
+    <div class="dt-subview" id="dtAgendaSubview">
+      <div class="dt-controls-row">
+        <button class="btn btn-primary" id="dtAgendaAddBtn">+ Add entry</button>
+      </div>
+      <div class="mob-card-list" id="dtAgendaWrap"></div>
+    </div>
   </div>
 
   <!-- TEST PREP HUB VIEW -->
+  <!-- Content is rendered entirely by renderTpAccordionShell() in test-prep.js — see TP_SECTIONS.
+       Mobile-web (<=768px) renders as collapsible <details> accordions; desktop always-expanded,
+       no accordion chrome, via the @media (min-width:769px) override in basebi.css. -->
   <div class="team-view" id="testPrepView">
-    <div class="tp-scroll">
-      <div class="tp-header" id="tpHeader"></div>
-
-      <div class="tp-section">
-        <div class="note-list-title">Time Log</div>
-        <div class="tp-log-form">
-          <div class="tp-skill-picker" id="tpSkillPicker"></div>
-          <input type="number" min="1" class="form-input tp-minutes-input" id="tpMinutesInput" placeholder="Minutes">
-          <button type="button" class="btn btn-primary" id="tpLogBtn">+ Log</button>
-        </div>
-        <div class="tp-seven-day" id="tpSevenDay"></div>
-        <div class="tp-recent" id="tpRecentEntries"></div>
-      </div>
-
-      <div class="tp-section">
-        <div class="note-list-title">Checklist</div>
-        <div id="tpChecklistBody"></div>
-      </div>
-    </div>
+    <div class="tp-scroll" id="tpScroll"></div>
   </div>
 
 </div>
@@ -950,6 +948,32 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeOverlapModal()">Cancel</button>
       <button class="btn btn-danger" id="dtOverlapConfirmBtn">Replace</button>
+    </div>
+  </div>
+</div>
+
+<!-- AGENDA ENTRY MODAL (mobile-web only — add/edit a gantt_entries row from the mobile agenda view) -->
+<div class="modal-overlay" id="dtAgendaEntryModalOverlay">
+  <div class="modal modal-sm">
+    <div class="modal-title">
+      <span>Schedule Entry</span>
+      <button class="modal-close" onclick="closeAgendaEntryForm()">×</button>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Ticket *</label>
+      <select class="form-input" id="dtAgendaTicketSelect"></select>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Start date *</label>
+      <input type="date" class="form-input" id="dtAgendaStartDate">
+    </div>
+    <div class="form-row">
+      <label class="form-label">End date *</label>
+      <input type="date" class="form-input" id="dtAgendaEndDate">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeAgendaEntryForm()">Cancel</button>
+      <button class="btn btn-primary" id="dtAgendaNextBtn" onclick="submitAgendaEntryForm()">Next: choose type →</button>
     </div>
   </div>
 </div>

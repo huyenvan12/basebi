@@ -9,7 +9,7 @@ import { loadFolders, closeFolderModal, initFolders } from './folders.js';
 import {
   loadNotes, myNotes, buildIndex, renderAll, selectNote, closeNoteModal,
   openSearchScreen, closeSearchScreen, closeNotePopup, closeTagModal, closeInlineLinkDd,
-  openNoteModal, renderTeamList, initNotes, closeTeamDetail
+  openNoteModal, renderTeamList, initNotes, closeTeamDetail, closeNoteDetail
 } from './notes.js';
 import { openDailyNote, initDailyNote } from './daily-note.js';
 import {
@@ -362,7 +362,7 @@ function bindGlobalListeners(){
       if(state.searchScreenOpen){closeSearchScreen();return;}
       closeNoteModal();closeFolderModal();closeTagModal();closeExportModal();closePasswordModal();hideInlineCampRow();closeShortcutsModal();closeGearMenu();closeAdminGearMenu();closeInlineLinkDd();closeMobDrawer();
       closeTicketModal();closeTaskTypeModal();closeOverlapModal();closeTypePicker();closeCalPopover();
-      if(window.matchMedia('(max-width:768px)').matches){ closeCampPanel(); closeTeamDetail(); }
+      if(window.matchMedia('(max-width:768px)').matches){ closeCampPanel(); closeTeamDetail(); closeNoteDetail(); }
       document.getElementById('tagDropdown').classList.remove('open');
       document.getElementById('linkDropdown').classList.remove('open');
     }

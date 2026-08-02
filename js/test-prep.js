@@ -372,16 +372,50 @@ export async function addTestPrepWeek(){
 }
 
 // ══════════════════════════════════════════════════
+// MOBILE-WEB ACCORDION SHELL
+// ══════════════════════════════════════════════════
+// Data-driven so a future section (e.g. "Insights") is just another array entry, not a
+// restructure. Desktop (>768px) always renders every section expanded with no accordion
+// chrome — see the @media (min-width:769px) override in basebi.css — so this shell is the
+// single source of markup for both widths; the inner content ids below are untouched by
+// renderTestPrepHeader()/renderSkillPicker()/renderSevenDayView()/renderRecentEntries()/renderChecklist().
+const TP_SECTIONS = [
+  {key:'header', label:'Overview', defaultOpen:true, bodyHtml:'<div class="tp-header" id="tpHeader"></div>'},
+  {key:'timelog', label:'Time Log', defaultOpen:false, bodyHtml:`
+    <div class="tp-log-form">
+      <div class="tp-skill-picker" id="tpSkillPicker"></div>
+      <input type="number" min="1" class="form-input tp-minutes-input" id="tpMinutesInput" placeholder="Minutes">
+      <button type="button" class="btn btn-primary" id="tpLogBtn">+ Log</button>
+    </div>
+    <div class="tp-seven-day" id="tpSevenDay"></div>
+    <div class="tp-recent" id="tpRecentEntries"></div>`},
+  {key:'checklist', label:'Checklist', defaultOpen:false, bodyHtml:'<div id="tpChecklistBody"></div>'},
+];
+function renderTpAccordionShell(){
+  const el=document.getElementById('tpScroll');
+  el.innerHTML = TP_SECTIONS.map(s=>{
+    const isOpen = Object.prototype.hasOwnProperty.call(state.testPrepSectionOpen,s.key) ? state.testPrepSectionOpen[s.key] : s.defaultOpen;
+    return `<details class="tp-accordion-section" data-section="${s.key}" ${isOpen?'open':''} ontoggle="onTpSectionToggle('${s.key}',this.open)">
+      <summary class="tp-accordion-summary">${esc(s.label)}</summary>
+      <div class="tp-accordion-body">${s.bodyHtml}</div>
+    </details>`;
+  }).join('');
+}
+export function onTpSectionToggle(key,isOpen){ state.testPrepSectionOpen[key]=isOpen; }
+
+// ══════════════════════════════════════════════════
 // TOP-LEVEL RENDER + INIT
 // ══════════════════════════════════════════════════
 export function renderTestPrep(){
   if(!state.testPrepExam) return;
   if(!state.testPrepActiveSkillId&&state.testPrepSkills.length) state.testPrepActiveSkillId=state.testPrepSkills[0].id;
+  renderTpAccordionShell();
   renderTestPrepHeader();
   renderSkillPicker();
   renderSevenDayView();
   renderRecentEntries();
   renderChecklist();
+  document.getElementById('tpLogBtn').onclick=logTestPrepTime;
 }
 
 export function initTestPrep(){
@@ -396,6 +430,5 @@ export function initTestPrep(){
   window.openTestPrepEditModal=openTestPrepEditModal;
   window.closeTestPrepEditModal=closeTestPrepEditModal;
   window.saveTestPrepExam=saveTestPrepExam;
-
-  document.getElementById('tpLogBtn').onclick=logTestPrepTime;
+  window.onTpSectionToggle=onTpSectionToggle;
 }
