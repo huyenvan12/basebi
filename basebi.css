@@ -1224,6 +1224,10 @@ body.is-native-app .note-popup{width:calc(100vw - 32px)}
   #dtCalendarSubview{display:none}
   #dtAgendaSubview{display:flex;flex-direction:column;flex:1;min-height:0}
   #dtAgendaWrap{display:flex;flex:1;overflow-y:auto}
+  /* mobile agenda is now fully read-only (see viewAgendaEntryDetail()) — no write path
+     on mobile at all, so the "+ Add entry" trigger (and the now-empty row that only ever
+     held it) is hidden here too, rather than leaving a blank padded gap */
+  #dtAgendaSubview .dt-controls-row{display:none}
 
   /* full-screen detail overlay — reuses the existing desktop side-panel
      components as-is, just repositioned; covers the fab/topbar/hamburger by
