@@ -31,6 +31,10 @@
   <div class="topbar-actions">
     <button class="gear-btn" id="dailyNoteBtn" title="Today's note (Ctrl+Alt+D)">📅</button>
     <button class="btn btn-primary" id="topbarActionBtn">+ New Note</button>
+    <!-- mobile-web only mirror of #topbarActionBtn (hidden on desktop, shown <=768px —
+         see basebi.css @media block); text/onclick/visibility are driven from the exact
+         same switchTab() branches as #topbarActionBtn, not a separate code path. -->
+    <button class="btn btn-primary" id="mobActionBtn">+ New Note</button>
     <div class="gear-wrap" id="adminGearWrap">
       <button class="gear-btn" id="adminGearBtn" title="Admin">🛠</button>
       <div class="gear-menu" id="adminGearMenu">

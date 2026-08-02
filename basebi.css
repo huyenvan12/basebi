@@ -1092,6 +1092,12 @@ body.is-native-app .note-popup{width:calc(100vw - 32px)}
 }
 .mob-hamburger-btn:hover{background:var(--surface2);color:var(--text)}
 
+/* #topbarActionBtn's mobile-web mirror — hidden by default (desktop keeps using
+   #topbarActionBtn itself), shown in its place inside the @media block below. Its
+   text/onclick/visibility are set from the same switchTab() branches as
+   #topbarActionBtn (see main.js), never a separate code path. */
+#mobActionBtn{display:none}
+
 /* drawer + scrim are always in the DOM but inert (off-screen / hidden) until
    opened; the trigger button that opens them only becomes visible/clickable
    inside the media query below, so they're unreachable above 768px. */
@@ -1181,16 +1187,18 @@ body.is-native-app .note-popup{width:calc(100vw - 32px)}
 .dt-agenda-detail-value{font-size:13px;color:var(--text);font-weight:600;text-align:right}
 
 @media (max-width:768px){
-  /* compact topbar: hide the tab bar, search bar, daily-note + primary action
-     buttons (nav now lives in the drawer; content-create actions are deferred to a
-     later pass) — the admin/options gear buttons and logo stay, joined by the
-     hamburger, so Admin/Options keep working via their existing unmodified
-     dropdown menus with zero forked logic. */
+  /* compact topbar: hide the tab bar, search bar, daily-note button, and desktop's
+     #topbarActionBtn (nav now lives in the drawer) — the admin/options gear buttons
+     and logo stay, joined by the hamburger, so Admin/Options keep working via their
+     existing unmodified dropdown menus with zero forked logic. #mobActionBtn is
+     #topbarActionBtn's mobile-web mirror (driven by the same switchTab() branches,
+     see main.js) and is shown here in its place. */
   .topbar{gap:8px;padding:10px 12px}
   .topbar .tab-group,
   .topbar .search-wrap,
   #dailyNoteBtn,
   #topbarActionBtn{display:none}
+  #mobActionBtn{display:inline-block}
   .mob-hamburger-btn{display:flex}
 
   .camp-table-wrap{display:none}
