@@ -400,10 +400,35 @@ export function renderTeamList(){
         <div class="note-item-excerpt">${esc(excerpt)}</div>
       </div>`;
     }).join('');
+
+  // mobile-web card view (<=768px, see basebi.css @media block) — mirrors teamItems above
+  const cardsWrap=document.getElementById('teamCardsWrap');
+  if(cardsWrap){
+    cardsWrap.innerHTML=list.length===0
+      ?'<div class="note-empty">No team-shared notes yet</div>'
+      :list.map(n=>{
+        const excerpt=(n.body||n.code||'').slice(0,55).replace(/\n/g,' ');
+        return`<div class="mob-team-card ${n.id===state.activeTeamNoteId?'active':''}" onclick="selectTeamNote(${n.id})">
+          <div class="mob-team-card-title">${hl(n.title,'')}</div>
+          <div class="mob-team-card-meta">
+            <span class="note-type-badge ${n.type==='code'?'type-code':'type-plain'}">${n.type==='code'?'Code':'Plain'}</span>
+            <span class="note-item-folder">${esc(n.folder)}</span>
+            <span class="author-badge">${esc(authorName(n.owner_id))}</span>
+          </div>
+          <div class="mob-team-card-excerpt">${esc(excerpt)}</div>
+        </div>`;
+      }).join('');
+  }
 }
 export function selectTeamNote(id){state.activeTeamNoteId=id;renderTeamList();renderTeamDetail(state.notes.find(n=>n.id===id));}
+export function closeTeamDetail(){
+  state.activeTeamNoteId=null;
+  renderTeamList();
+  renderTeamDetail(null);
+}
 export function renderTeamDetail(note){
   const el=document.getElementById('teamDetail');
+  el.classList.toggle('mob-overlay-open', !!note);
   if(!note){el.innerHTML=`<div class="empty-state"><div class="icon">🌐</div><p>Select a shared note to view it</p></div>`;return;}
   const tags=(note.tags||[]).map(t=>`<span class="detail-tag">#${esc(t)}</span>`).join('');
   let body='';
@@ -422,6 +447,7 @@ export function renderTeamDetail(note){
     </div>`:`<div class="detail-actions"></div>`;
   el.innerHTML=`
     <div class="note-detail-header">
+      <button class="note-detail-back-btn" onclick="closeTeamDetail()">← Back</button>
       <div class="note-detail-title">${esc(note.title)}</div>
       <div class="note-detail-meta">
         <span class="detail-folder-badge">${esc(note.folder)}</span>${tags}
@@ -903,6 +929,7 @@ export function initNotes(){
   window.handleSearch=handleSearch;
   window.jumpToLink=jumpToLink;
   window.selectTeamNote=selectTeamNote;
+  window.closeTeamDetail=closeTeamDetail;
   window.openSearchScreen=openSearchScreen;
   window.closeSearchScreen=closeSearchScreen;
   window.handleSearchScreen=handleSearchScreen;

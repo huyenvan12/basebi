@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>base·bi — mobile-web mockup</title>
+<link rel="stylesheet" href="../basebi.css">
+<link rel="stylesheet" href="mobile-preview.css">
+</head>
+<body>
+
+<div class="mockup-toolbar">
+  <b>base·bi mobile-web mockup</b>
+  <span>— not wired to real data. For design review only.</span>
+  <div class="mob-header-spacer" style="margin-left:auto;display:flex;gap:14px;align-items:center">
+    <label><input type="checkbox" id="forceMobileToggle" checked> Force mobile view</label>
+    <label><input type="checkbox" id="roleToggle"> Preview as admin</label>
+  </div>
+</div>
+
+<div class="mockup-frame force-mobile" id="frame">
+
+  <!-- ══════════ SCREEN 1: existing desktop topbar (for reference / hidden at mobile width) ══════════ -->
+  <div class="topbar">
+    <div class="logo">base<em>·</em>bi</div>
+    <div class="tab-group">
+      <button class="tab-btn active">📋 Notes</button>
+      <button class="tab-btn">📊 Campaigns</button>
+      <button class="tab-btn">🕸 Graph</button>
+      <button class="tab-btn">🌐 Team Shared</button>
+      <button class="tab-btn">🚀 Delivery Tracker</button>
+      <button class="tab-btn">📝 Test Prep</button>
+    </div>
+    <div class="search-wrap"><span class="search-icon">⌕</span><input type="search" placeholder="Search notes…"></div>
+    <div class="topbar-actions">
+      <button class="gear-btn">📅</button>
+      <button class="btn btn-primary">+ New Note</button>
+      <div class="gear-wrap"><button class="gear-btn">🛠</button></div>
+      <div class="gear-wrap"><button class="gear-btn">⚙</button></div>
+    </div>
+  </div>
+
+  <!-- ══════════ SCREEN 1: mobile header (collapsed) ══════════ -->
+  <div class="mob-header">
+    <div class="logo">base<em>·</em>bi</div>
+    <div class="mob-header-spacer"></div>
+    <button class="btn-primary-mini">+ New</button>
+    <button class="mob-hamburger-btn" id="hamburgerBtn" title="Menu">☰</button>
+  </div>
+
+  <div class="mockup-section-label">Screen 3 — Campaigns (card view, replaces .camp-table below 768px)</div>
+  <div class="mob-card-list" id="campCards">
+    <!-- cards injected by script -->
+  </div>
+  <div class="desktop-table-note" style="padding:0 14px 14px;font-size:11px;color:var(--text-dim)">
+    (Desktop keeps the existing scrollable &lt;table class="camp-table"&gt; above 768px — unchanged.)
+  </div>
+
+  <div class="mockup-section-label">Screen 4 — Team Shared → Shared Notes (card view)</div>
+  <div class="mob-card-list" id="teamCards"></div>
+  <div class="mob-already-ok">
+    ✓ Team Shared → Checklists (Templates / My Checklists / Shared with me) already renders as a
+    responsive <code>auto-fill,minmax(240px,1fr)</code> card grid today — no redesign needed there.
+    Monitor Log keeps its current table this round (deferred).
+  </div>
+
+</div>
+
+<!-- ══════════ SCREEN 2: drawer + scrim ══════════ -->
+<div class="mob-drawer-scrim" id="drawerScrim"></div>
+<div class="mob-drawer" id="drawer">
+  <div class="mob-drawer-head">
+    <div class="logo">base<em>·</em>bi</div>
+    <button class="mob-drawer-close" id="drawerCloseBtn">✕</button>
+  </div>
+  <div class="mob-drawer-nav">
+    <button class="mob-drawer-item active">📋 Notes</button>
+    <button class="mob-drawer-item">📊 Campaigns</button>
+    <button class="mob-drawer-item">🕸 Graph</button>
+
+    <button class="mob-drawer-item" id="teamDrawerItem">
+      🌐 Team Shared <span class="chev">▸</span>
+    </button>
+    <div class="mob-drawer-subnav" id="teamSubnav">
+      <button class="mob-drawer-subitem active">🌐 Shared Notes</button>
+      <button class="mob-drawer-subitem">✅ Checklists</button>
+      <button class="mob-drawer-subitem">📈 Monitor Log</button>
+    </div>
+
+    <button class="mob-drawer-item">🚀 Delivery Tracker</button>
+    <button class="mob-drawer-item">📝 Test Prep Hub</button>
+  </div>
+  <div class="mob-drawer-bottom">
+    <button class="mob-drawer-item" data-gate="admin" id="adminDrawerItem">🛠 Admin</button>
+    <button class="mob-drawer-item">⚙ Options</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+// MOCKUP-ONLY SCRIPT. Not the real applyNavGating() — the real implementation
+// PR will gate #adminDrawerItem (and the rest) using the exact same
+// isFeatureVisible()/state.currentUserRole checks that gate the desktop nav
+// today (js/main.js applyNavGating()), applied to the drawer's element IDs.
+// This just simulates the two states for visual review.
+// ══════════════════════════════════════════════════
+
+const frame = document.getElementById('frame');
+const hamburgerBtn = document.getElementById('hamburgerBtn');
+const drawer = document.getElementById('drawer');
+const scrim = document.getElementById('drawerScrim');
+const drawerCloseBtn = document.getElementById('drawerCloseBtn');
+const teamDrawerItem = document.getElementById('teamDrawerItem');
+const teamSubnav = document.getElementById('teamSubnav');
+const adminDrawerItem = document.getElementById('adminDrawerItem');
+const roleToggle = document.getElementById('roleToggle');
+const forceMobileToggle = document.getElementById('forceMobileToggle');
+
+function openDrawer(){
+  drawer.classList.add('open');
+  scrim.style.display = 'block';
+  requestAnimationFrame(()=>scrim.classList.add('open'));
+}
+function closeDrawer(){
+  drawer.classList.remove('open');
+  scrim.classList.remove('open');
+  setTimeout(()=>{ scrim.style.display = 'none'; }, 200);
+}
+hamburgerBtn.onclick = openDrawer;
+drawerCloseBtn.onclick = closeDrawer;
+scrim.onclick = closeDrawer;
+
+teamDrawerItem.onclick = ()=>{
+  teamDrawerItem.classList.toggle('expanded');
+  teamSubnav.classList.toggle('open');
+};
+
+function applyRoleGate(){
+  // stand-in for applyNavGating()'s: adminGearWrap.style.display = role==='admin' ? '' : 'none'
+  adminDrawerItem.hidden = !roleToggle.checked;
+}
+roleToggle.onchange = applyRoleGate;
+applyRoleGate();
+
+forceMobileToggle.onchange = ()=>{
+  frame.classList.toggle('force-mobile', forceMobileToggle.checked);
+  frame.classList.toggle('viewport-mode', !forceMobileToggle.checked);
+};
+
+// ── sample data ──
+const sampleCampaigns = [
+  {date:'2026-07-28', cd:'SM-2607-A1', nm:'Summer Cart Recovery', event:'cart_abandon_24h', type:'BAU', trigger:'Event', status:'Active', note:'Segment excludes churn risk >0.7'},
+  {date:'2026-07-25', cd:'PL-2607-C3', nm:'Payday Push', event:'payday_reminder', type:'Adhoc', trigger:'Batch', status:'Active', note:''},
+  {date:'2026-07-20', cd:'WB-2607-B2', nm:'Welcome Back Winback', event:'reactivation_30d', type:'BAU', trigger:'Batch', status:'Stop', note:'Paused pending creative refresh'},
+  {date:'2026-07-14', cd:'FL-2607-D9', nm:'Flash Sale Alert', event:'flash_sale_live', type:'Adhoc', trigger:'Event', status:'Active', note:'Fires within 5 min of sale start'},
+];
+
+const typeBadge = t => `<span class="cb ${t==='BAU'?'cb-bau':'cb-adhoc'}">${t}</span>`;
+const trigBadge = t => `<span class="cb ${t==='Batch'?'cb-batch':'cb-event'}">${t}</span>`;
+const statBadge = s => `<span class="cb ${s==='Active'?'cb-active':'cb-stop'}">${s}</span>`;
+
+document.getElementById('campCards').innerHTML = sampleCampaigns.map(c => `
+  <div class="mob-camp-card">
+    <div class="mob-camp-card-date">${c.date}</div>
+    <div class="mob-camp-card-title-row">
+      <span class="mob-camp-card-cd">${c.cd}</span>
+      <span class="mob-camp-card-nm">${c.nm}</span>
+    </div>
+    <div class="mob-camp-card-event">${c.event}</div>
+    <div class="mob-camp-card-badges">${typeBadge(c.type)}${trigBadge(c.trigger)}${statBadge(c.status)}</div>
+    <div class="mob-camp-card-note ${c.note?'':'empty'}">${c.note || 'No note'}</div>
+  </div>
+`).join('');
+
+const sampleTeamNotes = [
+  {title:'Q3 Reporting Cadence', type:'plain', folder:'Ops', author:'D. Ruiz', excerpt:'Weekly report now goes out Fridays 4pm instead of Mondays — see thread for context…'},
+  {title:'RPT segment builder snippet', type:'code', folder:'Playbooks', author:'M. Chen', excerpt:'SELECT user_id FROM audience WHERE churn_score < 0.3 AND last_purchase_at > now() - interval…'},
+  {title:'Escalation contacts (updated)', type:'plain', folder:'Ops', author:'Wendy', excerpt:'Primary on-call rotation and Slack channels for delivery failures, listed by region…'},
+];
+
+document.getElementById('teamCards').innerHTML = sampleTeamNotes.map(n => `
+  <div class="mob-team-card">
+    <div class="mob-team-card-title">${n.title}</div>
+    <div class="mob-team-card-meta">
+      <span class="note-type-badge ${n.type==='code'?'type-code':'type-plain'}">${n.type==='code'?'Code':'Plain'}</span>
+      <span class="note-item-folder">${n.folder}</span>
+      <span class="author-badge">${n.author}</span>
+    </div>
+    <div class="mob-team-card-excerpt">${n.excerpt}</div>
+  </div>
+`).join('');
+</script>
+</body>
+</html>

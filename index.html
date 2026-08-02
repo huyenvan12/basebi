@@ -55,6 +55,35 @@
         <div class="gear-item" id="gearLogoutItem">⎋ &nbsp;Log out</div>
       </div>
     </div>
+    <button class="mob-hamburger-btn" id="mobHamburgerBtn" title="Menu">☰</button>
+  </div>
+</div>
+
+<!-- MOBILE-WEB NAV DRAWER — additive layer for narrow browser viewports (<=768px),
+     fully independent of the Capacitor-native #mobileShell. Row visibility is driven by
+     applyNavGating() in js/main.js using the exact same conditions as the desktop tabs. -->
+<div class="mob-drawer-scrim" id="mobDrawerScrim"></div>
+<div class="mob-drawer" id="mobDrawer">
+  <div class="mob-drawer-head">
+    <div class="logo">base<em>·</em>bi</div>
+    <button class="mob-drawer-close" id="mobDrawerCloseBtn" title="Close">✕</button>
+  </div>
+  <div class="mob-drawer-nav">
+    <button class="mob-drawer-item" id="mobTabNotes">📋 Notes</button>
+    <button class="mob-drawer-item" id="mobTabCampaigns">📊 Campaigns</button>
+    <button class="mob-drawer-item" id="mobTabGraph">🕸 Graph</button>
+    <button class="mob-drawer-item" id="mobTabTeam">🌐 Team Shared <span class="chev">▸</span></button>
+    <div class="mob-drawer-subnav" id="mobTeamSubnav">
+      <button class="mob-drawer-subitem" id="mobTeamSubTabNotes">🌐 Shared Notes</button>
+      <button class="mob-drawer-subitem" id="mobTeamSubTabChecklists">✅ Checklists</button>
+      <button class="mob-drawer-subitem" id="mobTeamSubTabMonitorLog">📈 Monitor Log</button>
+    </div>
+    <button class="mob-drawer-item" id="mobTabGantt">🚀 Delivery Tracker</button>
+    <button class="mob-drawer-item" id="mobTabTestPrep">📝 Test Prep Hub</button>
+  </div>
+  <div class="mob-drawer-bottom">
+    <button class="mob-drawer-item" id="mobAdminItem">🛠 Admin</button>
+    <button class="mob-drawer-item" id="mobOptionsItem">⚙ Options</button>
   </div>
 </div>
 <input type="file" id="importFilePicker" accept=".json" style="display:none">
@@ -271,6 +300,8 @@
           <tbody id="campTableBody"></tbody>
         </table>
       </div>
+      <!-- mobile-web card view (<=768px) — same data/render source as .camp-table, see renderCampTable() -->
+      <div class="mob-card-list" id="campCardsWrap"></div>
 
       <!-- SIDE PANEL -->
       <div class="camp-resizer" id="campResizer"></div>
@@ -278,7 +309,7 @@
         <div class="csp-header">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px">
             <div class="csp-cd" id="cspCd"></div>
-            <button class="csp-close-btn" onclick="closeCampPanel()" title="Close">×</button>
+            <button class="csp-close-btn" onclick="closeCampPanel()" title="Close" aria-label="Back">×</button>
           </div>
           <div class="csp-nm" id="cspNm"></div>
           <div class="csp-badges" id="cspBadges"></div>
@@ -346,6 +377,8 @@
           <span class="note-count" id="teamCount">0 notes</span>
         </div>
         <div class="note-items" id="teamItems"></div>
+        <!-- mobile-web card view (<=768px) — same data/render source as .note-items, see renderTeamList() -->
+        <div class="mob-card-list" id="teamCardsWrap"></div>
       </div>
       <div class="note-detail" id="teamDetail">
         <div class="empty-state">

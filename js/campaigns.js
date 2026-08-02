@@ -125,6 +125,24 @@ export function renderCampTable(){
   tbody.innerHTML = addRow + dataRows;
   // restore add row visibility state
   if(state.campAddRowVisible){ const r=document.getElementById('campAddRow'); if(r) r.classList.add('visible'); }
+
+  // mobile-web card view (<=768px, see basebi.css @media block) — mirrors dataRows above
+  const cardsWrap = document.getElementById('campCardsWrap');
+  if(cardsWrap){
+    cardsWrap.innerHTML = sorted.map(camp=>{
+      const note = camp.note ? camp.note.slice(0,80).replace(/\n/g,' ') : '';
+      return `<div class="mob-camp-card ${camp.id===state.activeCampId?'camp-row-active':''}" data-id="${camp.id}" onclick="selectCamp(${camp.id})">
+        <div class="mob-camp-card-date">${esc(camp.date||'')}</div>
+        <div class="mob-camp-card-title-row">
+          <span class="mob-camp-card-cd">${esc(camp.campaign_cd||'')}</span>
+          <span class="mob-camp-card-nm">${esc(camp.campaign_nm||'')}</span>
+        </div>
+        <div class="mob-camp-card-event">${esc(camp.event_name||'')}</div>
+        <div class="mob-camp-card-badges">${campTypeBadge(camp.type||'BAU')}${campTrigBadge(camp.trigger_type||'Batch')}${campStatBadge(camp.status||'Active')}</div>
+        <div class="mob-camp-card-note ${note?'':'empty'}">${note?esc(note):'No note'}</div>
+      </div>`;
+    }).join('');
+  }
 }
 
 export function saveInlinecamp(){
