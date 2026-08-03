@@ -59,6 +59,16 @@ export function renderFolders(){
       </span></div>`;
   }).join('');
   el.innerHTML=allItem+folderItems;
+
+  // mobile-web folder-filter dropdown (<=768px) — mirrors the sidebar list above, single-select
+  const filterEl=document.getElementById('noteFolderFilter');
+  if(filterEl){
+    filterEl.innerHTML=`<option value="all">All Notes (${own.length})</option>`+state.folders.map(f=>{
+      const cnt=own.filter(n=>n.folder===f).length;
+      return`<option value="${esc(f)}">${esc(f)} (${cnt})</option>`;
+    }).join('');
+    filterEl.value=state.activeFolder;
+  }
 }
 
 // ══════════════════════════════════════════════════

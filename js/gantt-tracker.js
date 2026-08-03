@@ -280,7 +280,7 @@ function startColumnResize(e,key){
   document.addEventListener('mouseup',onUp);
 }
 
-function isTicketActive(t){ return !INACTIVE_STATUSES.includes(t.status); }
+export function isTicketActive(t){ return !INACTIVE_STATUSES.includes(t.status); }
 
 export function renderTimelineLegend(){
   const el=document.getElementById('dtLegendRow');
@@ -391,6 +391,7 @@ export function renderTimelineBody(){
     }
   }
   body.innerHTML=html||`<tr><td colspan="${5+cols.length}" class="note-empty">No tickets yet</td></tr>`;
+  renderAgenda();
 }
 
 export function renderTimelineControls(){
@@ -430,7 +431,7 @@ export function setTimelineWeeks(n){
 // ══════════════════════════════════════════════════
 // DRAG-TO-FILL STATE MACHINE
 // ══════════════════════════════════════════════════
-function computeOverlaps(ticketId,startDate,endDate){
+export function computeOverlaps(ticketId,startDate,endDate){
   return state.ganttEntries.filter(e=>e.ticket_id===ticketId&&e.start_date<=endDate&&e.end_date>=startDate);
 }
 function clearDayHighlight(){
@@ -985,6 +986,143 @@ export function jumpToTimeline(ticketId,segStartDate){
 }
 
 // ══════════════════════════════════════════════════
+// AGENDA VIEW (mobile-web only, <=768px) — day-by-day list over the same
+// state.ganttTickets/state.ganttEntries as Timeline/Calendar. Reuses
+// isTicketActive()/ticketColor() for filtering/coloring, and add/edit reuses
+// the exact drag-to-fill write pipeline (computeOverlaps -> pending write ->
+// openTypePicker -> selectTaskType -> replaceEntryRange) instead of a
+// parallel Supabase call — see commitEntryWrite() above.
+// ══════════════════════════════════════════════════
+function collectAgendaDays(){
+  const todayStr=today();
+  const activeTickets=new Map(state.ganttTickets.filter(isTicketActive).map(t=>[t.id,t]));
+  const dayMap={};
+  state.ganttEntries.forEach(e=>{
+    const ticket=activeTickets.get(e.ticket_id);
+    if(!ticket||e.end_date<todayStr) return;
+    let d=e.start_date<todayStr?todayStr:e.start_date;
+    while(d<=e.end_date){
+      (dayMap[d]=dayMap[d]||[]).push({entry:e,ticket});
+      d=addDays(d,1);
+    }
+  });
+  return Object.keys(dayMap).sort().map(date=>({date,items:dayMap[date]}));
+}
+// Groups collectAgendaDays()'s output (day sections that actually have entries) under
+// week headers, reusing buildCalendarWeeks() — the same primitive desktop Calendar's
+// month grid uses — so "week" means exactly the same thing here as it does there.
+// buildCalendarWeeks() only enumerates Mon-Fri (that's all its month grid needs); we
+// derive weekEnd=addDays(weekStart,6) (Sunday) ourselves purely so a weekend-spanning
+// agenda entry (collectAgendaDays()'s while-loop walks every calendar day, weekends
+// included) still buckets into the right week instead of being silently dropped.
+function collectAgendaWeeks(){
+  const dayEntries=collectAgendaDays();
+  if(!dayEntries.length) return [];
+  const monthKeys=new Set(dayEntries.map(d=>{
+    const dt=parseISO(d.date);
+    return `${dt.getFullYear()}-${dt.getMonth()}`;
+  }));
+  const weekStarts=new Set();
+  monthKeys.forEach(key=>{
+    const[y,m]=key.split('-').map(Number);
+    buildCalendarWeeks(y,m).forEach(w=>weekStarts.add(w.weekStart));
+  });
+  const weekMap=new Map([...weekStarts].sort().map(ws=>[ws,{weekStart:ws,weekEnd:addDays(ws,6),days:[]}]));
+  dayEntries.forEach(d=>{
+    const ws=mondayOf(d.date);
+    if(!weekMap.has(ws)) weekMap.set(ws,{weekStart:ws,weekEnd:addDays(ws,6),days:[]});
+    weekMap.get(ws).days.push(d);
+  });
+  return [...weekMap.values()].filter(w=>w.days.length>0).sort((a,b)=>a.weekStart<b.weekStart?-1:1);
+}
+export function renderAgenda(){
+  const wrap=document.getElementById('dtAgendaWrap');
+  if(!wrap) return;
+  const todayStr=today();
+  const weeks=collectAgendaWeeks();
+  wrap.innerHTML=weeks.length===0
+    ?'<div class="note-empty">No upcoming scheduled work</div>'
+    :weeks.map(week=>{
+      const dayGroups=week.days.map(day=>{
+        const cards=day.items.map(({entry,ticket})=>{
+          const tt=state.ganttTaskTypes.find(x=>x.id===entry.task_type_id);
+          return `<div class="dt-agenda-ticket-card" style="border-left-color:${esc(ticketColor(ticket))}" onclick="viewAgendaEntryDetail('${escJs(entry.id)}')">
+            <span class="dt-agenda-ticket-cd">${esc(ticket.jira_key||ticket.project_name)}</span>
+            ${tt?`<span class="dt-agenda-ticket-type" style="color:${esc(tt.color)}">${esc(tt.code)}</span>`:''}
+          </div>`;
+        }).join('');
+        return `<div class="dt-agenda-day-group">
+          <div class="dt-agenda-day-label">${fmtDM(day.date)}${day.date===todayStr?' · Today':''}</div>
+          <div class="dt-agenda-day-tickets">${cards}</div>
+        </div>`;
+      }).join('');
+      return `<div class="dt-agenda-week-group">
+        <div class="dt-agenda-week-label">${fmtDM(week.weekStart)} – ${fmtDM(week.weekEnd)}</div>
+        ${dayGroups}
+      </div>`;
+    }).join('');
+}
+
+export function openAgendaEntryForm(){
+  // Add-only: mobile has no edit path for existing entries (see viewAgendaEntryDetail()
+  // below) — this always opens a blank "new entry" form, always starting from today.
+  const activeTickets=state.ganttTickets.filter(isTicketActive);
+  const ticketSel=document.getElementById('dtAgendaTicketSelect');
+  ticketSel.innerHTML=activeTickets.map(t=>
+    `<option value="${escJs(t.id)}">${esc(t.jira_key||t.project_name)}</option>`
+  ).join('');
+  ticketSel.value=(activeTickets[0]||{}).id||'';
+  document.getElementById('dtAgendaStartDate').value=today();
+  document.getElementById('dtAgendaEndDate').value=today();
+  document.getElementById('dtAgendaEntryModalOverlay').classList.add('open');
+}
+export function closeAgendaEntryForm(){
+  document.getElementById('dtAgendaEntryModalOverlay').classList.remove('open');
+  // hygiene: don't leave a stale pending write around if the modal is dismissed without
+  // a type being chosen (e.g. Cancel, or Escape) — openTypePicker()'s own flows clear this
+  // on completion, but the modal-close path didn't.
+  state.ganttPendingEntryWrite=null;
+}
+// Read-only detail view for an existing agenda entry — mobile has no path to modify an
+// existing gantt_entries row (only "+ Add entry" -> openAgendaEntryForm() writes), so this
+// just displays the entry's data with a close control, no inputs, no openTypePicker().
+export function viewAgendaEntryDetail(entryId){
+  const entry=state.ganttEntries.find(e=>String(e.id)===String(entryId));
+  if(!entry) return;
+  const ticket=state.ganttTickets.find(t=>t.id===entry.ticket_id);
+  const tt=state.ganttTaskTypes.find(x=>x.id===entry.task_type_id);
+  document.getElementById('dtAgendaDetailTicket').textContent=ticket?(ticket.jira_key||ticket.project_name):'—';
+  document.getElementById('dtAgendaDetailType').textContent=tt?`${tt.code} — ${tt.label}`:'—';
+  document.getElementById('dtAgendaDetailStart').textContent=fmtDM(entry.start_date);
+  document.getElementById('dtAgendaDetailEnd').textContent=fmtDM(entry.end_date);
+  document.getElementById('dtAgendaEntryDetailOverlay').classList.add('open');
+}
+export function closeAgendaEntryDetail(){
+  document.getElementById('dtAgendaEntryDetailOverlay').classList.remove('open');
+}
+export function submitAgendaEntryForm(){
+  const ticketId=document.getElementById('dtAgendaTicketSelect').value;
+  const startDate=document.getElementById('dtAgendaStartDate').value;
+  const endDate=document.getElementById('dtAgendaEndDate').value;
+  if(!ticketId||!startDate||!endDate){alert('Ticket, start date, and end date are required.');return;}
+  if(endDate<startDate){alert('End date must be on or after start date.');return;}
+  const overlaps=computeOverlaps(ticketId,startDate,endDate);
+  // anchor near the button the user actually tapped ("Next: choose type"), not the
+  // list's "+ Add" trigger — grab the rect before closeAgendaEntryForm() closes the modal.
+  const anchor=document.getElementById('dtAgendaNextBtn').getBoundingClientRect();
+  const x=anchor.left,y=anchor.bottom+6;
+  closeAgendaEntryForm(); // also clears any stale state.ganttPendingEntryWrite (hygiene)
+  state.ganttPendingEntryWrite={ticketId,startDate,endDate,overlaps};
+  // arm the same one-shot outside-click suppression desktop drag-to-fill uses
+  // (handleDayPointerUp()) — without it, the trailing click of this same tap/gesture
+  // bubbles to document's outside-click listener and immediately closes the popover
+  // we're about to open, since e.target (the now-closed modal's button) isn't inside
+  // #dtTypePickerPopover/.dt-day-cell.
+  armPopoverOpenGuard();
+  openTypePicker(x,y);
+}
+
+// ══════════════════════════════════════════════════
 // VIEW SWITCHER
 // ══════════════════════════════════════════════════
 export function switchGanttView(view){
@@ -1021,6 +1159,11 @@ export function initGanttTracker(){
   window.openTicketPopover=openTicketPopover;
   window.openOverflowPopover=openOverflowPopover;
   window.jumpToTimeline=jumpToTimeline;
+  window.openAgendaEntryForm=openAgendaEntryForm;
+  window.closeAgendaEntryForm=closeAgendaEntryForm;
+  window.submitAgendaEntryForm=submitAgendaEntryForm;
+  window.viewAgendaEntryDetail=viewAgendaEntryDetail;
+  window.closeAgendaEntryDetail=closeAgendaEntryDetail;
 
   document.getElementById('dtStartDate').onchange=e=>setTimelineStartDate(e.target.value);
   document.getElementById('dtWeeksInput').onchange=e=>setTimelineWeeks(e.target.value);
@@ -1037,6 +1180,7 @@ export function initGanttTracker(){
   document.getElementById('dtCalPrevBtn').onclick=()=>shiftCalendarMonth(-1);
   document.getElementById('dtCalNextBtn').onclick=()=>shiftCalendarMonth(1);
   document.getElementById('dtCalShowInactive').onchange=toggleCalendarShowInactive;
+  document.getElementById('dtAgendaAddBtn').onclick=()=>openAgendaEntryForm();
 
   // drag-to-fill: mousedown/mouseup delegated on the table, mouseover delegated (native
   // mouseenter doesn't bubble) for live range highlighting during drag

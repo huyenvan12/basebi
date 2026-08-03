@@ -3,13 +3,13 @@
 // shortcuts, global click-outside handling, export/import, app init + auth gate.
 // ══════════════════════════════════════════════════
 import { state } from './state.js';
-import { loadTheme, closeGearMenu, closeShortcutsModal, initUiHelpers, toggleGearMenu, toggleAdminGearMenu, closeAdminGearMenu, openMobDrawer, closeMobDrawer } from './ui-helpers.js';
+import { loadTheme, closeGearMenu, closeShortcutsModal, initUiHelpers, toggleAdminGearMenu, closeAdminGearMenu, openMobDrawer, closeMobDrawer } from './ui-helpers.js';
 import { sb, initSupabaseClient, checkAuthAndInit, loadProfilesMap, loadCurrentUserIsAdmin, renderGearUserInfo, closePasswordModal, setOnFreshLogin } from './supabase-client.js';
 import { loadFolders, closeFolderModal, initFolders } from './folders.js';
 import {
   loadNotes, myNotes, buildIndex, renderAll, selectNote, closeNoteModal,
   openSearchScreen, closeSearchScreen, closeNotePopup, closeTagModal, closeInlineLinkDd,
-  openNoteModal, renderTeamList, initNotes, closeTeamDetail
+  openNoteModal, renderTeamList, initNotes, closeTeamDetail, closeNoteDetail
 } from './notes.js';
 import { openDailyNote, initDailyNote } from './daily-note.js';
 import {
@@ -84,12 +84,16 @@ export function switchTab(tab){
   document.getElementById('notesSearchWrap').style.display = tab==='notes'?'':'none';
   document.getElementById('dailyNoteBtn').style.display = (tab==='notes'&&isFeatureVisible('daily_note'))?'':'none';
   const actionBtn = document.getElementById('topbarActionBtn');
+  // #mobActionBtn is the mobile-web mirror of #topbarActionBtn (see index.html/basebi.css) —
+  // driven from the exact same branches below, never a separate/duplicated code path.
+  const mobActionBtn = document.getElementById('mobActionBtn');
+  const actionBtns = [actionBtn, mobActionBtn];
   // Regression fix (not a mechanical port): the original used actionBtn.setAttribute('onclick', ...),
   // which relies on the referenced function being a global. Under ES modules that silently no-ops
   // (button does nothing). Assign the handler directly instead.
-  if(tab==='notes'){ actionBtn.style.display=''; actionBtn.textContent='+ New Note'; actionBtn.onclick=()=>openNoteModal(); }
-  else if(tab==='campaigns'){ actionBtn.style.display=''; actionBtn.textContent='+ Add Campaign'; actionBtn.onclick=openAddCampModal; }
-  else{ actionBtn.style.display='none'; }
+  if(tab==='notes'){ actionBtns.forEach(b=>{ b.style.display=''; b.textContent='+ New Note'; b.onclick=()=>openNoteModal(); }); }
+  else if(tab==='campaigns'){ actionBtns.forEach(b=>{ b.style.display=''; b.textContent='+ Add Campaign'; b.onclick=openAddCampModal; }); }
+  else{ actionBtns.forEach(b=>{ b.style.display='none'; }); }
   if(tab==='campaigns') renderCampTable();
   if(tab==='graph') renderGraph();
   if(tab==='team'){
@@ -362,7 +366,7 @@ function bindGlobalListeners(){
       if(state.searchScreenOpen){closeSearchScreen();return;}
       closeNoteModal();closeFolderModal();closeTagModal();closeExportModal();closePasswordModal();hideInlineCampRow();closeShortcutsModal();closeGearMenu();closeAdminGearMenu();closeInlineLinkDd();closeMobDrawer();
       closeTicketModal();closeTaskTypeModal();closeOverlapModal();closeTypePicker();closeCalPopover();
-      if(window.matchMedia('(max-width:768px)').matches){ closeCampPanel(); closeTeamDetail(); }
+      if(window.matchMedia('(max-width:768px)').matches){ closeCampPanel(); closeTeamDetail(); closeNoteDetail(); }
       document.getElementById('tagDropdown').classList.remove('open');
       document.getElementById('linkDropdown').classList.remove('open');
     }
@@ -543,6 +547,11 @@ function initMain(){
   // handler doesn't depend on window.openNoteModal (exposed elsewhere only for notes.js's
   // dynamically-rendered Edit-button template strings, not for this element).
   document.getElementById('topbarActionBtn').onclick=()=>openNoteModal();
+  // #mobActionBtn mirrors #topbarActionBtn's initial-state wiring for the same reason: the
+  // app's default tab (notes) never runs through switchTab()'s branches at startup, so without
+  // this line #mobActionBtn would render on mobile with no click handler until the user actually
+  // switched tabs once.
+  document.getElementById('mobActionBtn').onclick=()=>openNoteModal();
   document.getElementById('teamSubTabNotes').onclick=()=>switchTeamSubTab('notes');
   document.getElementById('teamSubTabChecklists').onclick=()=>switchTeamSubTab('checklists');
   document.getElementById('checklistTabTemplates').onclick=()=>switchChecklistSubView('templates');
@@ -588,7 +597,9 @@ function initMain(){
   document.getElementById('mobTabGantt').onclick=()=>switchTab('deliveryTracker');
   document.getElementById('mobTabTestPrep').onclick=()=>switchTab('testprep');
   document.getElementById('mobAdminItem').onclick=()=>switchTab('admin');
-  document.getElementById('mobOptionsItem').onclick=()=>{toggleGearMenu();closeMobDrawer();};
+  // No #mobOptionsItem wiring: ⚙ Options no longer has a drawer duplicate — it lives only in
+  // its original header position (#optionsGearWrap), which stays visible on mobile and is
+  // wired independently in ui-helpers.js's initUiHelpers().
 
   bindGlobalListeners();
 }

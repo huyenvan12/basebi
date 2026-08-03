@@ -66,6 +66,8 @@ export const state = {
   testPrepActiveSkillId: null,
   testPrepKnownWeeks: [],       // week_number "shells" that still render even once emptied of tasks —
                                  // only an explicit "Remove week" click removes an entry from this list
+  testPrepSectionOpen: {},      // { [sectionKey]: bool } — mobile-web accordion expand/collapse,
+                                 // persists across re-renders like checklistPhaseOpen
 
 
 
