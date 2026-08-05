@@ -78,6 +78,24 @@ export async function deleteTaskTypeDB(id){
   const{error}=await sb.from('gantt_task_types').delete().eq('id',id);
   if(error) throw error;
 }
+export async function loadLeaveDays(){
+  const{data,error}=await sb.from('delivery_leave_days').select('*');
+  if(error){console.error('loadLeaveDays failed',error);return [];}
+  return data||[];
+}
+export async function insertLeaveDayDB(leaveDate,reason){
+  const{data,error}=await sb.from('delivery_leave_days').insert({leave_date:leaveDate,reason:reason||null}).select().single();
+  if(error) throw error;
+  return data;
+}
+export async function updateLeaveDayDB(id,reason){
+  const{error}=await sb.from('delivery_leave_days').update({reason:reason||null}).eq('id',id);
+  if(error) throw error;
+}
+export async function deleteLeaveDayDB(id){
+  const{error}=await sb.from('delivery_leave_days').delete().eq('id',id);
+  if(error) throw error;
+}
 
 // ══════════════════════════════════════════════════
 // DATE-MATH UTILITIES — pure, local Y/M/D arithmetic (new Date(y,m,d)/getFullYear/getMonth/
@@ -335,7 +353,11 @@ export function renderTimelineHeader(){
     const d=parseISO(c.date);
     const dow=['Su','Mo','Tu','We','Th','Fr','Sa'][c.weekday];
     const isToday=c.date===todayStr;
-    return `<th class="dt-day-th${isToday?' dt-day-th-today':''}" data-date="${c.date}">${dow}<br>${String(d.getDate()).padStart(2,'0')}</th>`;
+    const leave=state.ganttLeaveDays.find(l=>l.leave_date===c.date);
+    const alClass=leave?' dt-day-th-al':'';
+    const alTitle=leave&&leave.reason?` title="${esc(leave.reason)}"`:'';
+    const alLabel=leave?'<span class="dt-al-label">AL</span>':'';
+    return `<th class="dt-day-th${isToday?' dt-day-th-today':''}${alClass}" data-date="${c.date}"${alTitle}>${dow}<br>${String(d.getDate()).padStart(2,'0')}${alLabel}</th>`;
   }).join('')}</tr>`;
 
   head.innerHTML=monthRow+weekRow+dayRow;
@@ -355,7 +377,8 @@ function renderTicketRow(ticket,cols){
     // today-column tint is a distinct CSS class (not the drag-fill dt-day-selecting state) so
     // it never visually collides with hover/selecting during drag-to-fill
     const todayClass=c.date===todayStr?' dt-day-cell-today':'';
-    return `<td class="dt-day-cell${todayClass}" data-ticket-id="${esc(ticket.id)}" data-date="${c.date}" style="${style}">${inner}</td>`;
+    const alClass=state.ganttLeaveDays.some(l=>l.leave_date===c.date)?' dt-day-cell-al':'';
+    return `<td class="dt-day-cell${todayClass}${alClass}" data-ticket-id="${esc(ticket.id)}" data-date="${c.date}" style="${style}">${inner}</td>`;
   }).join('');
 
   const jiraCell=ticket.jira_url
@@ -540,10 +563,18 @@ export function closeTypePicker(){
   const pop=document.getElementById('dtTypePickerPopover');
   if(pop){pop.style.display='none';pop.innerHTML='';}
 }
+function findAlDayInRange(startDate,endDate){
+  return state.ganttLeaveDays.find(l=>l.leave_date>=startDate&&l.leave_date<=endDate);
+}
 export async function selectTaskType(taskTypeId){
   const pending=state.ganttPendingEntryWrite;
   closeTypePicker();
   if(!pending) return;
+  const alHit=findAlDayInRange(pending.startDate,pending.endDate);
+  if(alHit){
+    const msg=`This day (${fmtDM(alHit.leave_date)}) is marked as your AL (reason: ${alHit.reason||'no note'}). Still assign a task to this day?`;
+    if(!confirm(msg)){ state.ganttPendingEntryWrite=null; return; }
+  }
   if(pending.overlaps&&pending.overlaps.length){
     openOverlapConfirm(pending.overlaps,async()=>{
       await commitEntryWrite(pending,taskTypeId);
@@ -640,6 +671,72 @@ export function closeOverlapModal(){
   const overlay=document.getElementById('dtOverlapModalOverlay');
   if(overlay) overlay.classList.remove('open');
   state.ganttPendingEntryWrite=null;
+}
+
+// ══════════════════════════════════════════════════
+// PERSONAL AL (ANNUAL LEAVE) MARKING — personal-only (RLS-scoped), Timeline-only.
+// ══════════════════════════════════════════════════
+export function toggleAlMarkingMode(){
+  state.ganttAlMarkingMode=!state.ganttAlMarkingMode;
+  document.getElementById('dtMarkAlBtn').classList.toggle('dt-al-mode-active',state.ganttAlMarkingMode);
+}
+let alSaveInFlight=false;
+function setAlModalButtonsDisabled(disabled){
+  document.getElementById('dtAlModalOverlay').querySelectorAll('button').forEach(b=>b.disabled=disabled);
+}
+export function openAlReasonModal(dateStr){
+  if(alSaveInFlight) return; // ignore reopen while a save/delete for any AL day is still in flight
+  const existing=state.ganttLeaveDays.find(l=>l.leave_date===dateStr);
+  state.ganttAlEditingContext={date:dateStr,existingId:existing?existing.id:null};
+  document.getElementById('dtAlModalTitle').textContent=fmtDM(dateStr)+' — Mark AL';
+  document.getElementById('dtAlReasonInput').value=existing?(existing.reason||''):'';
+  document.getElementById('dtAlDeleteBtn').style.display=existing?'':'none';
+  document.getElementById('dtAlModalOverlay').classList.add('open');
+}
+export function closeAlReasonModal(){
+  document.getElementById('dtAlModalOverlay').classList.remove('open');
+  state.ganttAlEditingContext=null;
+}
+export async function saveAlDay(){
+  const ctx=state.ganttAlEditingContext;
+  if(!ctx||alSaveInFlight) return;
+  const reason=document.getElementById('dtAlReasonInput').value.trim()||null;
+  alSaveInFlight=true;
+  setAlModalButtonsDisabled(true);
+  try{
+    if(ctx.existingId){
+      await updateLeaveDayDB(ctx.existingId,reason);
+      const row=state.ganttLeaveDays.find(l=>l.id===ctx.existingId);
+      if(row) row.reason=reason;
+    }else{
+      const row=await insertLeaveDayDB(ctx.date,reason);
+      state.ganttLeaveDays.push(row);
+    }
+    closeAlReasonModal();
+    renderTimelineHeader();
+    renderTimelineBody();
+  }catch(err){alert('Could not save AL day: '+(err.message||err));}
+  finally{
+    alSaveInFlight=false;
+    setAlModalButtonsDisabled(false);
+  }
+}
+export async function deleteAlDay(){
+  const ctx=state.ganttAlEditingContext;
+  if(!ctx||!ctx.existingId||alSaveInFlight) return;
+  alSaveInFlight=true;
+  setAlModalButtonsDisabled(true);
+  try{
+    await deleteLeaveDayDB(ctx.existingId);
+    state.ganttLeaveDays=state.ganttLeaveDays.filter(l=>l.id!==ctx.existingId);
+    closeAlReasonModal();
+    renderTimelineHeader();
+    renderTimelineBody();
+  }catch(err){alert('Could not remove AL day: '+(err.message||err));}
+  finally{
+    alSaveInFlight=false;
+    setAlModalButtonsDisabled(false);
+  }
 }
 
 // ══════════════════════════════════════════════════
@@ -1164,6 +1261,9 @@ export function initGanttTracker(){
   window.submitAgendaEntryForm=submitAgendaEntryForm;
   window.viewAgendaEntryDetail=viewAgendaEntryDetail;
   window.closeAgendaEntryDetail=closeAgendaEntryDetail;
+  window.closeAlReasonModal=closeAlReasonModal;
+  window.saveAlDay=saveAlDay;
+  window.deleteAlDay=deleteAlDay;
 
   document.getElementById('dtStartDate').onchange=e=>setTimelineStartDate(e.target.value);
   document.getElementById('dtWeeksInput').onchange=e=>setTimelineWeeks(e.target.value);
@@ -1171,6 +1271,7 @@ export function initGanttTracker(){
   document.getElementById('dtNextWeekBtn').onclick=()=>shiftTimelineWeek(1);
   document.getElementById('dtAddTicketBtn').onclick=()=>openTicketModal();
   document.getElementById('dtManageTypesBtn').onclick=openTaskTypeModal;
+  document.getElementById('dtMarkAlBtn').onclick=toggleAlMarkingMode;
 
   // ticket modal, task-type modal, and overlap-confirm modal's Cancel/Save/Delete/close
   // buttons are wired via inline onclick="" in index.html (matching this codebase's
@@ -1195,6 +1296,15 @@ export function initGanttTracker(){
     const handle=e.target.closest('.dt-col-resize-handle');
     if(!handle) return;
     startColumnResize(e,handle.getAttribute('data-col'));
+  });
+
+  // AL date-header click — only opens the reason popup while "Mark AL" mode is active;
+  // normal header interaction (resize handles above) is unaffected otherwise
+  document.getElementById('dtTimelineHead').addEventListener('click',e=>{
+    if(!state.ganttAlMarkingMode) return;
+    const th=e.target.closest('.dt-day-th');
+    if(!th) return;
+    openAlReasonModal(th.getAttribute('data-date'));
   });
 
   document.addEventListener('click',e=>{

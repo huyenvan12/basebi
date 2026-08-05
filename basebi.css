@@ -8,7 +8,7 @@
   --text:#e2e8f0;--text-muted:#7a8599;--text-dim:#4a556b;
   --tag-bg:#1a2540;--folder-active:#1e2d52;
   --highlight:#3d5a99;--code-bg:#131720;
-  --sql:#f59e0b;--danger:#f87171;--danger-dim:#3d1515;--success:#4ade80;--amber:#d9a94f;
+  --sql:#f59e0b;--danger:#f87171;--danger-dim:#3d1515;--success:#4ade80;--amber:#d9a94f;--al-color:#6b8fb5;
   --search-bg:#0f1117;--search-text:#e2e8f0;--search-border:#5b8dee;
   --search-card:#181c27;--search-card-border:#2a3047;--search-muted:#7a8599;
 
@@ -39,7 +39,7 @@
   --text:#1a1d2e;--text-muted:#5a6380;--text-dim:#9099b5;
   --tag-bg:#eef0f8;--folder-active:#dde8ff;
   --highlight:#bfcff7;--code-bg:#1a1d2e;
-  --sql:#c47d0e;--danger:#dc2626;--danger-dim:#fee2e2;--success:#16a34a;--amber:#d9a94f;
+  --sql:#c47d0e;--danger:#dc2626;--danger-dim:#fee2e2;--success:#16a34a;--amber:#d9a94f;--al-color:#3f6a92;
   --search-bg:#f2f3f7;--search-text:#1a1d2e;--search-border:#3b6fe0;
   --search-card:#ffffff;--search-card-border:#d4d8e8;--search-muted:#5a6380;
 
@@ -875,6 +875,18 @@ thead .dt-sticky-col{z-index:4;background:var(--surface2)}
    colors underneath (task-type fills, header styling) are never washed out. */
 .dt-timeline-table thead th.dt-week-th-today,.dt-timeline-table thead th.dt-day-th-today{box-shadow:inset 0 0 0 2px var(--amber);color:var(--amber);font-weight:700}
 .dt-day-cell.dt-day-cell-today{border-left:1px solid var(--amber);border-right:1px solid var(--amber)}
+
+/* "MARKED AL" — personal leave-day highlight. Uses --al-color (slate-blue), deliberately
+   NOT --amber, so a day that is both "today" and "AL" stays visually distinguishable
+   (see the .dt-day-th-today.dt-day-th-al override below). */
+.dt-day-th.dt-day-th-al{background:rgba(107,143,181,.15);box-shadow:inset 0 0 0 2px var(--al-color);color:var(--al-color)}
+.dt-day-th-al .dt-al-label{color:var(--al-color)}
+.dt-al-label{display:block;font-size:8px;font-weight:700;letter-spacing:.5px}
+.dt-day-cell.dt-day-cell-al{background-image:repeating-linear-gradient(45deg,rgba(107,143,181,.12) 0 4px,transparent 4px 8px)}
+/* today + AL overlap: AL styling (blue-gray) stays primary; today's amber marker shrinks to
+   a thin bottom accent instead of fighting AL for the same box-shadow */
+.dt-day-th.dt-day-th-today.dt-day-th-al{box-shadow:inset 0 0 0 2px var(--al-color);border-bottom:2px solid var(--amber);color:var(--al-color)}
+#dtMarkAlBtn.dt-al-mode-active{background:rgba(217,169,79,.15);border-color:var(--amber);color:var(--amber)}
 .dt-cal-today-badge{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--accent);color:#fff;font-weight:700}
 .dt-ticket-swatch{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
 .dt-ticket-edit-btn{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:11px;padding:0 2px;float:right}
