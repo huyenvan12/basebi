@@ -960,6 +960,14 @@ thead .dt-sticky-col{z-index:4;background:var(--surface2)}
 .task-column-empty{font-size:10px;color:var(--text-dim);padding:8px;text-align:center}
 .task-add-btn{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:10px;padding:2px 4px;font-family:inherit}
 .task-add-btn:hover{color:var(--accent)}
+/* Column background tints per group-by mode — subtle overlays on top of the default
+   .task-column background, header/count text stays var(--text)/var(--text-dim) always. */
+.task-column.tc-doing{background:rgba(217,169,79,.10)}
+.task-column.tc-done,.task-column.tc-medium{background:rgba(74,222,128,.10)}
+.task-column.tc-important{background:rgba(248,113,113,.10)}
+.task-column.tc-upcoming{background:rgba(217,169,79,.06)}
+.task-column.tc-today{background:rgba(217,169,79,.16)}
+.task-column.tc-overdue{background:rgba(248,113,113,.22)}
 
 .task-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;cursor:pointer}
 .task-card:hover{border-color:var(--accent)}

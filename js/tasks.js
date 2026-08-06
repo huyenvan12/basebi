@@ -360,27 +360,27 @@ export function renderTasksView(){
   if(state.tasksGroupBy==='due'){
     const g=getTasksGroupedByDueDate();
     columns=[
-      {key:'overdue',label:'Overdue',tasks:g.overdue},
-      {key:'today',label:'Today',tasks:g.today},
-      {key:'upcoming',label:'Upcoming',tasks:g.upcoming},
-      {key:'noDueDate',label:'No due date',tasks:g.noDueDate}
+      {key:'noDueDate',cls:'tc-nodue',label:'No due date',tasks:g.noDueDate},
+      {key:'upcoming',cls:'tc-upcoming',label:'Upcoming',tasks:g.upcoming},
+      {key:'today',cls:'tc-today',label:'Today',tasks:g.today},
+      {key:'overdue',cls:'tc-overdue',label:'Overdue',tasks:g.overdue}
     ];
   }else if(state.tasksGroupBy==='priority'){
     const g=getTasksGroupedByPriority();
     columns=[
-      {key:'important',label:'Important',tasks:g.important},
-      {key:'medium',label:'Medium',tasks:g.medium},
-      {key:'low',label:'Low',tasks:g.low}
+      {key:'important',cls:'tc-important',label:'Important',tasks:g.important},
+      {key:'medium',cls:'tc-medium',label:'Medium',tasks:g.medium},
+      {key:'low',cls:'tc-low',label:'Low',tasks:g.low}
     ];
   }else{
     const g=getTasksGroupedByStatus();
     columns=[
-      {key:'todo',label:'To do',tasks:g.todo},
-      {key:'doing',label:'Doing',tasks:g.doing},
-      {key:'done',label:'Done',tasks:g.done}
+      {key:'todo',cls:'tc-todo',label:'To do',tasks:g.todo},
+      {key:'doing',cls:'tc-doing',label:'Doing',tasks:g.doing},
+      {key:'done',cls:'tc-done',label:'Done',tasks:g.done}
     ];
   }
-  wrap.innerHTML=columns.map(col=>`<div class="task-column">
+  wrap.innerHTML=columns.map(col=>`<div class="task-column ${col.cls}">
     <div class="task-column-header">
       <span class="task-column-label">${esc(col.label)}</span>
       <span class="task-column-count">${col.tasks.length}</span>
