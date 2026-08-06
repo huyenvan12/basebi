@@ -30,17 +30,6 @@
   --graph-folder-palette-9:#c084fc;
   --graph-folder-palette-10:#f472b6;
   --graph-shared-color:#64748b;
-
-  /* Kanban column tints (dark): blend a lighter, desaturated accent hue into the panel
-     color rather than a flat alpha overlay — low-alpha warm colors over near-black just
-     darken toward brown/maroon instead of reading as a lighter tint. */
-  --tc-doing:color-mix(in srgb, var(--surface2) 82%, var(--amber) 18%);
-  --tc-done:color-mix(in srgb, var(--surface2) 80%, var(--success) 20%);
-  --tc-important:color-mix(in srgb, var(--surface2) 80%, var(--danger) 20%);
-  --tc-medium:color-mix(in srgb, var(--surface2) 80%, var(--success) 20%);
-  --tc-upcoming:color-mix(in srgb, var(--surface2) 88%, var(--amber) 12%);
-  --tc-today:color-mix(in srgb, var(--surface2) 70%, var(--amber) 30%);
-  --tc-overdue:color-mix(in srgb, var(--surface2) 65%, var(--danger) 35%);
 }
 
 /* ── LIGHT THEME ── */
@@ -983,12 +972,22 @@ thead .dt-sticky-col{z-index:4;background:var(--surface2)}
 .task-add-btn:hover{color:var(--accent)}
 /* Column background tints per group-by mode — subtle overlays on top of the default
    .task-column background, header/count text stays var(--text)/var(--text-dim) always. */
-.task-column.tc-doing{background:var(--tc-doing)}
-.task-column.tc-done,.task-column.tc-medium{background:var(--tc-done)}
-.task-column.tc-important{background:var(--tc-important)}
-.task-column.tc-upcoming{background:var(--tc-upcoming)}
-.task-column.tc-today{background:var(--tc-today)}
-.task-column.tc-overdue{background:var(--tc-overdue)}
+/* Dark (default): plain panel + left-border accent, reusing the same border-left-indicator
+   pattern as Monitor Log's "edited" cell (see .monitor-cell-edited) — a fill at matching
+   saturation/lightness ratios reads as too heavy/muddy on a near-black background. */
+.task-column.tc-doing,.task-column.tc-today{border-left:4px solid var(--amber)}
+.task-column.tc-done,.task-column.tc-medium{border-left:4px solid var(--success)}
+.task-column.tc-important,.task-column.tc-overdue{border-left:4px solid var(--danger)}
+.task-column.tc-todo,.task-column.tc-low,.task-column.tc-nodue,.task-column.tc-upcoming{border-left:4px solid var(--text-dim)}
+
+/* Light: keep the original full pastel fill, reset border-left back to the plain column border */
+[data-theme="light"] .task-column.tc-doing{background:var(--tc-doing);border-left:1px solid var(--border)}
+[data-theme="light"] .task-column.tc-done,[data-theme="light"] .task-column.tc-medium{background:var(--tc-done);border-left:1px solid var(--border)}
+[data-theme="light"] .task-column.tc-important{background:var(--tc-important);border-left:1px solid var(--border)}
+[data-theme="light"] .task-column.tc-upcoming{background:var(--tc-upcoming);border-left:1px solid var(--border)}
+[data-theme="light"] .task-column.tc-today{background:var(--tc-today);border-left:1px solid var(--border)}
+[data-theme="light"] .task-column.tc-overdue{background:var(--tc-overdue);border-left:1px solid var(--border)}
+[data-theme="light"] .task-column.tc-todo,[data-theme="light"] .task-column.tc-low,[data-theme="light"] .task-column.tc-nodue{border-left:1px solid var(--border)}
 
 .task-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;cursor:pointer}
 .task-card:hover{border-color:var(--accent)}
