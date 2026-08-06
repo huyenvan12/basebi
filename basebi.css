@@ -844,7 +844,7 @@ table.monitor-report-table{table-layout:fixed;width:100%;min-width:0}
 /* ══════════════════════════════════════════════════
    DELIVERY TRACKER
    ══════════════════════════════════════════════════ */
-.dt-view-switcher{display:flex;gap:2px;padding:8px 14px 0;flex-shrink:0}
+.dt-view-switcher{display:flex;gap:6px;padding:8px 14px 0;flex-shrink:0}
 .dt-subtab{padding:6px 14px;font-size:11px;font-weight:500;cursor:pointer;color:var(--text-muted);background:var(--surface);border:1px solid var(--border);border-bottom:none;border-radius:6px 6px 0 0;font-family:inherit}
 .dt-subtab.active{background:var(--accent-dim);color:var(--accent)}
 .dt-subview{display:none;flex-direction:column;flex:1;overflow:hidden;padding:0 14px 14px}
