@@ -186,7 +186,7 @@ export function getTasksGroupedByPriority(){
 // ══════════════════════════════════════════════════
 // POPOVER (create + edit, shared by Daily Note line icons and the Tasks board)
 // ══════════════════════════════════════════════════
-const CHEVRONS_RIGHT_SVG='<svg class="chevrons-right-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 17 5-5-5-5"/><path d="m13 17 5-5-5-5"/></svg>';
+const CHEVRONS_RIGHT_SVG='<svg class="chevrons-right-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 17 5-5-5-5"/><path d="m13 17 5-5-5-5"/></svg>';
 export function dailyLineIconHtml(noteId, idx, hasTask){
   return hasTask
     ? `<span class="daily-line-icon has-task" title="View task" onclick="openTaskPopoverForLine(${noteId},${idx},event)">🔗</span>`
@@ -431,4 +431,17 @@ export function initTasks(){
   window.openAddTaskInline=openAddTaskInline;
   window.jumpToTaskCard=jumpToTaskCard;
   window.jumpToSourceNote=jumpToSourceNote;
+
+  // Outside-click-to-close, same pattern as #dtTypePickerPopover/#dtCalPopover in
+  // gantt-tracker.js. Trigger elements that open the popover without stopPropagation()
+  // (openAddTaskInline's "+ Add task" button) must be excluded here, or the same click
+  // that opens the popover would immediately close it again on bubble.
+  document.addEventListener('click',e=>{
+    if(!state.taskPopoverOpen) return;
+    if(e.target.closest('#taskPopover')) return;
+    if(e.target.closest('.daily-line-icon')) return;
+    if(e.target.closest('.task-card')) return;
+    if(e.target.closest('.task-add-btn')) return;
+    closeTaskPopover();
+  });
 }

@@ -995,12 +995,12 @@ thead .dt-sticky-col{z-index:4;background:var(--surface2)}
 .daily-log-body{display:flex;flex-direction:column;gap:2px}
 .daily-log-line{display:flex;align-items:baseline;gap:6px}
 .daily-log-line.daily-log-line-highlight{background:var(--accent-dim);border-radius:4px}
-.daily-line-icon{cursor:pointer;flex-shrink:0;display:inline-flex;align-items:center;color:var(--text-dim)}
+.daily-line-icon{cursor:pointer;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;font-size:14px;line-height:1;color:var(--text-dim)}
 .daily-line-icon.no-task{opacity:0;transition:opacity .12s}
 .daily-log-line:hover .daily-line-icon.no-task{opacity:1}
 .daily-line-icon.has-task{opacity:1;color:var(--accent)}
 .daily-line-icon:hover{color:var(--accent)}
-.chevrons-right-icon{width:12px;height:12px}
+.chevrons-right-icon{width:16px;height:16px}
 
 /* ══════════════════════════════════════════════════
    TEST PREP HUB — flex/wrap based layout, no dedicated mobile breakpoint (consistent
