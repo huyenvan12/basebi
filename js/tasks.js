@@ -192,7 +192,10 @@ const CHEVRONS_RIGHT_SVG='<svg class="chevrons-right-icon" width="16" height="16
 // the 🔗 emoji so has-task/no-task icon states are true SVG-to-SVG size matches — the emoji
 // renders via system font and its size/baseline varies across OS/mobile browsers, breaking
 // pixel alignment with .daily-line-icon's fixed box even after fixing the box itself.
-const LINK_SVG='<svg class="link-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
+// Scaled ~0.78x around the 12,12 center: the link glyph fills far more of its 24x24
+// viewBox than the chevrons' two narrow arrow shapes, so at equal SVG dimensions the
+// link icon reads visually larger/bolder despite both elements measuring 16x16.
+const LINK_SVG='<svg class="link-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(2.64,2.64) scale(0.78)"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></g></svg>';
 export function dailyLineIconHtml(noteId, idx, hasTask){
   return hasTask
     ? `<span class="daily-line-icon has-task" title="View task" onclick="openTaskPopoverForLine(${noteId},${idx},event)">${LINK_SVG}</span>`
@@ -260,7 +263,7 @@ export function renderTaskPopover(mode, opts){
     </div>
     <label class="task-popover-label">Title</label>
     <input type="text" id="taskPopoverTitle" class="task-popover-input" value="${esc(title)}">
-    <label class="task-popover-label">Due date</label>
+    <label class="task-popover-label">Due date <span class="task-popover-label-optional">(optional)</span></label>
     <input type="date" id="taskPopoverDue" class="task-popover-input" value="${esc(due)}">
     <label class="task-popover-label">Priority</label>
     <div class="task-priority-selector">
@@ -285,10 +288,9 @@ export async function submitTaskPopover(){
   const dueEl=document.getElementById('taskPopoverDue');
   const activeBtn=document.querySelector('#taskPopover .task-priority-opt.active');
   const title=titleEl.value.trim();
-  const dueDate=dueEl.value;
+  const dueDate=dueEl.value||null;
   const priority=activeBtn?activeBtn.dataset.priority:'medium';
   if(!title){titleEl.focus();return;}
-  if(!dueDate){dueEl.focus();return;}
   const ctx=state.taskPopoverCtx||{};
   try{
     if(state.taskPopoverMode==='edit'){
