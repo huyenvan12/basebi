@@ -11,6 +11,7 @@ import { ensureFolder } from './folders.js';
 // switchTab is only called inside openDailyNote()'s function body, never at module top-level.
 import { switchTab } from './main.js';
 import { isFeatureVisible } from './feature-flags.js';
+import { genLineId } from './tasks.js';
 
 export function today(){
   const d=new Date();
@@ -48,7 +49,7 @@ export function appendDailyEntry(id){
   const val=input.value.trim(); if(!val)return;
   const now=new Date();
   const hh=String(now.getHours()).padStart(2,'0'), mm=String(now.getMinutes()).padStart(2,'0');
-  note.body=(note.body?note.body+'\n':'')+`[${hh}:${mm}] ${val}`;
+  note.body=(note.body?note.body+'\n':'')+`[${hh}:${mm}] ${val} ^${genLineId()}`;
   note.modified=today();
   saveOneNote(note);buildIndex();renderDetail(note);focusDailyCapture();renderAll();
 }

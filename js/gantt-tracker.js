@@ -11,6 +11,10 @@ import { today } from './daily-note.js';
 // Narrow, intentional circular import (same pattern as daily-note.js -> main.js): switchTab
 // is only invoked inside jumpToTimeline()'s function body, never at module top-level.
 import { switchTab } from './main.js';
+// Second narrow, intentional circular import: tasks.js needs switchGanttView from this file
+// (for its jumpToTaskCard()), and this file needs renderTasksView for the Tasks sub-view.
+// Only invoked inside switchGanttView()'s function body, never at module top-level.
+import { renderTasksView } from './tasks.js';
 
 const INACTIVE_STATUSES = ['Done','Cancelled'];
 
@@ -1226,10 +1230,13 @@ export function switchGanttView(view){
   state.ganttActiveView=view;
   document.getElementById('dtSubTabTimeline').classList.toggle('active',view==='timeline');
   document.getElementById('dtSubTabCalendar').classList.toggle('active',view==='calendar');
+  document.getElementById('dtSubTabTasks').classList.toggle('active',view==='tasks');
   document.getElementById('dtTimelineSubview').classList.toggle('active',view==='timeline');
   document.getElementById('dtCalendarSubview').classList.toggle('active',view==='calendar');
+  document.getElementById('dtTasksSubview').classList.toggle('active',view==='tasks');
   if(view==='timeline') renderTimeline();
-  else renderCalendar();
+  else if(view==='calendar') renderCalendar();
+  else renderTasksView();
 }
 
 // ══════════════════════════════════════════════════

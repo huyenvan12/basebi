@@ -73,7 +73,7 @@ export const state = {
 
   // delivery tracker (gantt) state
   ganttTaskTypes: [], ganttTickets: [], ganttEntries: [],
-  ganttActiveView: 'timeline',                // 'timeline' | 'calendar'
+  ganttActiveView: 'timeline',                // 'timeline' | 'calendar' | 'tasks'
   ganttTimelineStartDate: null,               // ISO date, defaulted to Monday-of-this-week at first render
   ganttTimelineWeeks: 6,
   ganttInactiveExpanded: false,
@@ -86,6 +86,14 @@ export const state = {
   ganttLeaveDays: [],                         // this user's delivery_leave_days rows, bulk-loaded once
   ganttAlMarkingMode: false,                  // true while "Mark AL" toggle is active
   ganttAlEditingContext: null,                // {date, existingId} while the AL reason modal is open
+
+  // tasks state (log-to-task conversion + Tasks kanban)
+  tasks: [],
+  tasksGroupBy: 'status',                     // 'status' | 'due' | 'priority'
+  taskPopoverOpen: false,
+  taskPopoverMode: null,                      // 'create' | 'edit'
+  taskPopoverCtx: null,                       // {noteId, lineIndex, lineText, taskId}
+  taskLineBusy: {},                           // { [noteId]: bool } — guards against overlapping ensureLineId backfill saves
 
   // monitor report state
   monitorReports: [], activeMonitorReportId: null,

@@ -37,6 +37,7 @@ import {
   loadTestPrepExam, loadTestPrepSkills, loadTestPrepTimeLogs, loadTestPrepChecklist,
   renderTestPrep, initTestPrep
 } from './test-prep.js';
+import { loadTasks, initTasks } from './tasks.js';
 
 // ══════════════════════════════════════════════════
 // TAB SWITCHING
@@ -441,6 +442,11 @@ async function initApp(){
       initGanttTracker();
     }
 
+    if(isFeatureVisible('tasks')){
+      state.tasks = await loadTasks();
+      initTasks();
+    }
+
     if(isFeatureVisible('test_prep')){
       state.testPrepExam = await loadTestPrepExam();
       state.testPrepSkills = await loadTestPrepSkills(state.testPrepExam.id);
@@ -480,6 +486,7 @@ function applyNavGating(){
   document.getElementById('teamSubTabMonitorLog').style.display = isFeatureVisible('monitor_log')?'':'none';
   document.getElementById('adminGearWrap').style.display = state.currentUserRole==='admin'?'':'none';
   document.getElementById('tabGantt').style.display = isFeatureVisible('gantt_tracker')?'':'none';
+  document.getElementById('dtSubTabTasks').style.display = isFeatureVisible('tasks')?'':'none';
   document.getElementById('tabTestPrep').style.display = isFeatureVisible('test_prep')?'':'none';
   // mobile-web drawer mirrors — same conditions as the desktop elements just above,
   // applied to the drawer's own row elements (see index.html #mobDrawer).
