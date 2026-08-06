@@ -43,7 +43,7 @@ export async function ensureLineId(note, lineIndex){
   note.body = lines.join('\n');
   note.modified = today();
   await saveOneNote(note);
-  return newId;
+  return newId.replace(/^ln-/,'');
 }
 
 // Edit-mode round-trip: re-attach markers to the new body by content match first, index
@@ -63,7 +63,7 @@ export function reattachLineIds(oldBody, newBody){
       const dist=Math.abs(newIdx-oldIdx);
       if(dist<bestDist){ best=newIdx; bestDist=dist; }
     });
-    if(best!==-1){ newLines[best]=newLines[best]+` ^${m[1]}`; consumed.add(best); }
+    if(best!==-1){ newLines[best]=newLines[best]+` ^ln-${m[1]}`; consumed.add(best); }
   });
   return newLines.join('\n');
 }
