@@ -1,8 +1,8 @@
 # base·bi
 
-A self-hosted knowledge management and note-taking app — built with vanilla JS and Supabase. No build step, no framework overhead.
+An internal BI / productivity tool for the Loyalty Team — built with vanilla JS (native ES modules) and Supabase. No build step, no framework overhead.
 
-🔗 **Live app:** [basebi.net](https://basebi.net) · [basebi.pages.dev](https://basebi.pages.dev) (alternate)
+🔗 **Live app:** [basebi.net](https://basebi.net) · [basebi.pages.dev](https://basebi.pages.dev) (alternate / workplace-accessible fallback)
 
 ---
 
@@ -13,17 +13,22 @@ A self-hosted knowledge management and note-taking app — built with vanilla JS
 - **Organization** — Folders, tags, and full-text search with an inverted index
 - **Wiki-linking** — Connect notes with `[[Title]]` syntax and view backlinks
 - **Graph Mode** — Interactive, pan/zoom graph of note relationships, clustered by folder
-- **Checklists** — Reusable, multi-section checklist templates with progress tracking 
-- **Team Sharing** — View-only shared workspace for team notes, with author attribution in search
-- **Auth** — Supabase Auth login gate
+- **Campaign Log** — Tracking and logging for CRM/marketing campaigns
+- **Checklists** — Reusable, multi-section templates, personal checklist runs, and sharing across the team
+- **Monitor Log** — Report tracking with edited-value indicators, US-style number formatting, and template cloning
+- **Delivery Tracker** — Delivery status tracking
+- **Admin Hub** — Feature flag management and team member administration
+- **Team Sharing** — Shared workspace for team notes/checklists, with author attribution in search
+- **Auth** — Supabase Auth login gate, with row-level security scoping data by owner
 
 ---
 
 ## Tech Stack
 
-- **Frontend:** Vanilla HTML/CSS/JS
-- **Backend:** [Supabase](https://supabase.com) — PostgreSQL, Row-Level Security enforced on all tables
-- **Hosting:** GitHub Pages (primary) + Cloudflare Pages (fallback)
+- **Frontend:** Vanilla HTML/CSS/JS — native ES modules, no bundler
+- **Backend:** [Supabase](https://supabase.com) — PostgreSQL 17, Row-Level Security enforced on all tables (region: `ap-southeast-1`)
+- **Hosting:** GitHub Pages (primary) + Cloudflare Pages (fallback, static file serving)
+- **Mobile:** Mobile web is the primary mobile access path for the team; a Capacitor Android wrapper exists mainly for local device testing
 - **Version control:** Git + GitHub, branch protection on `main` (PR required)
 
 ---
@@ -32,11 +37,27 @@ A self-hosted knowledge management and note-taking app — built with vanilla JS
 
 ```
 basebi/
-├── index.html          # Main application (notes, campaign log, checklist, graph mode, admin)
-├── basebi.css          # Stylesheet (dark mono theme)
-├── basebi.html         # Legacy redirect stub — kept for backward-compatible links
+├── index.html                   # Thin app shell
+├── basebi.css                   # Stylesheet (dark mono theme)
+├── basebi.html                  # Legacy redirect stub — kept for backward-compatible links
+├── js/
+│   ├── main.js                  # Entry point / app bootstrap
+│   ├── constants.js             # Shared constants
+│   ├── supabase-client.js       # Supabase client setup
+│   ├── state.js                 # App state management
+│   ├── ui-helpers.js            # Shared UI utilities
+│   ├── folders.js                # Folder management
+│   ├── notes.js                  # Notes CRUD, wiki-linking
+│   ├── daily-note.js             # Daily note quick-append
+│   ├── campaigns.js              # Campaign Log
+│   ├── checklist-templates.js    # Checklist template CRUD
+│   ├── checklist-instances.js    # Personal checklist runs
+│   ├── checklist-share.js        # Checklist sharing
+│   ├── monitor-report.js         # Monitor Log
+│   └── graph-view.js             # Graph mode rendering
 └── ...
 ```
+
 ---
 
 ## License
