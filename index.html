@@ -503,6 +503,7 @@
         <button class="btn btn-ghost" id="dtNextWeekBtn">Next week ›</button>
         <button class="btn btn-primary" id="dtAddTicketBtn">+ Add ticket</button>
         <button class="btn btn-ghost" id="dtManageTypesBtn" style="display:none">⚙ Manage Task Types</button>
+        <button class="btn btn-ghost" id="dtMarkAlBtn">Mark AL</button>
       </div>
       <div class="dt-timeline-wrap" id="dtTimelineWrap">
         <table class="dt-timeline-table" id="dtTimelineTable">
@@ -971,6 +972,25 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeOverlapModal()">Cancel</button>
       <button class="btn btn-danger" id="dtOverlapConfirmBtn">Replace</button>
+    </div>
+  </div>
+</div>
+
+<!-- MARK AL (ANNUAL LEAVE) REASON MODAL -->
+<div class="modal-overlay" id="dtAlModalOverlay">
+  <div class="modal modal-sm">
+    <div class="modal-title">
+      <span id="dtAlModalTitle">Mark AL</span>
+      <button class="modal-close" onclick="closeAlReasonModal()">×</button>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Reason (optional)</label>
+      <input class="form-input" id="dtAlReasonInput" placeholder="e.g. Family trip">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="dtAlDeleteBtn" style="display:none;margin-right:auto" onclick="deleteAlDay()">Remove AL</button>
+      <button class="btn btn-ghost" onclick="closeAlReasonModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAlDay()">Save</button>
     </div>
   </div>
 </div>

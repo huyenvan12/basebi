@@ -83,6 +83,9 @@ export const state = {
   ganttCalendarShowInactive: false,
   ganttDragState: null,                       // {ticketId, anchorDate, currentDate} while a drag-to-fill is in progress
   ganttPendingEntryWrite: null,               // {ticketId, startDate, endDate, overlaps} staged between type-pick and overlap-confirm
+  ganttLeaveDays: [],                         // this user's delivery_leave_days rows, bulk-loaded once
+  ganttAlMarkingMode: false,                  // true while "Mark AL" toggle is active
+  ganttAlEditingContext: null,                // {date, existingId} while the AL reason modal is open
 
   // monitor report state
   monitorReports: [], activeMonitorReportId: null,
