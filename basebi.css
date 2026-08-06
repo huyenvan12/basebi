@@ -8,7 +8,7 @@
   --text:#e2e8f0;--text-muted:#7a8599;--text-dim:#4a556b;
   --tag-bg:#1a2540;--folder-active:#1e2d52;
   --highlight:#3d5a99;--code-bg:#131720;
-  --sql:#f59e0b;--danger:#f87171;--danger-dim:#3d1515;--success:#4ade80;--amber:#d9a94f;--al-color:#6b8fb5;
+  --sql:#f59e0b;--danger:#f87171;--danger-dim:#3d1515;--success:#4ade80;--amber:#d9a94f;--al-color:#6b8fb5;--violet:#a78bfa;
   --search-bg:#0f1117;--search-text:#e2e8f0;--search-border:#5b8dee;
   --search-card:#181c27;--search-card-border:#2a3047;--search-muted:#7a8599;
 
@@ -39,16 +39,19 @@
   --text:#1a1d2e;--text-muted:#5a6380;--text-dim:#9099b5;
   --tag-bg:#eef0f8;--folder-active:#dde8ff;
   --highlight:#bfcff7;--code-bg:#1a1d2e;
-  --sql:#c47d0e;--danger:#dc2626;--danger-dim:#fee2e2;--success:#16a34a;--amber:#d9a94f;--al-color:#3f6a92;
+  --sql:#c47d0e;--danger:#dc2626;--danger-dim:#fee2e2;--success:#16a34a;--amber:#d9a94f;--al-color:#3f6a92;--violet:#7c3aed;
   --search-bg:#f2f3f7;--search-text:#1a1d2e;--search-border:#3b6fe0;
   --search-card:#ffffff;--search-card-border:#d4d8e8;--search-muted:#5a6380;
 
   /* Kanban column tints (light) — plain alpha overlays already read correctly on a white
-     panel, unchanged from the original implementation. */
+     panel, unchanged from the original implementation. Priority uses its own blue-violet
+     family (tc-low/tc-medium/tc-important) so it reads as a distinct "lens" from Status
+     (amber/green) and Due date (amber/red). */
   --tc-doing:rgba(217,169,79,.10);
   --tc-done:rgba(74,222,128,.10);
-  --tc-important:rgba(248,113,113,.10);
-  --tc-medium:rgba(74,222,128,.10);
+  --tc-important:rgba(124,58,237,.12);
+  --tc-medium:rgba(59,111,224,.10);
+  --tc-low:rgba(63,106,146,.10);
   --tc-upcoming:rgba(217,169,79,.06);
   --tc-today:rgba(217,169,79,.16);
   --tc-overdue:rgba(248,113,113,.22);
@@ -976,18 +979,25 @@ thead .dt-sticky-col{z-index:4;background:var(--surface2)}
    pattern as Monitor Log's "edited" cell (see .monitor-cell-edited) — a fill at matching
    saturation/lightness ratios reads as too heavy/muddy on a near-black background. */
 .task-column.tc-doing,.task-column.tc-today{border-left:4px solid var(--amber)}
-.task-column.tc-done,.task-column.tc-medium{border-left:4px solid var(--success)}
-.task-column.tc-important,.task-column.tc-overdue{border-left:4px solid var(--danger)}
-.task-column.tc-todo,.task-column.tc-low,.task-column.tc-nodue,.task-column.tc-upcoming{border-left:4px solid var(--text-dim)}
+.task-column.tc-done{border-left:4px solid var(--success)}
+.task-column.tc-overdue{border-left:4px solid var(--danger)}
+.task-column.tc-todo,.task-column.tc-nodue,.task-column.tc-upcoming{border-left:4px solid var(--text-dim)}
+/* Priority: dedicated blue-violet family, distinct from Status (amber/green) and
+   Due date (amber/red), so switching group-by modes reads as a different lens at a glance. */
+.task-column.tc-low{border-left:4px solid var(--al-color)}
+.task-column.tc-medium{border-left:4px solid var(--accent)}
+.task-column.tc-important{border-left:4px solid var(--violet)}
 
 /* Light: keep the original full pastel fill, reset border-left back to the plain column border */
 [data-theme="light"] .task-column.tc-doing{background:var(--tc-doing);border-left:1px solid var(--border)}
-[data-theme="light"] .task-column.tc-done,[data-theme="light"] .task-column.tc-medium{background:var(--tc-done);border-left:1px solid var(--border)}
+[data-theme="light"] .task-column.tc-done{background:var(--tc-done);border-left:1px solid var(--border)}
 [data-theme="light"] .task-column.tc-important{background:var(--tc-important);border-left:1px solid var(--border)}
+[data-theme="light"] .task-column.tc-medium{background:var(--tc-medium);border-left:1px solid var(--border)}
+[data-theme="light"] .task-column.tc-low{background:var(--tc-low);border-left:1px solid var(--border)}
 [data-theme="light"] .task-column.tc-upcoming{background:var(--tc-upcoming);border-left:1px solid var(--border)}
 [data-theme="light"] .task-column.tc-today{background:var(--tc-today);border-left:1px solid var(--border)}
 [data-theme="light"] .task-column.tc-overdue{background:var(--tc-overdue);border-left:1px solid var(--border)}
-[data-theme="light"] .task-column.tc-todo,[data-theme="light"] .task-column.tc-low,[data-theme="light"] .task-column.tc-nodue{border-left:1px solid var(--border)}
+[data-theme="light"] .task-column.tc-todo,[data-theme="light"] .task-column.tc-nodue{border-left:1px solid var(--border)}
 
 .task-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;cursor:pointer}
 .task-card:hover{border-color:var(--accent)}
