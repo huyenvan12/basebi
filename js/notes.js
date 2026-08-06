@@ -21,6 +21,7 @@ import { today } from './daily-note.js';
 // saveOneNote/renderDetail/selectNote from this file, and this file needs the line-anchor
 // marker helpers + task lookup from tasks.js to render Daily Note lines. Function-body-only.
 import { LINE_ID_RE, stripLineId, findTaskByLineId, dailyLineIconHtml, reattachLineIds } from './tasks.js';
+import { isFeatureVisible } from './feature-flags.js';
 
 // ══════════════════════════════════════════════════
 // DATA LAYER
@@ -964,6 +965,7 @@ export function renderBodyWithLinks(text,q){
 // marker before display and renders the log-to-task icon slot (chevron/🔗) immediately
 // before the line's [HH:MM] prefix. See tasks.js for the marker mechanism.
 export function renderDailyBodyLines(note,q){
+  const tasksOn=isFeatureVisible('tasks');
   const lines=(note.body||'').split('\n');
   return lines.map((rawLine,idx)=>{
     if(!rawLine.trim())return '';
@@ -971,6 +973,7 @@ export function renderDailyBodyLines(note,q){
     const lineId=m?m[1]:null;
     const displayLine=stripLineId(rawLine);
     const lineHtml=renderBodyWithLinks(displayLine,q);
+    if(!tasksOn) return `<div class="daily-log-line" data-line-idx="${idx}">${lineHtml}</div>`;
     const task=lineId?findTaskByLineId(lineId):null;
     const icon=dailyLineIconHtml(note.id,idx,!!task);
     const lineIdAttr=task?` data-line-id="${lineId}"`:'';
