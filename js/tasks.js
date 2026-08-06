@@ -222,7 +222,9 @@ export async function openTaskPopoverForLine(noteId, lineIndex, event){
   if(existingTask){
     openTaskPopover('edit', {x:rect.left, y:rect.bottom+4, taskId:existingTask.id});
   }else{
-    openTaskPopover('create', {x:rect.left, y:rect.bottom+4, noteId, lineIndex, lineId, lineText: stripLineId(rawLine).trim()});
+    const lineText = stripLineId(rawLine).trim();
+    const titlePrefill = lineText.replace(/^\[\d{2}:\d{2}\]\s*/, '');
+    openTaskPopover('create', {x:rect.left, y:rect.bottom+4, noteId, lineIndex, lineId, lineText, titlePrefill});
   }
 }
 
@@ -253,7 +255,7 @@ export function renderTaskPopover(mode, opts){
     if(!task){ closeTaskPopover(); return; }
     title=task.title; due=task.due_date||''; priority=task.priority; taskId=task.id;
   }else{
-    title=opts.lineText||'';
+    title=opts.titlePrefill||opts.lineText||'';
     priority=opts.presetPriority||'medium';
   }
   pop.innerHTML=`<div class="task-popover-inner">
