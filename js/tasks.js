@@ -368,9 +368,9 @@ export function renderTasksView(){
   }else if(state.tasksGroupBy==='priority'){
     const g=getTasksGroupedByPriority();
     columns=[
-      {key:'important',cls:'tc-important',label:'Important',tasks:g.important},
+      {key:'low',cls:'tc-low',label:'Low',tasks:g.low},
       {key:'medium',cls:'tc-medium',label:'Medium',tasks:g.medium},
-      {key:'low',cls:'tc-low',label:'Low',tasks:g.low}
+      {key:'important',cls:'tc-important',label:'Important',tasks:g.important}
     ];
   }else{
     const g=getTasksGroupedByStatus();
