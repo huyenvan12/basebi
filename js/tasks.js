@@ -187,9 +187,15 @@ export function getTasksGroupedByPriority(){
 // POPOVER (create + edit, shared by Daily Note line icons and the Tasks board)
 // ══════════════════════════════════════════════════
 const CHEVRONS_RIGHT_SVG='<svg class="chevrons-right-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 17 5-5-5-5"/><path d="m13 17 5-5-5-5"/></svg>';
+// Lucide "link" glyph, hand-pasted per this codebase's no-library-import icon convention
+// (see CHEVRONS_RIGHT_SVG above, MONITOR_TRASH_SVG in monitor-report.js). Used instead of
+// the 🔗 emoji so has-task/no-task icon states are true SVG-to-SVG size matches — the emoji
+// renders via system font and its size/baseline varies across OS/mobile browsers, breaking
+// pixel alignment with .daily-line-icon's fixed box even after fixing the box itself.
+const LINK_SVG='<svg class="link-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
 export function dailyLineIconHtml(noteId, idx, hasTask){
   return hasTask
-    ? `<span class="daily-line-icon has-task" title="View task" onclick="openTaskPopoverForLine(${noteId},${idx},event)">🔗</span>`
+    ? `<span class="daily-line-icon has-task" title="View task" onclick="openTaskPopoverForLine(${noteId},${idx},event)">${LINK_SVG}</span>`
     : `<span class="daily-line-icon no-task" title="Create task" onclick="openTaskPopoverForLine(${noteId},${idx},event)">${CHEVRONS_RIGHT_SVG}</span>`;
 }
 
@@ -387,7 +393,7 @@ export function renderTaskCard(task){
   const prioClass = task.priority==='important'?'tpb-important':task.priority==='low'?'tpb-low':'tpb-medium';
   const prioLabel = task.priority.charAt(0).toUpperCase()+task.priority.slice(1);
   const linkIcon = task.source_note_id
-    ? `<span class="task-card-link" title="Go to source Daily Note" onclick="event.stopPropagation();jumpToSourceNote(${task.source_note_id},'${task.source_line_id||''}')">🔗</span>`
+    ? `<span class="task-card-link" title="Go to source Daily Note" onclick="event.stopPropagation();jumpToSourceNote(${task.source_note_id},'${task.source_line_id||''}')">${LINK_SVG}</span>`
     : '';
   return `<div class="task-card" data-task-id="${task.id}" onclick="openTaskPopoverForCard('${task.id}',event)">
     <div class="task-card-title">${esc(task.title)}</div>
