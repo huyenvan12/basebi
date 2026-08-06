@@ -8,7 +8,7 @@
   --text:#e2e8f0;--text-muted:#7a8599;--text-dim:#4a556b;
   --tag-bg:#1a2540;--folder-active:#1e2d52;
   --highlight:#3d5a99;--code-bg:#131720;
-  --sql:#f59e0b;--danger:#f87171;--danger-dim:#3d1515;--success:#4ade80;--amber:#d9a94f;--al-color:#6b8fb5;--violet:#a78bfa;
+  --sql:#f59e0b;--danger:#f87171;--danger-dim:#3d1515;--success:#4ade80;--amber:#d9a94f;--al-color:#6b8fb5;--violet:#a78bfa;--violet-dim:#2f2555;
   --search-bg:#0f1117;--search-text:#e2e8f0;--search-border:#5b8dee;
   --search-card:#181c27;--search-card-border:#2a3047;--search-muted:#7a8599;
 
@@ -39,7 +39,7 @@
   --text:#1a1d2e;--text-muted:#5a6380;--text-dim:#9099b5;
   --tag-bg:#eef0f8;--folder-active:#dde8ff;
   --highlight:#bfcff7;--code-bg:#1a1d2e;
-  --sql:#c47d0e;--danger:#dc2626;--danger-dim:#fee2e2;--success:#16a34a;--amber:#d9a94f;--al-color:#3f6a92;--violet:#7c3aed;
+  --sql:#c47d0e;--danger:#dc2626;--danger-dim:#fee2e2;--success:#16a34a;--amber:#d9a94f;--al-color:#3f6a92;--violet:#7c3aed;--violet-dim:#ede9fe;
   --search-bg:#f2f3f7;--search-text:#1a1d2e;--search-border:#3b6fe0;
   --search-card:#ffffff;--search-card-border:#d4d8e8;--search-muted:#5a6380;
 
@@ -1013,9 +1013,11 @@ thead .dt-sticky-col{z-index:4;background:var(--surface2)}
 .task-card.task-card-highlight{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-dim)}
 
 .task-priority-badge{font-size:9px;padding:2px 7px;border-radius:10px;font-weight:600;white-space:nowrap}
-.tpb-important{background:var(--danger-dim);color:var(--danger)}
-.tpb-medium{background:rgba(74,222,128,.15);color:var(--success)}
-.tpb-low{background:var(--tag-bg);color:var(--text-muted)}
+/* Matches the blue-violet family used for "Group by Priority" column accents, so a task's
+   priority chip reads the same hue regardless of which group-by mode the board is in. */
+.tpb-important{background:var(--violet-dim);color:var(--violet)}
+.tpb-medium{background:var(--accent-dim);color:var(--accent)}
+.tpb-low{background:var(--tag-bg);color:var(--al-color)}
 
 .task-due-dot{font-size:9px;flex-shrink:0}
 
@@ -1025,11 +1027,16 @@ thead .dt-sticky-col{z-index:4;background:var(--surface2)}
 .task-popover-label{display:block;font-size:10px;color:var(--text-dim);margin:6px 0 3px}
 .task-popover-label-optional{color:var(--text-muted);font-weight:400}
 .task-popover-input{width:100%;box-sizing:border-box;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:5px 7px;font-size:11px;font-family:inherit}
+/* Native calendar-picker glyph renders black regardless of theme — invisible against this
+   input's dark background. Only needed in dark theme; light theme's white input already has
+   sufficient contrast with the default black glyph, so scope the invert to dark only.
+   (body always carries an explicit data-theme attribute, see ui-helpers.js applyTheme()) */
+[data-theme="dark"] .task-popover-input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1) brightness(0.9)}
 .task-priority-selector{display:flex;gap:4px}
 .task-priority-opt{flex:1;padding:5px 0;font-size:10px;text-align:center;cursor:pointer;border:1px solid var(--border);border-radius:4px;color:var(--text-muted);background:var(--surface);font-family:inherit}
-.task-priority-opt.active.tpo-important{border-color:var(--danger);color:var(--danger);background:var(--danger-dim)}
-.task-priority-opt.active.tpo-medium{border-color:var(--success);color:var(--success);background:rgba(74,222,128,.15)}
-.task-priority-opt.active.tpo-low{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+.task-priority-opt.active.tpo-important{border-color:var(--violet);color:var(--violet);background:var(--violet-dim)}
+.task-priority-opt.active.tpo-medium{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+.task-priority-opt.active.tpo-low{border-color:var(--al-color);color:var(--al-color);background:var(--tag-bg)}
 .task-popover-jump-btn{display:block;width:100%;text-align:left;margin-top:8px;font-size:10px;color:var(--accent);background:none;border:none;cursor:pointer;padding:2px 0;font-family:inherit}
 .task-popover-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:10px}
 

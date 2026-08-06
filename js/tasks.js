@@ -259,6 +259,7 @@ export function renderTaskPopover(mode, opts){
   }else{
     title=opts.titlePrefill||opts.lineText||'';
     priority=opts.presetPriority||'medium';
+    due=today(); // convenience default only — field stays fully editable/clearable
   }
   pop.innerHTML=`<div class="task-popover-inner">
     <div class="task-popover-title-row">
@@ -362,17 +363,17 @@ export function renderTasksView(){
   if(state.tasksGroupBy==='due'){
     const g=getTasksGroupedByDueDate();
     columns=[
-      {key:'noDueDate',cls:'tc-nodue',label:'No due date',tasks:g.noDueDate},
-      {key:'upcoming',cls:'tc-upcoming',label:'Upcoming',tasks:g.upcoming},
       {key:'today',cls:'tc-today',label:'Today',tasks:g.today},
-      {key:'overdue',cls:'tc-overdue',label:'Overdue',tasks:g.overdue}
+      {key:'upcoming',cls:'tc-upcoming',label:'Upcoming',tasks:g.upcoming},
+      {key:'overdue',cls:'tc-overdue',label:'Overdue',tasks:g.overdue},
+      {key:'noDueDate',cls:'tc-nodue',label:'No due date',tasks:g.noDueDate}
     ];
   }else if(state.tasksGroupBy==='priority'){
     const g=getTasksGroupedByPriority();
     columns=[
-      {key:'low',cls:'tc-low',label:'Low',tasks:g.low},
+      {key:'important',cls:'tc-important',label:'Important',tasks:g.important},
       {key:'medium',cls:'tc-medium',label:'Medium',tasks:g.medium},
-      {key:'important',cls:'tc-important',label:'Important',tasks:g.important}
+      {key:'low',cls:'tc-low',label:'Low',tasks:g.low}
     ];
   }else{
     const g=getTasksGroupedByStatus();
