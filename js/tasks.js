@@ -222,7 +222,7 @@ export async function openTaskPopoverForLine(noteId, lineIndex, event){
   }
   const existingTask = findTaskByLineId(lineId);
   if(existingTask){
-    openTaskPopover('edit', {x:rect.left, y:rect.bottom+4, taskId:existingTask.id});
+    openTaskPopover('edit', {x:rect.left, y:rect.bottom+4, taskId:existingTask.id, openedFrom:'dailyNote'});
   }else{
     const lineText = stripLineId(rawLine).trim();
     const titlePrefill = lineText.replace(/^\[\d{2}:\d{2}\]\s*/, '');
@@ -275,7 +275,7 @@ export function renderTaskPopover(mode, opts){
       <button type="button" class="task-priority-opt tpo-medium ${priority==='medium'?'active':''}" data-priority="medium" onclick="selectTaskPopoverPriority(this)">Medium</button>
       <button type="button" class="task-priority-opt tpo-low ${priority==='low'?'active':''}" data-priority="low" onclick="selectTaskPopoverPriority(this)">Low</button>
     </div>
-    ${mode==='edit'?`<button type="button" class="btn btn-ghost task-popover-jump-btn" onclick="jumpToTaskCard('${taskId}')">View in Tasks tab →</button>`:''}
+    ${mode==='edit'&&opts.openedFrom==='dailyNote'?`<button type="button" class="btn btn-ghost task-popover-jump-btn" onclick="jumpToTaskCard('${taskId}')">View in Tasks tab →</button>`:''}
     <div class="task-popover-actions">
       <button type="button" class="btn btn-ghost" onclick="closeTaskPopover()">Cancel</button>
       <button type="button" class="btn btn-primary" onclick="submitTaskPopover()">${mode==='edit'?'Save':'Create task'}</button>
