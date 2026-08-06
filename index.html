@@ -491,6 +491,7 @@
     <div class="dt-view-switcher">
       <button class="dt-subtab active" id="dtSubTabTimeline" onclick="switchGanttView('timeline')">Timeline</button>
       <button class="dt-subtab" id="dtSubTabCalendar" onclick="switchGanttView('calendar')">Calendar</button>
+      <button class="dt-subtab" id="dtSubTabTasks" onclick="switchGanttView('tasks')">Tasks</button>
     </div>
 
     <!-- TIMELINE SUB-VIEW -->
@@ -522,6 +523,19 @@
         <label class="checkbox-row"><input type="checkbox" id="dtCalShowInactive"> Show Inactive tickets</label>
       </div>
       <div class="dt-calendar-grid" id="dtCalendarGrid"></div>
+    </div>
+
+    <!-- TASKS SUB-VIEW (Kanban board — log-to-task conversions + directly-created tasks) -->
+    <div class="dt-subview" id="dtTasksSubview">
+      <div class="dt-controls-row">
+        <div class="task-groupby-switcher">
+          <span class="task-groupby-label">Group by:</span>
+          <button class="task-gb-btn active" id="taskGbStatus" onclick="setTasksGroupBy('status')">Status</button>
+          <button class="task-gb-btn" id="taskGbDue" onclick="setTasksGroupBy('due')">Due date</button>
+          <button class="task-gb-btn" id="taskGbPriority" onclick="setTasksGroupBy('priority')">Priority</button>
+        </div>
+      </div>
+      <div class="task-kanban-wrap" id="taskKanbanWrap"></div>
     </div>
 
     <!-- AGENDA SUB-VIEW (mobile-web only, <=768px — see basebi.css @media block; Timeline/
@@ -1057,6 +1071,7 @@
 
 <!-- CALENDAR TICKET / OVERFLOW POPOVER (shared, positioned via JS) -->
 <div class="dt-cal-popover" id="dtCalPopover" style="display:none"></div>
+<div class="task-popover" id="taskPopover" style="display:none"></div>
 
 <script type="module" src="js/main.js"></script>
 </body>

@@ -17,6 +17,10 @@ import { renderFolders, selectFolder } from './folders.js';
 // needs daily-note.js's today() for created/modified timestamps. Safe under the same
 // function-body-only rule as the folders.js cycle above.
 import { today } from './daily-note.js';
+// Third narrow, intentional circular import (same rule as above): tasks.js needs
+// saveOneNote/renderDetail/selectNote from this file, and this file needs the line-anchor
+// marker helpers + task lookup from tasks.js to render Daily Note lines. Function-body-only.
+import { LINE_ID_RE, stripLineId, findTaskByLineId, dailyLineIconHtml, reattachLineIds } from './tasks.js';
 
 // ══════════════════════════════════════════════════
 // DATA LAYER
@@ -322,7 +326,8 @@ export function renderDetail(note){
       </div>
       <pre class="code-body">${sqlHL(note.code||'')}</pre></div>`;
     if(note.body)body+=`<div class="note-desc">${hl(note.body,state.searchQuery)}</div>`;
-  }else{body=`<div class="note-body">${renderBodyWithLinks(note.body||'',state.searchQuery)}</div>`;}
+  }else if(note.daily_date){body=`<div class="note-body daily-log-body">${renderDailyBodyLines(note,state.searchQuery)}</div>`;}
+  else{body=`<div class="note-body">${renderBodyWithLinks(note.body||'',state.searchQuery)}</div>`;}
   const linkedSection=links.length?`<div class="linked-section">
     <div class="linked-label">Linked Notes</div>
     <div class="linked-chips">${links.map(l=>`<span class="linked-chip" onclick="jumpToLink('${esc(l)}')">↗ ${esc(l)}</span>`).join('')}</div>
@@ -714,6 +719,7 @@ export function openNoteModal(id){
     state.noteIsShared=!!note.is_shared;
     toggleCodeField();
     if(note.type==='code'||note.type==='sql'){document.getElementById('f-code').value=note.code||'';document.getElementById('f-desc').value=note.body||'';}
+    else if(note.daily_date){document.getElementById('f-body').value=(note.body||'').split('\n').map(stripLineId).join('\n');}
     else{document.getElementById('f-body').value=note.body||'';}
     renderTagChips();renderLinkChips();
   }
@@ -786,7 +792,11 @@ export async function saveNote(){
       body:note.body,code:note.code,modified:note.modified,is_shared:note.is_shared};
     note.title=title;note.folder=folderName;note.folder_id=folderId;
     note.type=type;note.tags=[...state.selectedTags];note.links=[...state.selectedLinks];
-    note.body=type==='code'?document.getElementById('f-desc').value.trim():document.getElementById('f-body').value.trim();
+    const newBodyRaw=type==='code'?document.getElementById('f-desc').value.trim():document.getElementById('f-body').value.trim();
+    // Daily notes: markers were stripped for display in the edit textarea (openNoteModal),
+    // so re-attach them here by content match against the pre-edit body — see tasks.js's
+    // reattachLineIds() for the matching rule (content first, index as tiebreaker).
+    note.body=(note.daily_date&&type!=='code')?reattachLineIds(note.body,newBodyRaw):newBodyRaw;
     note.code=type==='code'?document.getElementById('f-code').value.trim():null;
     note.modified=now;note.is_shared=state.noteIsShared;
     try{
@@ -948,6 +958,24 @@ export function renderBodyWithLinks(text,q){
     const safeTitle=esc(title);
     return `<span class="inline-link" onclick="jumpToLink(this.dataset.title)" data-title="${safeTitle}">&#8599; ${safeTitle}</span>`;
   });
+}
+
+// Per-line render for Daily Note bodies — strips each line's invisible ^ln-xxxxxxxx anchor
+// marker before display and renders the log-to-task icon slot (chevron/🔗) immediately
+// before the line's [HH:MM] prefix. See tasks.js for the marker mechanism.
+export function renderDailyBodyLines(note,q){
+  const lines=(note.body||'').split('\n');
+  return lines.map((rawLine,idx)=>{
+    if(!rawLine.trim())return '';
+    const m=rawLine.match(LINE_ID_RE);
+    const lineId=m?m[1]:null;
+    const displayLine=stripLineId(rawLine);
+    const lineHtml=renderBodyWithLinks(displayLine,q);
+    const task=lineId?findTaskByLineId(lineId):null;
+    const icon=dailyLineIconHtml(note.id,idx,!!task);
+    const lineIdAttr=task?` data-line-id="${lineId}"`:'';
+    return `<div class="daily-log-line" data-line-idx="${idx}"${lineIdAttr}>${icon}${lineHtml}</div>`;
+  }).join('');
 }
 
 export function initNotes(){

@@ -7,7 +7,7 @@
 import { state } from './state.js';
 import { sb } from './supabase-client.js';
 
-export const FEATURE_KEYS = ['notes','teamshared_notes','checklist','campaign','monitor_log','daily_note','graph_view','gantt_tracker','test_prep'];
+export const FEATURE_KEYS = ['notes','teamshared_notes','checklist','campaign','monitor_log','daily_note','graph_view','gantt_tracker','test_prep','tasks'];
 
 export async function getFeatureVisibility(featureKey){
   const{data,error}=await sb.rpc('get_feature_visibility',{p_user_id:state.currentUserId,p_feature_key:featureKey});
