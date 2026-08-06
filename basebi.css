@@ -30,6 +30,17 @@
   --graph-folder-palette-9:#c084fc;
   --graph-folder-palette-10:#f472b6;
   --graph-shared-color:#64748b;
+
+  /* Kanban column tints (dark): blend a lighter, desaturated accent hue into the panel
+     color rather than a flat alpha overlay — low-alpha warm colors over near-black just
+     darken toward brown/maroon instead of reading as a lighter tint. */
+  --tc-doing:color-mix(in srgb, var(--surface2) 82%, var(--amber) 18%);
+  --tc-done:color-mix(in srgb, var(--surface2) 80%, var(--success) 20%);
+  --tc-important:color-mix(in srgb, var(--surface2) 80%, var(--danger) 20%);
+  --tc-medium:color-mix(in srgb, var(--surface2) 80%, var(--success) 20%);
+  --tc-upcoming:color-mix(in srgb, var(--surface2) 88%, var(--amber) 12%);
+  --tc-today:color-mix(in srgb, var(--surface2) 70%, var(--amber) 30%);
+  --tc-overdue:color-mix(in srgb, var(--surface2) 65%, var(--danger) 35%);
 }
 
 /* ── LIGHT THEME ── */
@@ -42,6 +53,16 @@
   --sql:#c47d0e;--danger:#dc2626;--danger-dim:#fee2e2;--success:#16a34a;--amber:#d9a94f;--al-color:#3f6a92;
   --search-bg:#f2f3f7;--search-text:#1a1d2e;--search-border:#3b6fe0;
   --search-card:#ffffff;--search-card-border:#d4d8e8;--search-muted:#5a6380;
+
+  /* Kanban column tints (light) — plain alpha overlays already read correctly on a white
+     panel, unchanged from the original implementation. */
+  --tc-doing:rgba(217,169,79,.10);
+  --tc-done:rgba(74,222,128,.10);
+  --tc-important:rgba(248,113,113,.10);
+  --tc-medium:rgba(74,222,128,.10);
+  --tc-upcoming:rgba(217,169,79,.06);
+  --tc-today:rgba(217,169,79,.16);
+  --tc-overdue:rgba(248,113,113,.22);
 
   /* ===== Graph View: color tokens (light) ===== */
   --graph-node-stroke:#ffffff;
@@ -962,12 +983,12 @@ thead .dt-sticky-col{z-index:4;background:var(--surface2)}
 .task-add-btn:hover{color:var(--accent)}
 /* Column background tints per group-by mode — subtle overlays on top of the default
    .task-column background, header/count text stays var(--text)/var(--text-dim) always. */
-.task-column.tc-doing{background:rgba(217,169,79,.10)}
-.task-column.tc-done,.task-column.tc-medium{background:rgba(74,222,128,.10)}
-.task-column.tc-important{background:rgba(248,113,113,.10)}
-.task-column.tc-upcoming{background:rgba(217,169,79,.06)}
-.task-column.tc-today{background:rgba(217,169,79,.16)}
-.task-column.tc-overdue{background:rgba(248,113,113,.22)}
+.task-column.tc-doing{background:var(--tc-doing)}
+.task-column.tc-done,.task-column.tc-medium{background:var(--tc-done)}
+.task-column.tc-important{background:var(--tc-important)}
+.task-column.tc-upcoming{background:var(--tc-upcoming)}
+.task-column.tc-today{background:var(--tc-today)}
+.task-column.tc-overdue{background:var(--tc-overdue)}
 
 .task-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;cursor:pointer}
 .task-card:hover{border-color:var(--accent)}
