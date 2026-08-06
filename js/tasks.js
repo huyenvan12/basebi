@@ -160,12 +160,13 @@ export function getTasksGroupedByStatus(){
   return {
     todo: sortTasksByDue(state.tasks.filter(t=>t.status==='todo')),
     doing: sortTasksByDue(state.tasks.filter(t=>t.status==='doing')),
-    done: sortTasksByDue(state.tasks.filter(t=>t.status==='done'))
+    done: sortTasksByDue(state.tasks.filter(t=>t.status==='done')),
+    archived: sortTasksByDue(state.tasks.filter(t=>t.status==='archived'))
   };
 }
 export function getTasksGroupedByDueDate(){
   const groups={overdue:[],today:[],upcoming:[],noDueDate:[]};
-  state.tasks.forEach(t=>{
+  state.tasks.filter(t=>t.status!=='archived').forEach(t=>{
     const b=dueDateBucket(t.due_date);
     if(b==='overdue') groups.overdue.push(t);
     else if(b==='today') groups.today.push(t);
@@ -176,10 +177,11 @@ export function getTasksGroupedByDueDate(){
   return groups;
 }
 export function getTasksGroupedByPriority(){
+  const active=state.tasks.filter(t=>t.status!=='archived');
   return {
-    important: sortTasksByDue(state.tasks.filter(t=>t.priority==='important')),
-    medium: sortTasksByDue(state.tasks.filter(t=>t.priority==='medium')),
-    low: sortTasksByDue(state.tasks.filter(t=>t.priority==='low'))
+    important: sortTasksByDue(active.filter(t=>t.priority==='important')),
+    medium: sortTasksByDue(active.filter(t=>t.priority==='medium')),
+    low: sortTasksByDue(active.filter(t=>t.priority==='low'))
   };
 }
 
@@ -377,7 +379,8 @@ export function renderTasksView(){
     columns=[
       {key:'todo',cls:'tc-todo',label:'To do',tasks:g.todo},
       {key:'doing',cls:'tc-doing',label:'Doing',tasks:g.doing},
-      {key:'done',cls:'tc-done',label:'Done',tasks:g.done}
+      {key:'done',cls:'tc-done',label:'Done',tasks:g.done},
+      {key:'archived',cls:'tc-archived',label:'Archived',tasks:g.archived}
     ];
   }
   wrap.innerHTML=columns.map(col=>`<div class="task-column ${col.cls}">
@@ -399,7 +402,7 @@ export function renderTaskCard(task){
   const linkIcon = task.source_note_id
     ? `<span class="task-card-link" title="Go to source Daily Note" onclick="event.stopPropagation();jumpToSourceNote(${task.source_note_id},'${task.source_line_id||''}')">${LINK_SVG}</span>`
     : '';
-  return `<div class="task-card" data-task-id="${task.id}" onclick="openTaskPopoverForCard('${task.id}',event)">
+  return `<div class="task-card${task.status==='archived'?' task-card-archived':''}" data-task-id="${task.id}" onclick="openTaskPopoverForCard('${task.id}',event)">
     <div class="task-card-title">${esc(task.title)}</div>
     <div class="task-card-meta">
       <span class="task-due-dot ${dot.cls}" title="${dueDateBucket(task.due_date)}">${dot.emoji}</span>
@@ -411,6 +414,7 @@ export function renderTaskCard(task){
       <option value="todo" ${task.status==='todo'?'selected':''}>To do</option>
       <option value="doing" ${task.status==='doing'?'selected':''}>Doing</option>
       <option value="done" ${task.status==='done'?'selected':''}>Done</option>
+      <option value="archived" ${task.status==='archived'?'selected':''}>Archived</option>
     </select>
   </div>`;
 }

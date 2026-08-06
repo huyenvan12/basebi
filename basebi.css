@@ -982,6 +982,8 @@ thead .dt-sticky-col{z-index:4;background:var(--surface2)}
 .task-column.tc-done{border-left:4px solid var(--success)}
 .task-column.tc-overdue{border-left:4px solid var(--danger)}
 .task-column.tc-todo,.task-column.tc-nodue,.task-column.tc-upcoming{border-left:4px solid var(--text-dim)}
+/* Archived: reads as visibly "put away" vs. the other 3 status columns */
+.task-column.tc-archived{border-left:4px solid var(--text-dim);opacity:.6;filter:blur(.3px)}
 /* Priority: dedicated blue-violet family, distinct from Status (amber/green) and
    Due date (amber/red), so switching group-by modes reads as a different lens at a glance. */
 .task-column.tc-low{border-left:4px solid var(--al-color)}
@@ -998,6 +1000,7 @@ thead .dt-sticky-col{z-index:4;background:var(--surface2)}
 [data-theme="light"] .task-column.tc-today{background:var(--tc-today);border-left:1px solid var(--border)}
 [data-theme="light"] .task-column.tc-overdue{background:var(--tc-overdue);border-left:1px solid var(--border)}
 [data-theme="light"] .task-column.tc-todo,[data-theme="light"] .task-column.tc-nodue{border-left:1px solid var(--border)}
+[data-theme="light"] .task-column.tc-archived{border-left:1px solid var(--border)}
 
 .task-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;cursor:pointer}
 .task-card:hover{border-color:var(--accent)}
