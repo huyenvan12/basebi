@@ -104,4 +104,12 @@ export const state = {
 
   // tab/nav state
   currentTab: 'notes',
+
+  // onboarding state
+  currentUserHasSeenTour: false,
+  onboardingSteps: [],
+  onboardingTooltips: [],
+  tourActive: false,           // read by onboarding-tooltips.js to enforce "tour takes priority"
+  tourMode: null,               // 'first-login' | 'help'
+  tourStepIndex: 0,
 };

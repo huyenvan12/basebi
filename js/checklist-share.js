@@ -54,7 +54,7 @@ export function renderMyChecklists(){
     const unackCount=shares.filter(s=>s.comment&&s.comment.trim()&&(!s.owner_ack_at||(s.comment_updated_at&&s.comment_updated_at>s.owner_ack_at))).length;
     const panelOpen=!!state.checklistSharePanelOpen[c.id];
     const shareControl=shares.length===0
-      ?`<button class="ci-share-btn" onclick="openShareModal('${escJs(c.id)}')">+ Share</button>`
+      ?`<button class="ci-share-btn" data-tour-id="checklist-share" onclick="openShareModal('${escJs(c.id)}')">+ Share</button>`
       :`<button class="ci-share-badge-btn" onclick="toggleSharePanel('${escJs(c.id)}')">
           <span class="ci-share-badge-seg">🔗 ${shares.length}</span>${unackCount?`<span class="ci-share-badge-divider"></span><span class="ci-share-badge-seg ci-share-badge-comment">💬 ${unackCount}</span>`:''}
           <span class="ci-share-badge-chevron">${panelOpen?'▴':'▾'}</span>
