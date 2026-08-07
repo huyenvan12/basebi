@@ -35,14 +35,14 @@ jobs:
           attempt_limit: 3
           attempt_delay: 15000
 
+      # Not wretry-wrapped: upload-pages-artifact is a composite action, and
+      # wretry.action can only wrap JS/docker actions ("Runner 'composite'
+      # does not implemented"). It's a fast local archiving step, so the
+      # transient-network risk it would guard against is low.
       - name: Upload Pages artifact
-        uses: Wandalen/wretry.action@v3.8.0
+        uses: actions/upload-pages-artifact@v5
         with:
-          action: actions/upload-pages-artifact@v5
-          attempt_limit: 3
-          attempt_delay: 15000
-          with: |
-            path: .
+          path: .
 
       - name: Deploy to GitHub Pages
         uses: Wandalen/wretry.action@v3.8.0
