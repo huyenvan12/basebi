@@ -10,6 +10,7 @@ import { state } from './state.js';
 import { sb, markTourSeen } from './supabase-client.js';
 import { isFeatureVisible } from './feature-flags.js';
 import { closeGearMenu } from './ui-helpers.js';
+import { refreshHintButtonVisibility } from './onboarding-tooltips.js';
 
 const STEP_TARGETS = {
   notes:             '#tabNotes',
@@ -79,6 +80,7 @@ export function startTour(mode){
   state.tourActive = true;
   state.tourMode = mode;
   state.tourStepIndex = 0;
+  refreshHintButtonVisibility(); // hide the hint bulb — Quick Tour takes priority while active
   renderTourStep();
 }
 
@@ -115,6 +117,7 @@ async function renderTourStep(){
   if(!overlay || !card) return;
   overlay.style.display = '';
 
+  const isFirst = state.tourStepIndex === 0;
   const isLast = state.tourStepIndex === activeSteps.length-1;
   const dots = activeSteps.map((_,i)=>`<span class="tour-dot${i===state.tourStepIndex?' active':''}"></span>`).join('');
 
@@ -124,11 +127,16 @@ async function renderTourStep(){
     <div class="tour-dots">${dots}</div>
     <div class="tour-card-actions">
       <button class="btn btn-ghost" id="tourSkipBtn">Skip</button>
-      <button class="btn btn-primary" id="tourNextBtn">${isLast?'Done':'Next'}</button>
+      <div class="tour-card-nav">
+        ${isFirst?'':'<button class="btn btn-ghost" id="tourBackBtn">Back</button>'}
+        <button class="btn btn-primary" id="tourNextBtn">${isLast?'Done':'Next'}</button>
+      </div>
     </div>`;
 
   document.getElementById('tourSkipBtn').onclick = finishTour;
   document.getElementById('tourNextBtn').onclick = isLast ? finishTour : nextTourStep;
+  const backBtn = document.getElementById('tourBackBtn');
+  if(backBtn) backBtn.onclick = prevTourStep;
 
   positionOverlay();
 }
@@ -140,6 +148,12 @@ function nextTourStep(){
   renderTourStep();
 }
 
+function prevTourStep(){
+  if(state.tourStepIndex===0) return;
+  state.tourStepIndex--;
+  renderTourStep();
+}
+
 function finishTour(){
   const overlay = document.getElementById('tourOverlay');
   if(overlay) overlay.style.display = 'none';
@@ -148,6 +162,7 @@ function finishTour(){
   state.tourMode = null;
   activeSteps = [];
   if(wasFirstLogin) markTourSeen();
+  refreshHintButtonVisibility(); // restore the hint bulb for whichever screen the tour left us on
 }
 
 export function initOnboardingTour(){

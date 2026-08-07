@@ -1411,10 +1411,22 @@ body.is-native-app .search-screen{padding-top:calc(50px + env(safe-area-inset-to
 .tour-dot{width:6px;height:6px;border-radius:50%;background:var(--border)}
 .tour-dot.active{background:var(--accent)}
 .tour-card-actions{display:flex;justify-content:space-between;align-items:center}
+.tour-card-nav{display:flex;gap:8px;align-items:center}
 
-.onb-tooltip-popover{position:fixed;z-index:180;background:var(--surface2);
-  border:1px solid var(--border);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.35);
+.onb-tooltip-popover{position:fixed;z-index:180;
+  background:color-mix(in srgb, var(--surface2) 82%, transparent);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.25);
   padding:8px 10px;font-size:11px;color:var(--text);max-width:220px;display:flex;
-  gap:6px;align-items:flex-start}
+  gap:6px;align-items:flex-start;opacity:0;transform:translateY(-4px);
+  transition:opacity .15s,transform .15s}
+.onb-tooltip-popover.in{opacity:1;transform:translateY(0)}
+.onb-tooltip-icon{flex-shrink:0;line-height:1.4}
 .onb-tooltip-close{background:none;border:none;color:var(--text-dim);cursor:pointer;
   font-size:13px;line-height:1;padding:0}
+
+.onb-hint-btn{position:fixed;top:58px;right:22px;width:38px;height:38px;border-radius:50%;
+  background:var(--surface2);border:1px solid var(--border);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:16px;
+  box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:60;transition:all .15s}
+.onb-hint-btn:hover{background:var(--accent-dim);border-color:var(--accent);transform:scale(1.08)}

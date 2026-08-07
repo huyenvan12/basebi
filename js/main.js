@@ -39,7 +39,7 @@ import {
 } from './test-prep.js';
 import { loadTasks, initTasks } from './tasks.js';
 import { loadOnboardingSteps, shouldAutoStartTour, startTour, initOnboardingTour } from './onboarding-tour.js';
-import { loadOnboardingTooltips, maybeShowTooltipsFor } from './onboarding-tooltips.js';
+import { loadOnboardingTooltips, setHintScreen, initOnboardingHints } from './onboarding-tooltips.js';
 
 // ══════════════════════════════════════════════════
 // TAB SWITCHING
@@ -94,9 +94,10 @@ export function switchTab(tab){
   // Regression fix (not a mechanical port): the original used actionBtn.setAttribute('onclick', ...),
   // which relies on the referenced function being a global. Under ES modules that silently no-ops
   // (button does nothing). Assign the handler directly instead.
-  if(tab==='notes'){ actionBtns.forEach(b=>{ b.style.display=''; b.textContent='+ New Note'; b.onclick=()=>openNoteModal(); }); maybeShowTooltipsFor('notes'); }
+  if(tab==='notes'){ actionBtns.forEach(b=>{ b.style.display=''; b.textContent='+ New Note'; b.onclick=()=>openNoteModal(); }); setHintScreen('notes'); }
   else if(tab==='campaigns'){ actionBtns.forEach(b=>{ b.style.display=''; b.textContent='+ Add Campaign'; b.onclick=openAddCampModal; }); }
   else{ actionBtns.forEach(b=>{ b.style.display='none'; }); }
+  if(tab!=='notes'&&tab!=='team'&&tab!=='deliveryTracker') setHintScreen(null);
   if(tab==='campaigns') renderCampTable();
   if(tab==='graph') renderGraph();
   if(tab==='team'){
@@ -113,12 +114,13 @@ export function switchTab(tab){
     document.getElementById('teamMonitorLogSubview').classList.toggle('active',state.currentTeamSubTab==='monitorlog');
     renderTeamList(); renderTeamSubnav();
     if(state.currentTeamSubTab==='monitorlog') renderMonitorLogList();
+    setHintScreen(state.currentTeamSubTab==='checklists' ? 'checklist' : null);
   }
   if(tab==='admin') renderAdminHub();
   if(tab==='deliveryTracker'){
     document.getElementById('dtManageTypesBtn').style.display=state.currentUserRole==='admin'?'':'none';
     switchGanttView(state.ganttActiveView);
-    maybeShowTooltipsFor('delivery');
+    setHintScreen('delivery');
   }
   if(tab==='testprep') renderTestPrep();
 }
@@ -140,8 +142,9 @@ export function switchTeamSubTab(sub){
   document.getElementById('mobTeamSubTabNotes').classList.toggle('active',sub==='notes');
   document.getElementById('mobTeamSubTabChecklists').classList.toggle('active',sub==='checklists');
   document.getElementById('mobTeamSubTabMonitorLog').classList.toggle('active',sub==='monitorlog');
-  if(sub==='checklists'){ renderTeamSubnav(); maybeShowTooltipsFor('checklist'); }
+  if(sub==='checklists'){ renderTeamSubnav(); }
   if(sub==='monitorlog') renderMonitorLogList();
+  setHintScreen(sub==='checklists' ? 'checklist' : null);
 }
 // Renders the admin-only inner pill toggle (Templates | My Checklists) and
 // makes sure non-admins land directly on My Checklists with no toggle shown.
@@ -462,6 +465,9 @@ async function initApp(){
 
     applyNavGating();
     startFeatureVisibilityPolling();
+    // switchTab() is never called for the default landing tab (Notes is already active in the
+    // static HTML at boot), so the hint button needs its initial context set explicitly here.
+    setHintScreen(state.currentTab==='notes' ? 'notes' : state.currentTab==='deliveryTracker' ? 'delivery' : (state.currentTab==='team'&&state.currentTeamSubTab==='checklists') ? 'checklist' : null);
 
     msg.textContent='Ready!'; bar.style.width='100%';
     await new Promise(r=>setTimeout(r,300));
@@ -638,5 +644,6 @@ initFolders();
 initDailyNote();
 initAdminHub();
 initOnboardingTour();
+initOnboardingHints();
 initMain();
 checkAuthAndInit();

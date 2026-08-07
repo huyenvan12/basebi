@@ -22,7 +22,7 @@ import { today } from './daily-note.js';
 // marker helpers + task lookup from tasks.js to render Daily Note lines. Function-body-only.
 import { LINE_ID_RE, stripLineId, findTaskByLineId, dailyLineIconHtml, reattachLineIds } from './tasks.js';
 import { isFeatureVisible } from './feature-flags.js';
-import { maybeShowTooltipsFor } from './onboarding-tooltips.js';
+import { setHintScreen } from './onboarding-tooltips.js';
 
 // ══════════════════════════════════════════════════
 // DATA LAYER
@@ -728,7 +728,7 @@ export function openNoteModal(id){
   renderShareToggle();
   document.getElementById('noteModalOverlay').classList.add('open');
   toggleCodeField(); // apply type colors after modal is visible
-  maybeShowTooltipsFor('notes');
+  setHintScreen('notes');
   setTimeout(()=>document.getElementById('f-title').focus(),50);
 }
 export function closeNoteModal(){document.getElementById('noteModalOverlay').classList.remove('open');state.editingNoteId=null;state.selectedTags=[];state.selectedLinks=[];closeInlineLinkDd();}
