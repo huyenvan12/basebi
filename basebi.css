@@ -1394,3 +1394,28 @@ body.is-native-app #mobDrawer,
 body.is-native-app #mobDrawerScrim,
 body.is-native-app .mob-hamburger-btn{display:none!important}
 body.is-native-app .search-screen{padding-top:calc(50px + env(safe-area-inset-top))}
+
+/* ══════════════════════════════════════════════════
+   ONBOARDING — Quick Tour spotlight overlay + contextual tooltip popovers
+   ══════════════════════════════════════════════════ */
+.tour-overlay{position:fixed;inset:0;z-index:200;pointer-events:none}
+.tour-ring{position:fixed;pointer-events:none;border-radius:8px;
+  box-shadow:0 0 0 3px var(--accent),0 0 0 6000px rgba(0,0,0,.35);
+  transition:top .15s,left .15s,width .15s,height .15s}
+.tour-card{position:fixed;pointer-events:auto;background:var(--surface);
+  border:1px solid var(--border);border-radius:10px;padding:14px 16px;width:260px;
+  box-shadow:0 8px 24px rgba(0,0,0,.4);display:flex;flex-direction:column;gap:8px}
+.tour-card-title{font-weight:600;color:var(--text)}
+.tour-card-caption{font-size:10px;color:var(--text-dim)}
+.tour-card-body{font-size:12px;color:var(--text-muted);line-height:1.5}
+.tour-dots{display:flex;gap:5px;margin:4px 0}
+.tour-dot{width:6px;height:6px;border-radius:50%;background:var(--border)}
+.tour-dot.active{background:var(--accent)}
+.tour-card-actions{display:flex;justify-content:space-between;align-items:center}
+
+.onb-tooltip-popover{position:fixed;z-index:180;background:var(--surface2);
+  border:1px solid var(--border);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.35);
+  padding:8px 10px;font-size:11px;color:var(--text);max-width:220px;display:flex;
+  gap:6px;align-items:flex-start}
+.onb-tooltip-close{background:none;border:none;color:var(--text-dim);cursor:pointer;
+  font-size:13px;line-height:1;padding:0}

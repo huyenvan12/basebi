@@ -11,13 +11,22 @@ export const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // Also reused by future features (Campaign Log, Admin Hub) that need the same admin gate.
 export async function loadCurrentUserIsAdmin(){
   if(!state.currentUserId) return false;
-  const{data,error}=await sb.from('profiles').select('role,org_id,is_qa_seat').eq('id',state.currentUserId).single();
+  const{data,error}=await sb.from('profiles').select('role,org_id,is_qa_seat,has_seen_tour').eq('id',state.currentUserId).single();
   if(!error&&data){
     state.currentUserOrgId=data.org_id;
     state.currentUserRole=data.role;
     state.currentUserIsQaSeat=!!data.is_qa_seat;
+    state.currentUserHasSeenTour=!!data.has_seen_tour;
   }
   return !error && data && data.role==='admin';
+}
+
+// Marks the tour as seen for the current user — only called from a first-login auto-tour
+// finish (Skip or Done), never from a Help-menu replay (see onboarding-tour.js startTour()).
+export async function markTourSeen(){
+  if(!state.currentUserId) return;
+  state.currentUserHasSeenTour = true; // optimistic — avoids a re-trigger race on next render
+  await sb.from('profiles').update({has_seen_tour:true}).eq('id', state.currentUserId);
 }
 
 export async function loadProfilesMap(){
