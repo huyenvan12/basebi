@@ -1,21 +1,53 @@
 // ══════════════════════════════════════════════════
-// ONBOARDING TOUR — first-login spotlight walkthrough of the 4 core nav modules, replayable
-// from the gear menu's Help item. Imports switchTab-adjacent helpers from main.js only inside
-// function bodies (never at module top-level), mirroring the safe daily-note.js<->main.js
-// cycle — see initOnboardingTour() below.
+// ONBOARDING TOUR — first-login spotlight walkthrough of the core nav modules, replayable
+// from the gear menu's Help item. Desktop only — the Team Shared sub-steps drive real
+// navigation (switchTab/switchTeamSubTab) to reveal their targets, which only exist on the
+// desktop layout. Imports switchTab/switchTeamSubTab from main.js only inside function
+// bodies (never at module top-level), mirroring the safe daily-note.js<->main.js cycle —
+// see beforeShowStep()/initOnboardingTour() below.
 // ══════════════════════════════════════════════════
 import { state } from './state.js';
 import { sb, markTourSeen } from './supabase-client.js';
 import { isFeatureVisible } from './feature-flags.js';
-import { openMobDrawer, closeGearMenu } from './ui-helpers.js';
+import { closeGearMenu } from './ui-helpers.js';
 
 const STEP_TARGETS = {
-  notes:     { desktop:'#tabNotes',     mobile:'#mobTabNotes' },
-  campaigns: { desktop:'#tabCampaigns', mobile:'#mobTabCampaigns' },
-  checklist: { desktop:'#tabTeam',      mobile:'#mobTabTeam' },
-  delivery:  { desktop:'#tabGantt',     mobile:'#mobTabGantt' },
+  notes:             '#tabNotes',
+  campaigns:         '#tabCampaigns',
+  team_shared:       '#tabTeam',
+  team_shared_notes: '#teamSubTabNotes',
+  checklist:         '#teamSubTabChecklists',
+  delivery:          '#tabGantt',
+  delivery_timeline: '#dtSubTabTimeline',
+  delivery_calendar: '#dtSubTabCalendar',
+  delivery_tasks:    '#dtSubTabTasks',
 };
-const MODULE_TO_FEATURE_KEY = {notes:'notes', campaigns:'campaign', checklist:'checklist', delivery:'gantt_tracker'};
+
+const MODULE_VISIBLE = {
+  notes:             ()=>isFeatureVisible('notes'),
+  campaigns:         ()=>isFeatureVisible('campaign'),
+  team_shared:       ()=>isFeatureVisible('teamshared_notes')||isFeatureVisible('checklist'),
+  team_shared_notes: ()=>isFeatureVisible('teamshared_notes'),
+  checklist:         ()=>isFeatureVisible('checklist'),
+  delivery:          ()=>isFeatureVisible('gantt_tracker'),
+  delivery_timeline: ()=>isFeatureVisible('gantt_tracker'),
+  delivery_calendar: ()=>isFeatureVisible('gantt_tracker'),
+  delivery_tasks:    ()=>isFeatureVisible('gantt_tracker')&&isFeatureVisible('tasks'),
+};
+
+// Steps whose target only becomes visible after navigating there — the desktop Team Shared
+// sub-nav and Delivery Tracker sub-nav are page content (not a persistent menu), so they
+// don't exist on-screen until the tour actually switches to them.
+async function beforeShowStep(module){
+  const { switchTab, switchTeamSubTab } = await import('./main.js');
+  if(module==='team_shared_notes'){ switchTab('team'); switchTeamSubTab('notes'); }
+  if(module==='checklist'){ switchTab('team'); switchTeamSubTab('checklists'); }
+  if(module==='delivery_timeline'||module==='delivery_calendar'||module==='delivery_tasks'){
+    const { switchGanttView } = await import('./gantt-tracker.js');
+    switchTab('deliveryTracker');
+    switchGanttView(module==='delivery_timeline'?'timeline':module==='delivery_calendar'?'calendar':'tasks');
+  }
+}
 
 let activeSteps = [];
 
@@ -35,20 +67,18 @@ function isMobile(){
 function targetEl(module){
   const sel=STEP_TARGETS[module];
   if(!sel) return null;
-  const el=document.getElementById((isMobile()?sel.mobile:sel.desktop).slice(1));
-  return (el && el.style.display!=='none') ? el : null;
+  const el=document.getElementById(sel.slice(1));
+  return (el && el.style.display!=='none' && el.offsetParent!==null) ? el : null;
 }
 
 // mode: 'first-login' | 'help'
 export function startTour(mode){
-  activeSteps = state.onboardingSteps.filter(s =>
-    isFeatureVisible(MODULE_TO_FEATURE_KEY[s.module]) && targetEl(s.module)
-  );
+  if(isMobile()) return; // Quick Tour is desktop-only
+  activeSteps = state.onboardingSteps.filter(s => MODULE_VISIBLE[s.module]?.());
   if(!activeSteps.length) return;
   state.tourActive = true;
   state.tourMode = mode;
   state.tourStepIndex = 0;
-  if(isMobile()) openMobDrawer();
   renderTourStep();
 }
 
@@ -76,8 +106,10 @@ function positionOverlay(){
   card.style.left = cardLeft+'px';
 }
 
-function renderTourStep(){
+async function renderTourStep(){
   const step = activeSteps[state.tourStepIndex];
+  await beforeShowStep(step.module);
+
   const overlay = document.getElementById('tourOverlay');
   const card = document.getElementById('tourCard');
   if(!overlay || !card) return;
@@ -85,11 +117,9 @@ function renderTourStep(){
 
   const isLast = state.tourStepIndex === activeSteps.length-1;
   const dots = activeSteps.map((_,i)=>`<span class="tour-dot${i===state.tourStepIndex?' active':''}"></span>`).join('');
-  const caption = step.module==='checklist' ? `<div class="tour-card-caption">📍 Found under Team Shared</div>` : '';
 
   card.innerHTML = `
     <div class="tour-card-title">${escHtml(step.title)}</div>
-    ${caption}
     <div class="tour-card-body">${escHtml(step.body)}</div>
     <div class="tour-dots">${dots}</div>
     <div class="tour-card-actions">
@@ -107,7 +137,6 @@ function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').rep
 
 function nextTourStep(){
   state.tourStepIndex++;
-  if(isMobile()) openMobDrawer();
   renderTourStep();
 }
 
