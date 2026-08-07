@@ -1,0 +1,52 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: https://basebi.net
+    steps:
+      - name: Checkout
+        uses: Wandalen/wretry.action@v3.8.0
+        with:
+          action: actions/checkout@v6
+          attempt_limit: 3
+          attempt_delay: 15000
+
+      - name: Configure Pages
+        uses: Wandalen/wretry.action@v3.8.0
+        with:
+          action: actions/configure-pages@v6
+          attempt_limit: 3
+          attempt_delay: 15000
+
+      - name: Upload Pages artifact
+        uses: Wandalen/wretry.action@v3.8.0
+        with:
+          action: actions/upload-pages-artifact@v5
+          attempt_limit: 3
+          attempt_delay: 15000
+          with: |
+            path: .
+
+      - name: Deploy to GitHub Pages
+        uses: Wandalen/wretry.action@v3.8.0
+        with:
+          action: actions/deploy-pages@v5
+          attempt_limit: 3
+          attempt_delay: 15000
