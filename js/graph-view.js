@@ -111,7 +111,7 @@ function graphRecalcLabelK(){
 // viewBox->viewport ratio), a constant font-size/offset in the <text> stays visually constant.
 function graphUpdateLabelTransforms(){
   document.querySelectorAll('#graphSvg .graph-label-g').forEach(g=>{
-    const id=+g.dataset.id, p=graphNodePositions[id];
+    const id=g.dataset.id, p=graphNodePositions[id];
     if(!p)return;
     g.setAttribute('transform',`translate(${p.x},${p.y}) scale(${graphLabelK})`);
     const r=+g.dataset.r||0;
@@ -173,8 +173,7 @@ function graphNotes(){
 function graphSyncNodePositions(){
   const gNotes=graphNotes();
   const currentIds=new Set(gNotes.map(n=>n.id));
-  Object.keys(graphNodePositions).forEach(k=>{
-    const id=+k;
+  Object.keys(graphNodePositions).forEach(id=>{
     if(!currentIds.has(id)){ delete graphNodePositions[id]; delete graphVelocities[id]; }
   });
   const existing=Object.values(graphNodePositions);
@@ -263,11 +262,11 @@ function graphSimulationStep(){
 
 function graphUpdatePositions(){
   document.querySelectorAll('#graphSvg .graph-node').forEach(c=>{
-    const p=graphNodePositions[+c.dataset.id]; if(!p)return;
+    const p=graphNodePositions[c.dataset.id]; if(!p)return;
     c.setAttribute('cx',p.x); c.setAttribute('cy',p.y);
   });
   document.querySelectorAll('#graphSvg .graph-edge').forEach(e=>{
-    const A=graphNodePositions[+e.dataset.a],B=graphNodePositions[+e.dataset.b];
+    const A=graphNodePositions[e.dataset.a],B=graphNodePositions[e.dataset.b];
     if(!A||!B)return;
     e.setAttribute('x1',A.x);e.setAttribute('y1',A.y);e.setAttribute('x2',B.x);e.setAttribute('y2',B.y);
   });
@@ -404,16 +403,16 @@ export function renderGraph(){
 function graphHighlight(id){
   const nb=graphNeighbors(id); const keep=new Set(nb); keep.add(id);
   document.querySelectorAll('#graphSvg .graph-node').forEach(c=>{
-    const cid=+c.dataset.id;
+    const cid=c.dataset.id;
     c.classList.toggle('is-active', cid===id);
     c.classList.toggle('is-dim', !keep.has(cid));
   });
   document.querySelectorAll('#graphSvg .graph-edge').forEach(e=>{
-    const a=+e.dataset.a,b=+e.dataset.b;
+    const a=e.dataset.a,b=e.dataset.b;
     e.classList.toggle('is-dim', !(a===id||b===id));
   });
   document.querySelectorAll('#graphSvg .graph-label-g').forEach(g=>{
-    g.classList.toggle('is-dim', !keep.has(+g.dataset.id));
+    g.classList.toggle('is-dim', !keep.has(g.dataset.id));
   });
 }
 function graphClearHighlight(){
@@ -440,7 +439,7 @@ function graphShowDetail(id){
   document.getElementById('gnTags').innerHTML=(n.tags||[]).map(t=>`<span class="graph-chip">#${esc(t)}</span>`).join('')||'';
   const linked=getBacklinks(id).filter(ln=>gNoteIds.has(ln.id));
   document.getElementById('gnLinks').innerHTML=linked.length
-    ? linked.map(ln=>`<div class="graph-link-item" onclick="graphShowDetail(${ln.id})">${esc(ln.title)}</div>`).join('')
+    ? linked.map(ln=>`<div class="graph-link-item" onclick="graphShowDetail('${ln.id}')">${esc(ln.title)}</div>`).join('')
     : '<div class="graph-node-meta">No connections yet</div>';
   // Regression fix (not a mechanical port): the original used
   // gnOpenBtn.setAttribute('onclick', `graphOpenNote(${id})`), which relies on graphOpenNote

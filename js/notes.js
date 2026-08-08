@@ -48,14 +48,16 @@ export async function saveNotes(arr){
   await sb.from('notes').upsert(rows,{onConflict:'id'});
 }
 export async function saveOneNote(n){
-  const{error}=await sb.from('notes').upsert({
+  const{data,error}=await sb.from('notes').upsert({
     id:n.id, title:n.title, folder:n.folder, folder_id:n.folder_id||null, type:n.type,
     tags:n.tags||[], links:n.links||[], body:n.body||null,
     code:n.code||null, pinned:n.pinned||false,
     created:n.created, modified:n.modified, daily_date:n.daily_date||null,
     is_shared:n.is_shared||false
-  },{onConflict:'id'});
+  },{onConflict:'id'}).select().single();
   if(error) throw error;
+  n.id=data.id;
+  return data;
 }
 
 // ══════════════════════════════════════════════════
@@ -280,7 +282,7 @@ export function renderNoteList(){
     ?'<div class="note-empty">No notes found</div>'
     :filtered.map(n=>{
       const excerpt=(n.body||n.code||'').slice(0,55).replace(/\n/g,' ');
-      return`<div class="note-item ${n.id===state.activeNoteId?'active':''}" onclick="selectNote(${n.id})">
+      return`<div class="note-item ${n.id===state.activeNoteId?'active':''}" onclick="selectNote('${n.id}')">
         <div class="note-item-title">${n.pinned?'<span class="note-item-pin">📌</span> ':''} ${hl(n.title,state.searchQuery)}</div>
         <div class="note-item-meta">
           <span class="note-type-badge ${n.type==='code'?'type-code':'type-plain'}">${n.type==='code'?'Code':'Plain'}</span>
@@ -298,7 +300,7 @@ export function renderNoteList(){
       ?'<div class="note-empty">No notes found</div>'
       :filtered.map(n=>{
         const excerpt=(n.body||n.code||'').slice(0,55).replace(/\n/g,' ');
-        return`<div class="mob-team-card ${n.id===state.activeNoteId?'active':''}" onclick="selectNote(${n.id})">
+        return`<div class="mob-team-card ${n.id===state.activeNoteId?'active':''}" onclick="selectNote('${n.id}')">
           <div class="mob-team-card-title">${n.pinned?'📌 ':''}${hl(n.title,state.searchQuery)}</div>
           <div class="mob-team-card-meta">
             <span class="note-type-badge ${n.type==='code'?'type-code':'type-plain'}">${n.type==='code'?'Code':'Plain'}</span>
@@ -343,12 +345,12 @@ export function renderDetail(note){
   </div>`:'';
   const modLine=note.modified&&note.modified!==note.created?`<span>modified ${fmtDate(note.modified)}</span>`:'';
   const captureBar=note.daily_date?`<div class="capture-bar">
-      <input type="text" id="dailyCaptureInput" placeholder="Log a timestamped entry…" autocomplete="off" onkeydown="if(event.key==='Enter')appendDailyEntry(${note.id})">
+      <input type="text" id="dailyCaptureInput" placeholder="Log a timestamped entry…" autocomplete="off" onkeydown="if(event.key==='Enter')appendDailyEntry('${note.id}')">
       <span class="capture-hint">Enter to append</span>
     </div>`:'';
   const isOwner=note.owner_id===state.currentUserId;
-  const ownerActions=isOwner?`<button class="btn btn-ghost" style="font-size:11px" onclick="openNoteModal(${note.id})">✎ Edit</button>
-      <button class="btn btn-danger" style="font-size:11px" onclick="confirmDeleteNote(${note.id})">✕ Delete</button>`:'';
+  const ownerActions=isOwner?`<button class="btn btn-ghost" style="font-size:11px" onclick="openNoteModal('${note.id}')">✎ Edit</button>
+      <button class="btn btn-danger" style="font-size:11px" onclick="confirmDeleteNote('${note.id}')">✕ Delete</button>`:'';
   el.innerHTML=`
     <div class="note-detail-header">
       <button class="note-detail-back-btn" onclick="closeNoteDetail()">← Back</button>
@@ -361,7 +363,7 @@ export function renderDetail(note){
     </div>
     <div class="detail-actions">
       ${ownerActions}
-      <button class="pin-btn ${note.pinned?'pinned':''}" onclick="togglePin(${note.id})" title="${note.pinned?'Unpin note':'Pin note'}">${note.pinned?'📌':'📍'}</button>
+      <button class="pin-btn ${note.pinned?'pinned':''}" onclick="togglePin('${note.id}')" title="${note.pinned?'Unpin note':'Pin note'}">${note.pinned?'📌':'📍'}</button>
     </div>
     <div class="note-detail-content" id="noteDetailContent">${body}</div>
     ${linkedSection}
@@ -424,7 +426,7 @@ export function renderTeamList(){
     ?'<div class="note-empty">No team-shared notes yet</div>'
     :list.map(n=>{
       const excerpt=(n.body||n.code||'').slice(0,55).replace(/\n/g,' ');
-      return`<div class="note-item ${n.id===state.activeTeamNoteId?'active':''}" onclick="selectTeamNote(${n.id})">
+      return`<div class="note-item ${n.id===state.activeTeamNoteId?'active':''}" onclick="selectTeamNote('${n.id}')">
         <div class="note-item-title">${hl(n.title,'')}</div>
         <div class="note-item-meta">
           <span class="note-type-badge ${n.type==='code'?'type-code':'type-plain'}">${n.type==='code'?'Code':'Plain'}</span>
@@ -442,7 +444,7 @@ export function renderTeamList(){
       ?'<div class="note-empty">No team-shared notes yet</div>'
       :list.map(n=>{
         const excerpt=(n.body||n.code||'').slice(0,55).replace(/\n/g,' ');
-        return`<div class="mob-team-card ${n.id===state.activeTeamNoteId?'active':''}" onclick="selectTeamNote(${n.id})">
+        return`<div class="mob-team-card ${n.id===state.activeTeamNoteId?'active':''}" onclick="selectTeamNote('${n.id}')">
           <div class="mob-team-card-title">${hl(n.title,'')}</div>
           <div class="mob-team-card-meta">
             <span class="note-type-badge ${n.type==='code'?'type-code':'type-plain'}">${n.type==='code'?'Code':'Plain'}</span>
@@ -476,8 +478,8 @@ export function renderTeamDetail(note){
   }else{body=`<div class="note-body">${renderBodyWithLinks(note.body||'','')}</div>`;}
   const isOwner=note.owner_id===state.currentUserId;
   const actions=isOwner?`<div class="detail-actions">
-      <button class="btn btn-ghost" style="font-size:11px" onclick="openNoteModal(${note.id})">✎ Edit</button>
-      <button class="btn btn-danger" style="font-size:11px" onclick="confirmDeleteNote(${note.id},'teamDetail')">✕ Delete</button>
+      <button class="btn btn-ghost" style="font-size:11px" onclick="openNoteModal('${note.id}')">✎ Edit</button>
+      <button class="btn btn-danger" style="font-size:11px" onclick="confirmDeleteNote('${note.id}','teamDetail')">✕ Delete</button>
     </div>`:`<div class="detail-actions"></div>`;
   el.innerHTML=`
     <div class="note-detail-header">
@@ -524,7 +526,7 @@ export function renderSearchResults(q){
   el.innerHTML=state.ssResults.map((n,i)=>{
     const excerpt=(n.body||n.code||'').slice(0,100).replace(/\n/g,' ');
     const ownerBadge=n.owner_id!==state.currentUserId?`<span class="author-badge">${esc(authorName(n.owner_id))}</span>`:'';
-    return`<div class="search-result-card ${i===state.ssCursor?'focused':''}" onclick="openNotePopup(${n.id})" data-idx="${i}">
+    return`<div class="search-result-card ${i===state.ssCursor?'focused':''}" onclick="openNotePopup('${n.id}')" data-idx="${i}">
       <div class="search-result-title">
         <span class="search-result-type ${n.type==='code'?'srt-code':'srt-plain'}">${n.type==='code'?'Code':'Plain'}</span>
         ${hl(n.title,q)}${ownerBadge}
@@ -815,7 +817,7 @@ export async function saveNote(){
     if(state.noteEditOriginTab==='team'){renderTeamList();renderTeamDetail(note);}
     else{renderAll();selectNote(savedId);}
   }else{
-    const note={id:Date.now(),title,folder:folderName,folder_id:folderId,type,
+    const note={title,folder:folderName,folder_id:folderId,type,
       tags:[...state.selectedTags],links:[...state.selectedLinks],
       body:type==='code'?document.getElementById('f-desc').value.trim():document.getElementById('f-body').value.trim(),
       code:type==='code'?document.getElementById('f-code').value.trim():null,
@@ -847,7 +849,7 @@ export function confirmDeleteNote(id,targetId){
   box.innerHTML=`<p>Delete "<strong>${esc(note.title)}</strong>"? This cannot be undone.</p>
     <div class="confirm-actions">
       <button class="btn btn-ghost" style="font-size:11px" onclick="this.closest('.confirm-box').remove()">Cancel</button>
-      <button class="btn btn-danger" style="font-size:11px" onclick="deleteNote(${id},'${targetId}')">Yes, delete</button>
+      <button class="btn btn-danger" style="font-size:11px" onclick="deleteNote('${id}','${targetId}')">Yes, delete</button>
     </div>`;
   el.querySelector('.detail-actions').insertAdjacentElement('afterend',box);
 }

@@ -67,7 +67,14 @@ export function renderAdminHub(){
 function renderTesterPanel(f){
   const testers=state.featureFlagTesters[f.id]||[];
   const testerIds=new Set(testers.map(t=>t.id));
-  const candidates=state.orgMembers.filter(m=>!testerIds.has(m.id));
+  // state.orgMembers excludes the current user (it's shared with checklist-share.js's
+  // "share with someone else" picker, where self-exclusion is correct) — but the tester
+  // allowlist is the only way for anyone, including the logged-in admin, to preview a
+  // beta/off feature now that admin_bypass is gone, so add self back in here.
+  const allMembers=state.orgMembers.some(m=>m.id===state.currentUserId)
+    ? state.orgMembers
+    : [...state.orgMembers,{id:state.currentUserId,display_name:state.profilesMap[state.currentUserId]||'You'}];
+  const candidates=allMembers.filter(m=>!testerIds.has(m.id));
   return`<div class="admin-flag-testers">
     <div class="admin-flag-testers-list">
       ${testers.length?testers.map(t=>`

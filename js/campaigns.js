@@ -26,12 +26,15 @@ export async function saveCamps(arr){
   await sb.from('campaigns').upsert(rows,{onConflict:'id'});
 }
 export async function saveOneCamp(camp){
-  await sb.from('campaigns').upsert({
+  const{data,error}=await sb.from('campaigns').upsert({
     id:camp.id, campaign_cd:camp.campaign_cd, campaign_nm:camp.campaign_nm,
     event_name:camp.event_name||null, type:camp.type, trigger_type:camp.trigger_type,
     status:camp.status, date:camp.date||null, note:camp.note||null,
     extra:camp.extra||{}, created:camp.created, modified:camp.modified
-  },{onConflict:'id'});
+  },{onConflict:'id'}).select().single();
+  if(error) throw error;
+  camp.id=data.id;
+  return data;
 }
 export async function deleteCampDB(id){ await sb.from('campaigns').delete().eq('id',id); }
 
@@ -110,7 +113,7 @@ export function renderCampTable(){
 
   const dataRows = sorted.map(camp=>{
     const note = camp.note ? camp.note.slice(0,50).replace(/\n/g,' ') : '';
-    return `<tr class="${camp.id===state.activeCampId?'camp-row-active':''}" data-id="${camp.id}" onclick="selectCamp(${camp.id})">
+    return `<tr class="${camp.id===state.activeCampId?'camp-row-active':''}" data-id="${camp.id}" onclick="selectCamp('${camp.id}')">
       <td class="cc-date">${esc(camp.date||'')}</td>
       <td class="cc-cd">${esc(camp.campaign_cd||'')}</td>
       <td class="cc-nm">${esc(camp.campaign_nm||'')}</td>
@@ -131,7 +134,7 @@ export function renderCampTable(){
   if(cardsWrap){
     cardsWrap.innerHTML = sorted.map(camp=>{
       const note = camp.note ? camp.note.slice(0,80).replace(/\n/g,' ') : '';
-      return `<div class="mob-camp-card ${camp.id===state.activeCampId?'camp-row-active':''}" data-id="${camp.id}" onclick="selectCamp(${camp.id})">
+      return `<div class="mob-camp-card ${camp.id===state.activeCampId?'camp-row-active':''}" data-id="${camp.id}" onclick="selectCamp('${camp.id}')">
         <div class="mob-camp-card-date">${esc(camp.date||'')}</div>
         <div class="mob-camp-card-title-row">
           <span class="mob-camp-card-cd">${esc(camp.campaign_cd||'')}</span>
@@ -145,12 +148,11 @@ export function renderCampTable(){
   }
 }
 
-export function saveInlinecamp(){
+export async function saveInlinecamp(){
   const cd = document.getElementById('ca-cd').value.trim();
   const nm = document.getElementById('ca-nm').value.trim();
   if(!cd||!nm){ document.getElementById('ca-cd').focus(); return; }
   const camp = {
-    id: Date.now(),
     campaign_cd: cd,
     campaign_nm: nm,
     event_name: document.getElementById('ca-event').value.trim(),
@@ -163,7 +165,7 @@ export function saveInlinecamp(){
     created: today(), modified: today()
   };
   state.campaigns.unshift(camp);
-  saveOneCamp(camp); hideInlineCampRow(); renderCampTable(); selectCamp(camp.id);
+  await saveOneCamp(camp); hideInlineCampRow(); renderCampTable(); selectCamp(camp.id);
 }
 
 export function showInlineCampRow(){
@@ -208,8 +210,6 @@ export function closeCampPanel(){
 }
 
 export function selectCamp(id){
-  // ensure numeric comparison
-  id = Number(id);
   // click same row = toggle close
   if(state.activeCampId===id){
     closeCampPanel();
@@ -238,7 +238,7 @@ export function selectCamp(id){
     <div class="csp-extra-row">
       <span class="csp-extra-key">${esc(k)}</span>
       <span class="csp-extra-val">${esc(v)}</span>
-      ${isOwner?`<button class="csp-extra-del" onclick="deleteCampExtra(${id},'${esc(k)}')">×</button>`:''}
+      ${isOwner?`<button class="csp-extra-del" onclick="deleteCampExtra('${id}','${esc(k)}')">×</button>`:''}
     </div>`).join('');
 
   document.getElementById('cspBody').innerHTML = `
@@ -255,7 +255,7 @@ export function selectCamp(id){
       ${isOwner?`<div class="csp-add-extra">
         <input class="csp-add-extra-input" id="extra-key-${id}" placeholder="Field name…" style="max-width:90px">
         <input class="csp-add-extra-input" id="extra-val-${id}" placeholder="Value…">
-        <button class="csp-add-extra-btn" onclick="addCampExtra(${id})">+ Add</button>
+        <button class="csp-add-extra-btn" onclick="addCampExtra('${id}')">+ Add</button>
       </div>`:''}
     </div>`;
 

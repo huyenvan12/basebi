@@ -369,7 +369,7 @@ let selTags = [], selLinks = [];
 let currentType = 'plain';
 let fileLoaded = false;
 
-function emptySlot(){ return {id: Date.now()+Math.random(), title:'', folder:'Business', type:'plain', tags:[], links:[], body:'', code:'', desc:'', saved:false}; }
+function emptySlot(){ return {id: crypto.randomUUID(), title:'', folder:'Business', type:'plain', tags:[], links:[], body:'', code:'', desc:'', saved:false}; }
 function updateCodePreview(){
   const code=document.getElementById('f-code').value;
   const preview=document.getElementById('codePreview');
@@ -675,7 +675,6 @@ function updateGitPreview(){
 function doExport(){
   saveCurrentToSlot();
   const newNotes = queue.filter(s=>s.saved&&s.title).map(s=>({
-    id: Date.now()+Math.random(),
     title: s.title, folder: s.folder, type: s.type,
     tags: s.tags, links: s.links,
     body: s.type==='code'?s.desc:s.body,

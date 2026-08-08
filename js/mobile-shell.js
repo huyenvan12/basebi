@@ -66,7 +66,7 @@ function renderMobNotesList(){
     </div>`;
   }).join('');
   el.querySelectorAll('.mob-note-card').forEach(card=>{
-    card.onclick = () => mobOpenNote(Number(card.dataset.id));
+    card.onclick = () => mobOpenNote(card.dataset.id);
   });
 }
 
