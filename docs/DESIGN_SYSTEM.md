@@ -25,6 +25,8 @@ Three tiers, distinguished by fill style so navigation and filtering are never v
 - **L3a · Sub Tabs** — nested navigation within a module (e.g. My Checklists / Shared with me). Same solid-fill language as L2, smaller size — because it's the same kind of action (navigation), it should look the same family.
 - **L3b · Filter Group** — modifies the current view without navigating away (e.g. "Group by: Status/Due date/Priority"). Outline-only active state, with a label prefix ("Group by:") to signal it's a filter, not a destination.
 
+**Implementation note (Phase 4, Delivery Tracker PR):** L3a's canonical shared class is `.subtab-l3a` (`basebi.css`), first extracted from Delivery Tracker's Timeline/Calendar/Tasks switcher (no visual change from the prior `.dt-subtab`). Recipe: `padding:6px 14px;font-size:11px;font-weight:500;color:var(--text-muted);background:var(--surface);border:1px solid var(--border);border-bottom:none;border-radius:6px 6px 0 0`, with `.active` set to `background:var(--accent-dim);color:var(--accent)`. Other modules with their own L3a sub-tab implementations (Notes/Team Shared, Checklist, Monitor Log) should migrate onto this same class in their own Phase 4 PRs rather than inventing per-module names. Note L2's active state still uses the `accent-dim` tint shown above, not genuinely solid fill (`background:var(--accent);color:#fff`) as this spec calls for — moving L2 to solid fill is out of scope for this PR and should happen in a future pass.
+
 ---
 
 ## 2. Section labels

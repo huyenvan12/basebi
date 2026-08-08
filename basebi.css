@@ -104,6 +104,16 @@
    Module-by-module migration onto these classes happens in Phase 4.
    ═══════════════════════════════════════════════════════════════════════ */
 
+/* 0. Navigation — L3a Sub Tabs. Canonical shared class for nested in-module
+   navigation (e.g. Delivery Tracker's Timeline/Calendar/Tasks switcher). Other
+   modules with their own L3a sub-tab implementations (Notes/Team Shared,
+   Checklist, Monitor Log — see docs/GAP_ANALYSIS.md) migrate onto this same
+   class in their own Phase 4 PRs rather than inventing per-module names.
+   Recipe extracted from Delivery Tracker's former .dt-subtab (visually
+   unchanged). See docs/DESIGN_SYSTEM.md "## 1. Navigation" for the spec note. */
+.subtab-l3a{padding:6px 14px;font-size:11px;font-weight:500;cursor:pointer;color:var(--text-muted);background:var(--surface);border:1px solid var(--border);border-bottom:none;border-radius:6px 6px 0 0;font-family:inherit}
+.subtab-l3a.active{background:var(--accent-dim);color:var(--accent)}
+
 /* 1. Section labels */
 .section-label{font-size:11px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted)}
 .section-label-sub{font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--text-dim)}
@@ -310,6 +320,13 @@ pre.code-body{padding:12px;overflow-x:auto;font-family:'JetBrains Mono',monospac
 .form-input{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:13px;outline:none;width:100%;transition:border-color .15s}
 .form-input:focus{border-color:var(--accent)}
 .form-input::placeholder{color:var(--text-dim)}
+/* Native calendar-picker glyph renders black regardless of theme — invisible against a dark
+   input background. Only needed in dark theme; light theme's white inputs already have
+   sufficient contrast with the default black glyph. App-wide (not scoped to one input class)
+   so every date input benefits — was previously scoped to .task-popover-input[type="date"]
+   only, missing #dtStartDate/#dtAgendaStartDate/#dtAgendaEndDate and equivalents in other
+   modules. (body always carries an explicit data-theme attribute, see ui-helpers.js applyTheme()) */
+[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1) brightness(0.9)}
 select.form-input option{background:var(--surface2)}
 textarea.form-input{resize:vertical;min-height:90px;font-family:inherit;line-height:1.6}
 textarea.code-input{font-family:'JetBrains Mono',monospace;font-size:12px;min-height:110px}
@@ -944,13 +961,11 @@ table.monitor-report-table{table-layout:fixed;width:100%;min-width:0}
    DELIVERY TRACKER
    ══════════════════════════════════════════════════ */
 .dt-view-switcher{display:flex;gap:6px;padding:8px 14px 0;flex-shrink:0}
-.dt-subtab{padding:6px 14px;font-size:11px;font-weight:500;cursor:pointer;color:var(--text-muted);background:var(--surface);border:1px solid var(--border);border-bottom:none;border-radius:6px 6px 0 0;font-family:inherit}
-.dt-subtab.active{background:var(--accent-dim);color:var(--accent)}
 .dt-subview{display:none;flex-direction:column;flex:1;overflow:hidden;padding:0 14px 14px}
 .dt-subview.active{display:flex}
 
 .dt-controls-row{display:flex;align-items:center;gap:8px;padding:10px 0;flex-shrink:0;flex-wrap:wrap}
-.dt-legend-row{display:grid;grid-template-columns:repeat(5,1fr);gap:6px 16px;padding:10px 12px;margin-top:10px;flex-shrink:0;border:1px solid var(--border);border-radius:6px}
+.dt-legend-row{display:grid;grid-template-columns:repeat(5,1fr);gap:6px 16px;padding:10px 12px;margin-top:10px;flex-shrink:0;background:var(--surface2);border:1px solid var(--border);border-radius:8px}
 .dt-legend-chip{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text-muted);min-width:0}
 .dt-legend-chip>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dt-legend-swatch{width:10px;height:10px;border-radius:3px;display:inline-block;flex-shrink:0}
@@ -963,12 +978,16 @@ table.monitor-report-table{table-layout:fixed;width:100%;min-width:0}
 .dt-timeline-table thead th{background:var(--surface2);color:var(--text-muted);font-weight:600;padding:5px 8px;position:sticky;top:0;z-index:2}
 .dt-month-th,.dt-week-th{text-align:center;font-size:10px}
 .dt-day-th{text-align:center;font-size:9px;color:var(--text-dim);padding:4px 0!important}
-.dt-timeline-table .dt-sticky-col{position:sticky;background:var(--surface);z-index:3;padding:8px 14px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;height:30px;vertical-align:middle;box-sizing:border-box}
-thead .dt-sticky-col{z-index:4;background:var(--surface2)}
-.dt-timeline-table td.dt-sticky-col:nth-child(5){box-shadow:2px 0 4px rgba(0,0,0,.25)}
+/* Sticky-column look composed from the shared .data-table-sticky-cols mixin
+   (.sticky-col/.sticky-col-shadow, basebi.css:152-154); this block only adds the
+   timeline-specific cell metrics the mixin doesn't cover. */
+.dt-timeline-table .sticky-col{padding:8px 14px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;height:30px;vertical-align:middle;box-sizing:border-box}
 .dt-note-cell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-muted)}
 .dt-col-resize-handle{position:absolute;top:0;right:0;width:6px;height:100%;cursor:col-resize;z-index:5}
 .dt-col-resize-handle:hover,.dt-col-resize-handle:active{background:var(--accent)}
+.dt-ticket-row:hover td{background:var(--surface2)}
+.dt-ticket-row.dt-row-active td{background:var(--folder-active);border-left:2px solid var(--accent)}
+.dt-ticket-row.dt-row-active td:first-child{padding-left:10px}
 
 /* "TODAY" / "CURRENT WEEK" highlights — amber border outline only, so background/text
    colors underneath (task-type fills, header styling) are never washed out. */
@@ -988,8 +1007,7 @@ thead .dt-sticky-col{z-index:4;background:var(--surface2)}
 #dtMarkAlBtn.dt-al-mode-active{background:rgba(217,169,79,.15);border-color:var(--amber);color:var(--amber)}
 .dt-cal-today-badge{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--accent);color:#fff;font-weight:700}
 .dt-ticket-swatch{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
-.dt-ticket-edit-btn{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:11px;padding:0 2px;float:right}
-.dt-ticket-edit-btn:hover{color:var(--accent)}
+.dt-ticket-edit-btn{float:right;font-size:11px}
 .dt-day-cell{width:36px;height:30px;cursor:pointer;text-align:center;user-select:none}
 .dt-day-cell:hover{outline:1px solid var(--accent) inset}
 .dt-day-cell.dt-day-selecting{background:var(--accent-dim)!important}
@@ -1005,11 +1023,12 @@ thead .dt-sticky-col{z-index:4;background:var(--surface2)}
 .dt-status-NotStarted{background:var(--tag-bg);color:var(--text-muted)}
 .dt-status-InProgress{background:var(--accent-dim);color:var(--accent)}
 .dt-status-Delayed{background:var(--danger-dim);color:var(--danger)}
-.dt-status-Done{background:rgba(74,222,128,.15);color:var(--success)}
+.dt-status-Done{background:var(--success-dim);color:var(--success)}
 .dt-status-Cancelled{background:var(--tag-bg);color:var(--text-dim)}
 
-/* TYPE-PICKER + CALENDAR POPOVERS — positioned via JS (left/top set inline) */
-.dt-type-picker-popover,.dt-cal-popover{position:fixed;z-index:100;background:var(--surface2);border:1px solid var(--border);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.35);padding:6px;font-size:11px;max-width:260px}
+/* TYPE-PICKER + CALENDAR POPOVERS — compose shared .popover base; positioned via JS
+   (left/top set inline). Class hook applied in index.html: class="popover dt-type-picker-popover" */
+.dt-type-picker-popover,.dt-cal-popover{padding:6px;font-size:11px;max-width:260px}
 .dt-type-picker-row{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:4px;cursor:pointer;color:var(--text)}
 .dt-type-picker-row:hover{background:var(--accent-dim);color:var(--accent)}
 .dt-type-picker-sep{height:1px;background:var(--border);margin:4px 2px}
@@ -1048,7 +1067,7 @@ thead .dt-sticky-col{z-index:4;background:var(--surface2)}
 .task-groupby-switcher{display:flex;align-items:center;gap:6px}
 .task-groupby-label{font-size:10px;color:var(--text-dim);margin-right:2px}
 .task-gb-btn{padding:5px 12px;font-size:11px;font-weight:500;cursor:pointer;color:var(--text-muted);background:var(--surface);border:1px solid var(--border);border-radius:6px;font-family:inherit}
-.task-gb-btn.active{background:var(--accent-dim);color:var(--accent);border-color:var(--accent)}
+.task-gb-btn.active{background:transparent;color:var(--accent);border-color:var(--accent)}
 
 .task-kanban-wrap{flex:1;display:flex;gap:12px;overflow-x:auto;overflow-y:hidden;padding-bottom:8px}
 .task-column{flex:0 0 260px;display:flex;flex-direction:column;background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden}
@@ -1056,9 +1075,11 @@ thead .dt-sticky-col{z-index:4;background:var(--surface2)}
 .task-column-label{font-size:12px;font-weight:600;color:var(--text);flex:1}
 .task-column-count{font-size:10px;color:var(--text-dim);background:var(--tag-bg);border-radius:10px;padding:1px 7px}
 .task-column-body{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:8px}
-.task-column-empty{font-size:10px;color:var(--text-dim);padding:8px;text-align:center}
-.task-add-btn{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:10px;padding:2px 4px;font-family:inherit}
-.task-add-btn:hover{color:var(--accent)}
+/* Composes .icon-btn-sm's ghost-button visual recipe (border/radius/hover-fill) but keeps
+   width:auto + the "Add task" text label, since dropping the label to an icon-only square
+   button would hurt clarity in a dense kanban column header — see PR description. */
+.task-add-btn{width:auto;height:22px;display:inline-flex;align-items:center;gap:2px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text-dim);cursor:pointer;font-size:10px;padding:0 6px;font-family:inherit;transition:background .15s,color .15s}
+.task-add-btn:hover{background:var(--surface);color:var(--accent)}
 /* Column background tints per group-by mode — subtle overlays on top of the default
    .task-column background, header/count text stays var(--text)/var(--text-dim) always. */
 /* Dark (default): plain panel + left-border accent, reusing the same border-left-indicator
@@ -1088,7 +1109,7 @@ thead .dt-sticky-col{z-index:4;background:var(--surface2)}
 [data-theme="light"] .task-column.tc-todo,[data-theme="light"] .task-column.tc-nodue{border-left:1px solid var(--border)}
 [data-theme="light"] .task-column.tc-archived{border-left:1px solid var(--border)}
 
-.task-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;cursor:pointer}
+.task-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;cursor:pointer}
 .task-card:hover{border-color:var(--accent)}
 .task-card-title{font-size:12px;color:var(--text);word-break:break-word}
 .task-card-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
@@ -1107,17 +1128,13 @@ thead .dt-sticky-col{z-index:4;background:var(--surface2)}
 
 .task-due-dot{font-size:9px;flex-shrink:0}
 
-/* POPOVER — shared by "convert log line" + "edit task" flows, positioned via JS (left/top inline) */
-.task-popover{position:fixed;z-index:100;background:var(--surface2);border:1px solid var(--border);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.35);padding:10px;font-size:11px;width:280px}
+/* POPOVER — shared by "convert log line" + "edit task" flows, positioned via JS (left/top
+   inline). Composes shared .popover base; class hook: class="popover task-popover" */
+.task-popover{padding:10px;font-size:11px;width:280px}
 .task-popover-title-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
 .task-popover-label{display:block;font-size:10px;color:var(--text-dim);margin:6px 0 3px}
 .task-popover-label-optional{color:var(--text-muted);font-weight:400}
-.task-popover-input{width:100%;box-sizing:border-box;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:5px 7px;font-size:11px;font-family:inherit}
-/* Native calendar-picker glyph renders black regardless of theme — invisible against this
-   input's dark background. Only needed in dark theme; light theme's white input already has
-   sufficient contrast with the default black glyph, so scope the invert to dark only.
-   (body always carries an explicit data-theme attribute, see ui-helpers.js applyTheme()) */
-[data-theme="dark"] .task-popover-input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1) brightness(0.9)}
+.task-popover-input{width:100%;box-sizing:border-box}
 .task-priority-selector{display:flex;gap:4px}
 .task-priority-opt{flex:1;padding:5px 0;font-size:10px;text-align:center;cursor:pointer;border:1px solid var(--border);border-radius:4px;color:var(--text-muted);background:var(--surface);font-family:inherit}
 .task-priority-opt.active.tpo-important{border-color:var(--violet);color:var(--violet);background:var(--violet-dim)}
@@ -1388,9 +1405,9 @@ body.is-native-app .note-popup{width:calc(100vw - 32px)}
 .dt-agenda-week-group{margin-bottom:18px}
 .dt-agenda-week-label{font-size:12px;font-weight:700;color:var(--text);background:var(--surface2);border-radius:6px;padding:5px 10px;margin-bottom:10px;display:inline-block}
 .dt-agenda-day-group{margin-bottom:14px}
-.dt-agenda-day-label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.dt-agenda-day-group .section-label{margin-bottom:6px}
 .dt-agenda-day-tickets{display:flex;flex-direction:column;gap:6px}
-.dt-agenda-ticket-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid transparent;border-radius:8px;padding:9px 12px;cursor:pointer;display:flex;align-items:center;gap:10px}
+.dt-agenda-ticket-card{background:var(--surface2);border:1px solid var(--border);border-left:3px solid transparent;border-radius:8px;padding:9px 12px;cursor:pointer;display:flex;align-items:center;gap:10px}
 .dt-agenda-ticket-card:active{background:var(--surface2)}
 .dt-agenda-ticket-cd{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--text)}
 .dt-agenda-ticket-type{font-size:10.5px;font-weight:600;margin-left:auto}

@@ -13,6 +13,10 @@
 </head>
 <body>
 
+<!-- APP-WIDE TOAST NOTIFICATION — shown via showNotification() in js/ui-helpers.js.
+     One visible at a time; docked under the topbar (see .notification-banner). -->
+<div class="notification-banner" id="notificationBanner"></div>
+
 <!-- TOPBAR -->
 <div class="topbar">
   <div class="logo">base<em>·</em>bi</div>
@@ -495,9 +499,9 @@
   <!-- DELIVERY TRACKER VIEW -->
   <div class="team-view" id="ganttView">
     <div class="dt-view-switcher">
-      <button class="dt-subtab active" id="dtSubTabTimeline" onclick="switchGanttView('timeline')">Timeline</button>
-      <button class="dt-subtab" id="dtSubTabCalendar" onclick="switchGanttView('calendar')">Calendar</button>
-      <button class="dt-subtab" id="dtSubTabTasks" onclick="switchGanttView('tasks')">Tasks</button>
+      <button class="subtab-l3a active" id="dtSubTabTimeline" onclick="switchGanttView('timeline')">Timeline</button>
+      <button class="subtab-l3a" id="dtSubTabCalendar" onclick="switchGanttView('calendar')">Calendar</button>
+      <button class="subtab-l3a" id="dtSubTabTasks" onclick="switchGanttView('tasks')">Tasks</button>
     </div>
 
     <!-- TIMELINE SUB-VIEW -->
@@ -513,7 +517,7 @@
         <button class="btn btn-ghost" id="dtMarkAlBtn">Mark AL</button>
       </div>
       <div class="dt-timeline-wrap" id="dtTimelineWrap">
-        <table class="dt-timeline-table" id="dtTimelineTable">
+        <table class="dt-timeline-table data-table-sticky-cols" id="dtTimelineTable">
           <thead id="dtTimelineHead"></thead>
           <tbody id="dtTimelineBody"></tbody>
         </table>
@@ -930,6 +934,7 @@
     <div class="form-row">
       <label class="form-label">Project name *</label>
       <input class="form-input" id="dt-project" placeholder="e.g. Q3 Loyalty Campaign">
+      <div id="dt-project-error" class="form-hint" style="color:#f87171;display:none"></div>
     </div>
     <div class="form-row">
       <label class="form-label">Jira key</label>
@@ -973,6 +978,7 @@
       <button class="modal-close" onclick="closeTaskTypeModal()">×</button>
     </div>
     <div id="dtTaskTypeEditor"></div>
+    <div id="dt-tasktype-error" class="form-hint" style="color:#f87171;display:none"></div>
     <button type="button" class="btn btn-ghost" style="align-self:flex-start;font-size:11px" onclick="addTaskTypeRow()">+ Add type</button>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeTaskTypeModal()">Cancel</button>
@@ -992,6 +998,22 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeOverlapModal()">Cancel</button>
       <button class="btn btn-danger" id="dtOverlapConfirmBtn">Replace</button>
+    </div>
+  </div>
+</div>
+
+<!-- GENERIC CONFIRM MODAL — replaces window.confirm() for destructive actions.
+     Opened via openConfirmModal()/closeConfirmModal() in js/gantt-tracker.js. -->
+<div class="modal-overlay" id="dtConfirmModalOverlay">
+  <div class="modal modal-sm">
+    <div class="modal-title">
+      <span id="dtConfirmModalTitle">Confirm</span>
+      <button class="modal-close" onclick="closeConfirmModal()">×</button>
+    </div>
+    <div id="dtConfirmModalMessage" class="form-hint" style="font-size:12px;color:var(--text-muted)"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeConfirmModal()">Cancel</button>
+      <button class="btn btn-danger" id="dtConfirmModalConfirmBtn">Confirm</button>
     </div>
   </div>
 </div>
@@ -1035,6 +1057,7 @@
       <label class="form-label">End date *</label>
       <input type="date" class="form-input" id="dtAgendaEndDate">
     </div>
+    <div id="dt-agenda-error" class="form-hint" style="color:#f87171;display:none"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeAgendaEntryForm()">Cancel</button>
       <button class="btn btn-primary" id="dtAgendaNextBtn" onclick="submitAgendaEntryForm()">Next: choose type →</button>
@@ -1073,11 +1096,11 @@
 </div>
 
 <!-- TYPE-PICKER POPOVER (positioned via JS) -->
-<div class="dt-type-picker-popover" id="dtTypePickerPopover" style="display:none"></div>
+<div class="popover dt-type-picker-popover" id="dtTypePickerPopover" style="display:none"></div>
 
 <!-- CALENDAR TICKET / OVERFLOW POPOVER (shared, positioned via JS) -->
-<div class="dt-cal-popover" id="dtCalPopover" style="display:none"></div>
-<div class="task-popover" id="taskPopover" style="display:none"></div>
+<div class="popover dt-cal-popover" id="dtCalPopover" style="display:none"></div>
+<div class="popover task-popover" id="taskPopover" style="display:none"></div>
 
 <script type="module" src="js/main.js"></script>
 </body>
