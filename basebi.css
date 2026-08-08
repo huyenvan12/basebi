@@ -1405,7 +1405,7 @@ body.is-native-app .note-popup{width:calc(100vw - 32px)}
 /* delivery tracker mobile agenda cards — only ever shown inside #dtAgendaSubview, which is
    display:none outside the breakpoint below, so no extra gating needed here */
 .dt-agenda-week-group{margin-bottom:18px}
-.dt-agenda-week-label{font-size:12px;font-weight:700;color:var(--text);background:var(--surface2);border-radius:6px;padding:5px 10px;margin-bottom:10px;display:inline-block}
+.dt-agenda-week-label{font-size:12px;font-weight:700;color:var(--accent);border-bottom:1px solid var(--accent-dim);padding-bottom:4px;margin-bottom:8px;display:block}
 .dt-agenda-day-group{margin-bottom:14px}
 .dt-agenda-day-group .section-label{margin-bottom:6px}
 .dt-agenda-day-tickets{display:flex;flex-direction:column;gap:6px}
