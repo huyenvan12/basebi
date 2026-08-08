@@ -1018,7 +1018,7 @@ table.monitor-report-table{table-layout:fixed;width:100%;min-width:0}
 .dt-ticket-row.dt-flash{animation:dt-flash-anim 1.5s ease-out}
 @keyframes dt-flash-anim{0%{background:var(--accent-dim)}100%{background:transparent}}
 
-.dt-timeline-table .dt-status-cell{display:flex;align-items:center;justify-content:center;padding:8px 14px}
+.dt-timeline-table .dt-status-cell{text-align:center;padding:8px 14px}
 .dt-status-badge{font-size:9px;padding:2px 7px;border-radius:10px;font-weight:600;white-space:nowrap}
 .dt-status-NotStarted{background:var(--tag-bg);color:var(--text-muted)}
 .dt-status-InProgress{background:var(--accent-dim);color:var(--accent)}
