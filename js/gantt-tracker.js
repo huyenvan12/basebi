@@ -733,7 +733,7 @@ export function openAlReasonModal(dateStr){
   if(alSaveInFlight) return; // ignore reopen while a save/delete for any AL day is still in flight
   const existing=state.ganttLeaveDays.find(l=>l.leave_date===dateStr);
   state.ganttAlEditingContext={date:dateStr,existingId:existing?existing.id:null};
-  document.getElementById('dtAlModalTitle').textContent=fmtDM(dateStr)+' — Mark AL';
+  document.getElementById('dtAlModalTitle').textContent=fmtDM(dateStr)+' — Mark Leave';
   document.getElementById('dtAlReasonInput').value=existing?(existing.reason||''):'';
   document.getElementById('dtAlDeleteBtn').style.display=existing?'':'none';
   document.getElementById('dtAlModalOverlay').classList.add('open');
