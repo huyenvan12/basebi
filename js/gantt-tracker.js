@@ -721,6 +721,9 @@ export function closeConfirmModal(){
 export function toggleAlMarkingMode(){
   state.ganttAlMarkingMode=!state.ganttAlMarkingMode;
   document.getElementById('dtMarkAlBtn').classList.toggle('dt-al-mode-active',state.ganttAlMarkingMode);
+  // UX cue (unrelated to the button's own active state): tints the grid and swaps the
+  // day-cell cursor so it's obvious a click marks leave rather than opening a ticket.
+  document.getElementById('dtTimelineWrap').classList.toggle('al-mode-active',state.ganttAlMarkingMode);
 }
 let alSaveInFlight=false;
 function setAlModalButtonsDisabled(disabled){
