@@ -200,8 +200,8 @@ const CHEVRONS_RIGHT_SVG='<svg class="chevrons-right-icon" width="16" height="16
 const LINK_SVG='<svg class="link-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(2.64,2.64) scale(0.78)"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></g></svg>';
 export function dailyLineIconHtml(noteId, idx, hasTask){
   return hasTask
-    ? `<span class="daily-line-icon has-task" title="View task" onclick="openTaskPopoverForLine(${noteId},${idx},event)">${LINK_SVG}</span>`
-    : `<span class="daily-line-icon no-task" title="Create task" onclick="openTaskPopoverForLine(${noteId},${idx},event)">${CHEVRONS_RIGHT_SVG}</span>`;
+    ? `<span class="daily-line-icon has-task" title="View task" onclick="openTaskPopoverForLine('${noteId}',${idx},event)">${LINK_SVG}</span>`
+    : `<span class="daily-line-icon no-task" title="Create task" onclick="openTaskPopoverForLine('${noteId}',${idx},event)">${CHEVRONS_RIGHT_SVG}</span>`;
 }
 
 export async function openTaskPopoverForLine(noteId, lineIndex, event){
@@ -401,7 +401,7 @@ export function renderTaskCard(task){
   const prioClass = task.priority==='important'?'tpb-important':task.priority==='low'?'tpb-low':'tpb-medium';
   const prioLabel = task.priority.charAt(0).toUpperCase()+task.priority.slice(1);
   const linkIcon = task.source_note_id
-    ? `<span class="task-card-link" title="Go to source Daily Note" onclick="event.stopPropagation();jumpToSourceNote(${task.source_note_id},'${task.source_line_id||''}')">${LINK_SVG}</span>`
+    ? `<span class="task-card-link" title="Go to source Daily Note" onclick="event.stopPropagation();jumpToSourceNote('${task.source_note_id}','${task.source_line_id||''}')">${LINK_SVG}</span>`
     : '';
   return `<div class="task-card${task.status==='archived'?' task-card-archived':''}" data-task-id="${task.id}" onclick="openTaskPopoverForCard('${task.id}',event)">
     <div class="task-card-title">${esc(task.title)}</div>

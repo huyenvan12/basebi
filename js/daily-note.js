@@ -37,11 +37,11 @@ export async function openDailyNote(){
   if(existing){selectNote(existing.id);return;}
   const dailyFolderId=await ensureFolder('Daily');
   const t=today();
-  const note={id:Date.now(),title:fmtDailyTitle(t),folder:'Daily',folder_id:dailyFolderId,type:'plain',
+  const note={title:fmtDailyTitle(t),folder:'Daily',folder_id:dailyFolderId,type:'plain',
     tags:[],links:[],body:'',code:null,daily_date:t,owner_id:state.currentUserId,
     created:t,modified:t};
   state.notes.unshift(note);
-  saveOneNote(note);buildIndex();renderAll();selectNote(note.id);
+  await saveOneNote(note);buildIndex();renderAll();selectNote(note.id);
 }
 export function appendDailyEntry(id){
   const note=state.notes.find(n=>n.id===id); if(!note)return;

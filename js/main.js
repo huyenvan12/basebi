@@ -271,11 +271,10 @@ export async function handleImport(e){
       if(lm) lm.textContent='Importing notes to Supabase…';
       if(lb) lb.style.width='20%';
 
-      // insert notes with freshly generated ids — never reuse ids from the file,
+      // insert notes with DB-generated ids — never reuse ids from the file,
       // so an id that collides with an existing note can't silently overwrite it
-      let noteIdSeq=Date.now();
       const newNotes=data.notes.map(n=>({
-        id:noteIdSeq++,title:n.title,folder:n.folder,type:n.type,
+        title:n.title,folder:n.folder,type:n.type,
         tags:n.tags,links:n.links,body:n.body,
         code:n.code,pinned:false,
         created:n.created,modified:n.modified,owner_id:state.currentUserId
@@ -299,11 +298,10 @@ export async function handleImport(e){
       }
       if(lb) lb.style.width='75%';
 
-      // insert campaigns with freshly generated ids
+      // insert campaigns with DB-generated ids
       if(lm) lm.textContent='Importing campaigns…';
-      let campIdSeq=Date.now();
       const newCampaigns=importCampaigns.map(cc=>({
-        id:campIdSeq++,campaign_cd:cc.campaign_cd,campaign_nm:cc.campaign_nm,
+        campaign_cd:cc.campaign_cd,campaign_nm:cc.campaign_nm,
         event_name:cc.event_name||null,type:cc.type,trigger_type:cc.trigger_type,
         status:cc.status,date:cc.date||null,note:cc.note||null,
         extra:cc.extra||{},created:cc.created,modified:cc.modified
