@@ -5,7 +5,7 @@
 // Ticket color is a deterministic client-side hash of the ticket id — never stored in DB.
 // ══════════════════════════════════════════════════
 import { state } from './state.js';
-import { esc, escJs } from './ui-helpers.js';
+import { esc, escJs, showNotification } from './ui-helpers.js';
 import { sb } from './supabase-client.js';
 import { today } from './daily-note.js';
 // Narrow, intentional circular import (same pattern as daily-note.js -> main.js): switchTab
@@ -261,7 +261,7 @@ function applyColumnLayout(){
   let cum=0;
   TIMELINE_COL_ORDER.forEach(k=>{
     const w=ganttColumnWidths[k];
-    document.querySelectorAll(`.dt-sticky-col[data-col="${k}"]`).forEach(el=>{
+    document.querySelectorAll(`.sticky-col[data-col="${k}"]`).forEach(el=>{
       el.style.width=w+'px';
       el.style.left=cum+'px';
     });
@@ -340,7 +340,7 @@ export function renderTimelineHeader(){
 
   renderTimelineColgroup(cols.length);
 
-  const stickyTh=(key,label)=>`<th class="dt-sticky-col" data-col="${key}" style="left:${timelineColLeft(key)}px;width:${ganttColumnWidths[key]}px" rowspan="3">${esc(label)}<span class="dt-col-resize-handle" data-col="${key}" title="Drag to resize"></span></th>`;
+  const stickyTh=(key,label)=>`<th class="sticky-col" data-col="${key}" style="left:${timelineColLeft(key)}px;width:${ganttColumnWidths[key]}px" rowspan="3">${esc(label)}<span class="dt-col-resize-handle" data-col="${key}" title="Drag to resize"></span></th>`;
 
   const monthRow=`<tr>${stickyTh('project','Project')}${stickyTh('jira','Jira')}${stickyTh('scope','Mon. Scope')}${stickyTh('status','Status')}${stickyTh('note','Note')}${
     monthGroups.map(mg=>`<th colspan="${mg.weekGroups.reduce((n,wg)=>n+wg.cols.length,0)}" class="dt-month-th">${esc(mg.monthLabel)}</th>`).join('')
@@ -390,14 +390,14 @@ function renderTicketRow(ticket,cols){
     : esc(ticket.jira_key||'');
 
   return `<tr class="dt-ticket-row" data-ticket-id="${esc(ticket.id)}">
-    <td class="dt-sticky-col" data-col="project" style="width:${ganttColumnWidths.project}px;left:${timelineColLeft('project')}px" title="${esc(ticket.project_name)}">
+    <td class="sticky-col" data-col="project" style="width:${ganttColumnWidths.project}px;left:${timelineColLeft('project')}px" title="${esc(ticket.project_name)}">
       <span class="dt-ticket-swatch" style="background:${color}"></span>${esc(ticket.project_name)}
-      <button class="dt-ticket-edit-btn" onclick="openTicketModal('${escJs(ticket.id)}')" title="Edit ticket">✎</button>
+      <button class="dt-ticket-edit-btn icon-btn-sm" onclick="openTicketModal('${escJs(ticket.id)}')" title="Edit ticket">✎</button>
     </td>
-    <td class="dt-sticky-col" data-col="jira" style="width:${ganttColumnWidths.jira}px;left:${timelineColLeft('jira')}px" title="${esc(ticket.jira_key||'')}">${jiraCell}</td>
-    <td class="dt-sticky-col" data-col="scope" style="width:${ganttColumnWidths.scope}px;left:${timelineColLeft('scope')}px" title="${esc(ticket.mon_scope||'')}">${esc(ticket.mon_scope||'')}</td>
-    <td class="dt-sticky-col dt-status-cell" data-col="status" style="width:${ganttColumnWidths.status}px;left:${timelineColLeft('status')}px"><span class="dt-status-badge dt-status-${esc(ticket.status.replace(/\s+/g,''))}">${esc(ticket.status)}</span></td>
-    <td class="dt-sticky-col dt-note-cell" data-col="note" style="width:${ganttColumnWidths.note}px;left:${timelineColLeft('note')}px" title="${esc(ticket.note||'')}">${esc(ticket.note||'')}</td>
+    <td class="sticky-col" data-col="jira" style="width:${ganttColumnWidths.jira}px;left:${timelineColLeft('jira')}px" title="${esc(ticket.jira_key||'')}">${jiraCell}</td>
+    <td class="sticky-col" data-col="scope" style="width:${ganttColumnWidths.scope}px;left:${timelineColLeft('scope')}px" title="${esc(ticket.mon_scope||'')}">${esc(ticket.mon_scope||'')}</td>
+    <td class="sticky-col dt-status-cell" data-col="status" style="width:${ganttColumnWidths.status}px;left:${timelineColLeft('status')}px"><span class="dt-status-badge dt-status-${esc(ticket.status.replace(/\s+/g,''))}">${esc(ticket.status)}</span></td>
+    <td class="sticky-col sticky-col-shadow dt-note-cell" data-col="note" style="width:${ganttColumnWidths.note}px;left:${timelineColLeft('note')}px" title="${esc(ticket.note||'')}">${esc(ticket.note||'')}</td>
     ${dayCells}
   </tr>`;
 }
@@ -417,7 +417,7 @@ export function renderTimelineBody(){
       html+=inactive.map(t=>renderTicketRow(t,cols)).join('');
     }
   }
-  body.innerHTML=html||`<tr><td colspan="${5+cols.length}" class="note-empty">No tickets yet</td></tr>`;
+  body.innerHTML=html||`<tr><td colspan="${5+cols.length}" class="empty-list">No tickets yet</td></tr>`;
   renderAgenda();
 }
 
@@ -574,23 +574,27 @@ export async function selectTaskType(taskTypeId){
   const pending=state.ganttPendingEntryWrite;
   closeTypePicker();
   if(!pending) return;
+  const proceed=async()=>{
+    if(pending.overlaps&&pending.overlaps.length){
+      openOverlapConfirm(pending.overlaps,async()=>{
+        await commitEntryWrite(pending,taskTypeId);
+      });
+    }else{
+      await commitEntryWrite(pending,taskTypeId);
+    }
+  };
   const alHit=findAlDayInRange(pending.startDate,pending.endDate);
   if(alHit){
     const msg=`This day (${fmtDM(alHit.leave_date)}) is marked as your AL (reason: ${alHit.reason||'no note'}). Still assign a task to this day?`;
-    if(!confirm(msg)){ state.ganttPendingEntryWrite=null; return; }
-  }
-  if(pending.overlaps&&pending.overlaps.length){
-    openOverlapConfirm(pending.overlaps,async()=>{
-      await commitEntryWrite(pending,taskTypeId);
-    });
+    openConfirmModal(msg,proceed,{title:'Assign to AL day?',confirmLabel:'Assign anyway',onCancel:()=>{state.ganttPendingEntryWrite=null;}});
   }else{
-    await commitEntryWrite(pending,taskTypeId);
+    await proceed();
   }
 }
 async function commitEntryWrite(pending,taskTypeId){
   try{
     await replaceEntryRange(pending.ticketId,taskTypeId,pending.startDate,pending.endDate,(pending.overlaps||[]).map(o=>o.id));
-  }catch(err){alert('Could not save schedule: '+(err.message||err));}
+  }catch(err){showNotification('Could not save schedule: '+(err.message||err),'error');}
   state.ganttPendingEntryWrite=null;
   renderTimelineBody();
 }
@@ -602,14 +606,15 @@ export async function clearAssignment(){
   closeTypePicker();
   if(!pending||!pending.overlaps||!pending.overlaps.length) return;
   const n=pending.overlaps.length;
-  if(!confirm(`Remove ${n} ${n===1?'entry':'entries'} in this range?`)) return;
   const ids=pending.overlaps.map(o=>o.id);
-  try{
-    await deleteEntriesDB(ids);
-    state.ganttEntries=state.ganttEntries.filter(e=>!ids.includes(e.id));
-  }catch(err){alert('Could not clear entries: '+(err.message||err));}
-  state.ganttPendingEntryWrite=null;
-  renderTimelineBody();
+  openConfirmModal(`Remove ${n} ${n===1?'entry':'entries'} in this range?`,async()=>{
+    try{
+      await deleteEntriesDB(ids);
+      state.ganttEntries=state.ganttEntries.filter(e=>!ids.includes(e.id));
+    }catch(err){showNotification('Could not clear entries: '+(err.message||err),'error');}
+    state.ganttPendingEntryWrite=null;
+    renderTimelineBody();
+  },{title:'Remove entries?',confirmLabel:'Remove',onCancel:()=>{state.ganttPendingEntryWrite=null;}});
 }
 
 // ══════════════════════════════════════════════════
@@ -651,12 +656,13 @@ export async function removeSingleEntry(){
   const{entry}=pending;
   const tt=state.ganttTaskTypes.find(t=>t.id===entry.task_type_id);
   const rangeLabel=entry.start_date===entry.end_date?fmtDM(entry.start_date):`${fmtDM(entry.start_date)}–${fmtDM(entry.end_date)}`;
-  if(!confirm(`Remove ${tt?tt.code:'this entry'} from ${rangeLabel}?`)) return;
-  try{
-    await deleteEntriesDB([entry.id]);
-    state.ganttEntries=state.ganttEntries.filter(e=>e.id!==entry.id);
-  }catch(err){alert('Could not remove entry: '+(err.message||err));return;}
-  renderTimelineBody();
+  openConfirmModal(`Remove ${tt?tt.code:'this entry'} from ${rangeLabel}?`,async()=>{
+    try{
+      await deleteEntriesDB([entry.id]);
+      state.ganttEntries=state.ganttEntries.filter(e=>e.id!==entry.id);
+    }catch(err){showNotification('Could not remove entry: '+(err.message||err),'error');return;}
+    renderTimelineBody();
+  },{title:'Remove entry?',confirmLabel:'Remove'});
 }
 
 export function openOverlapConfirm(overlaps,onConfirm){
@@ -678,11 +684,46 @@ export function closeOverlapModal(){
 }
 
 // ══════════════════════════════════════════════════
+// GENERIC CONFIRM MODAL — replaces window.confirm() for destructive DT actions.
+// Modeled on openOverlapConfirm()/closeOverlapModal() above: callback-based (onConfirm
+// fires on Confirm click), not promise-based. opts.onCancel is stashed and fired from
+// closeConfirmModal() so it also runs on Cancel/× (matches how closeOverlapModal() always
+// clears state.ganttPendingEntryWrite regardless of which control closed it).
+// ══════════════════════════════════════════════════
+let confirmModalOnCancel=null;
+export function openConfirmModal(message,onConfirm,opts={}){
+  const overlay=document.getElementById('dtConfirmModalOverlay');
+  if(!overlay) return;
+  document.getElementById('dtConfirmModalTitle').textContent=opts.title||'Confirm';
+  document.getElementById('dtConfirmModalMessage').textContent=message;
+  const btn=document.getElementById('dtConfirmModalConfirmBtn');
+  btn.textContent=opts.confirmLabel||'Confirm';
+  btn.className='btn '+(opts.danger===false?'btn-primary':'btn-danger');
+  confirmModalOnCancel=opts.onCancel||null;
+  overlay.classList.add('open');
+  btn.onclick=async()=>{
+    overlay.classList.remove('open');
+    confirmModalOnCancel=null;
+    await onConfirm();
+  };
+}
+export function closeConfirmModal(){
+  const overlay=document.getElementById('dtConfirmModalOverlay');
+  if(overlay) overlay.classList.remove('open');
+  const onCancel=confirmModalOnCancel;
+  confirmModalOnCancel=null;
+  if(onCancel) onCancel();
+}
+
+// ══════════════════════════════════════════════════
 // PERSONAL AL (ANNUAL LEAVE) MARKING — personal-only (RLS-scoped), Timeline-only.
 // ══════════════════════════════════════════════════
 export function toggleAlMarkingMode(){
   state.ganttAlMarkingMode=!state.ganttAlMarkingMode;
   document.getElementById('dtMarkAlBtn').classList.toggle('dt-al-mode-active',state.ganttAlMarkingMode);
+  // UX cue (unrelated to the button's own active state): tints the grid and swaps the
+  // day-cell cursor so it's obvious a click marks leave rather than opening a ticket.
+  document.getElementById('dtTimelineWrap').classList.toggle('al-mode-active',state.ganttAlMarkingMode);
 }
 let alSaveInFlight=false;
 function setAlModalButtonsDisabled(disabled){
@@ -692,7 +733,7 @@ export function openAlReasonModal(dateStr){
   if(alSaveInFlight) return; // ignore reopen while a save/delete for any AL day is still in flight
   const existing=state.ganttLeaveDays.find(l=>l.leave_date===dateStr);
   state.ganttAlEditingContext={date:dateStr,existingId:existing?existing.id:null};
-  document.getElementById('dtAlModalTitle').textContent=fmtDM(dateStr)+' — Mark AL';
+  document.getElementById('dtAlModalTitle').textContent=fmtDM(dateStr)+' — Mark Leave';
   document.getElementById('dtAlReasonInput').value=existing?(existing.reason||''):'';
   document.getElementById('dtAlDeleteBtn').style.display=existing?'':'none';
   document.getElementById('dtAlModalOverlay').classList.add('open');
@@ -719,7 +760,7 @@ export async function saveAlDay(){
     closeAlReasonModal();
     renderTimelineHeader();
     renderTimelineBody();
-  }catch(err){alert('Could not save AL day: '+(err.message||err));}
+  }catch(err){showNotification('Could not save AL day: '+(err.message||err),'error');}
   finally{
     alSaveInFlight=false;
     setAlModalButtonsDisabled(false);
@@ -736,7 +777,7 @@ export async function deleteAlDay(){
     closeAlReasonModal();
     renderTimelineHeader();
     renderTimelineBody();
-  }catch(err){alert('Could not remove AL day: '+(err.message||err));}
+  }catch(err){showNotification('Could not remove AL day: '+(err.message||err),'error');}
   finally{
     alSaveInFlight=false;
     setAlModalButtonsDisabled(false);
@@ -746,6 +787,14 @@ export async function deleteAlDay(){
 // ══════════════════════════════════════════════════
 // TICKET MODAL — dual mode (add/edit), modeled on checklist-templates.js's template modal.
 // ══════════════════════════════════════════════════
+function showProjectError(msg){
+  const el=document.getElementById('dt-project-error');
+  el.textContent=msg;el.style.display='';
+}
+function hideProjectError(){
+  const el=document.getElementById('dt-project-error');
+  el.textContent='';el.style.display='none';
+}
 export function openTicketModal(id){
   state.ganttEditingTicketId=id||null;
   const t=id?state.ganttTickets.find(t=>t.id===id):null;
@@ -757,6 +806,7 @@ export function openTicketModal(id){
   document.getElementById('dt-status').value=t?t.status:'Not Started';
   document.getElementById('dt-note').value=t?(t.note||''):'';
   document.getElementById('dtTicketDeleteBtn').style.display=t?'':'none';
+  hideProjectError();
   document.getElementById('dtTicketModalOverlay').classList.add('open');
 }
 export function closeTicketModal(){
@@ -765,7 +815,8 @@ export function closeTicketModal(){
 }
 export async function saveTicket(){
   const project_name=document.getElementById('dt-project').value.trim();
-  if(!project_name){alert('Project name is required.');return;}
+  if(!project_name){showProjectError('Project name is required.');return;}
+  hideProjectError();
   const fields={
     project_name,
     jira_key:document.getElementById('dt-jira-key').value.trim()||null,
@@ -785,28 +836,38 @@ export async function saveTicket(){
     }
     closeTicketModal();
     renderTimelineBody();
-  }catch(err){alert('Could not save ticket: '+(err.message||err));}
+  }catch(err){showNotification('Could not save ticket: '+(err.message||err),'error');}
 }
 export async function deleteTicket(){
   const id=state.ganttEditingTicketId;
   if(!id) return;
-  if(!confirm('Delete this ticket and all its scheduled entries? This cannot be undone.')) return;
-  try{
-    await deleteTicketDB(id);
-    state.ganttTickets=state.ganttTickets.filter(t=>t.id!==id);
-    state.ganttEntries=state.ganttEntries.filter(e=>e.ticket_id!==id);
-    closeTicketModal();
-    renderTimelineBody();
-  }catch(err){alert('Could not delete ticket: '+(err.message||err));}
+  openConfirmModal('Delete this ticket and all its scheduled entries? This cannot be undone.',async()=>{
+    try{
+      await deleteTicketDB(id);
+      state.ganttTickets=state.ganttTickets.filter(t=>t.id!==id);
+      state.ganttEntries=state.ganttEntries.filter(e=>e.ticket_id!==id);
+      closeTicketModal();
+      renderTimelineBody();
+    }catch(err){showNotification('Could not delete ticket: '+(err.message||err),'error');}
+  },{title:'Delete ticket?',confirmLabel:'Delete'});
 }
 
 // ══════════════════════════════════════════════════
 // ADMIN — MANAGE TASK TYPES (modeled on checklist-templates.js's templateEditItems editor-array pattern)
 // ══════════════════════════════════════════════════
+function showTaskTypeError(msg){
+  const el=document.getElementById('dt-tasktype-error');
+  el.textContent=msg;el.style.display='';
+}
+function hideTaskTypeError(){
+  const el=document.getElementById('dt-tasktype-error');
+  el.textContent='';el.style.display='none';
+}
 export function openTaskTypeModal(){
   if(state.currentUserRole!=='admin') return;
   state.ganttTaskTypeEditItems=JSON.parse(JSON.stringify(state.ganttTaskTypes));
   renderTaskTypeEditor();
+  hideTaskTypeError();
   document.getElementById('dtTaskTypeModalOverlay').classList.add('open');
 }
 export function closeTaskTypeModal(){
@@ -838,8 +899,9 @@ export function renderTaskTypeEditor(){
 export async function saveTaskTypes(){
   const items=state.ganttTaskTypeEditItems;
   if(items.some(tt=>!tt.code||!tt.code.trim()||!tt.label||!tt.label.trim())){
-    alert('Every task type needs a code and a label.');return;
+    showTaskTypeError('Every task type needs a code and a label.');return;
   }
+  hideTaskTypeError();
   try{
     const existingIds=state.ganttTaskTypes.map(t=>t.id);
     const keptIds=items.filter(t=>t.id).map(t=>t.id);
@@ -855,7 +917,7 @@ export async function saveTaskTypes(){
     renderTimelineLegend();
     renderTimelineHeader();
     renderTimelineBody();
-  }catch(err){alert('Could not save task types: '+(err.message||err));}
+  }catch(err){showNotification('Could not save task types: '+(err.message||err),'error');}
 }
 
 // ══════════════════════════════════════════════════
@@ -1142,7 +1204,7 @@ export function renderAgenda(){
   const todayStr=today();
   const weeks=collectAgendaWeeks();
   wrap.innerHTML=weeks.length===0
-    ?'<div class="note-empty">No upcoming scheduled work</div>'
+    ?'<div class="empty-list">No upcoming scheduled work</div>'
     :weeks.map(week=>{
       const dayGroups=week.days.map(day=>{
         const cards=day.items.map(({entry,ticket})=>{
@@ -1153,7 +1215,7 @@ export function renderAgenda(){
           </div>`;
         }).join('');
         return `<div class="dt-agenda-day-group">
-          <div class="dt-agenda-day-label">${fmtDM(day.date)}${day.date===todayStr?' · Today':''}</div>
+          <div class="section-label">${fmtDM(day.date)}${day.date===todayStr?' · Today':''}</div>
           <div class="dt-agenda-day-tickets">${cards}</div>
         </div>`;
       }).join('');
@@ -1164,6 +1226,14 @@ export function renderAgenda(){
     }).join('');
 }
 
+function showAgendaError(msg){
+  const el=document.getElementById('dt-agenda-error');
+  el.textContent=msg;el.style.display='';
+}
+function hideAgendaError(){
+  const el=document.getElementById('dt-agenda-error');
+  el.textContent='';el.style.display='none';
+}
 export function openAgendaEntryForm(){
   // Add-only: mobile has no edit path for existing entries (see viewAgendaEntryDetail()
   // below) — this always opens a blank "new entry" form, always starting from today.
@@ -1175,6 +1245,7 @@ export function openAgendaEntryForm(){
   ticketSel.value=(activeTickets[0]||{}).id||'';
   document.getElementById('dtAgendaStartDate').value=today();
   document.getElementById('dtAgendaEndDate').value=today();
+  hideAgendaError();
   document.getElementById('dtAgendaEntryModalOverlay').classList.add('open');
 }
 export function closeAgendaEntryForm(){
@@ -1205,8 +1276,9 @@ export function submitAgendaEntryForm(){
   const ticketId=document.getElementById('dtAgendaTicketSelect').value;
   const startDate=document.getElementById('dtAgendaStartDate').value;
   const endDate=document.getElementById('dtAgendaEndDate').value;
-  if(!ticketId||!startDate||!endDate){alert('Ticket, start date, and end date are required.');return;}
-  if(endDate<startDate){alert('End date must be on or after start date.');return;}
+  if(!ticketId||!startDate||!endDate){showAgendaError('Ticket, start date, and end date are required.');return;}
+  if(endDate<startDate){showAgendaError('End date must be on or after start date.');return;}
+  hideAgendaError();
   const overlaps=computeOverlaps(ticketId,startDate,endDate);
   // anchor near the button the user actually tapped ("Next: choose type"), not the
   // list's "+ Add" trigger — grab the rect before closeAgendaEntryForm() closes the modal.
@@ -1260,6 +1332,7 @@ export function initGanttTracker(){
   window.changeEntryType=changeEntryType;
   window.removeSingleEntry=removeSingleEntry;
   window.closeOverlapModal=closeOverlapModal;
+  window.closeConfirmModal=closeConfirmModal;
   window.openTicketPopover=openTicketPopover;
   window.openOverflowPopover=openOverflowPopover;
   window.jumpToTimeline=jumpToTimeline;

@@ -4,7 +4,7 @@
 // public.tasks table (owner_id-scoped RLS, schema already applied).
 // ══════════════════════════════════════════════════
 import { state } from './state.js';
-import { esc } from './ui-helpers.js';
+import { esc, showNotification } from './ui-helpers.js';
 import { sb } from './supabase-client.js';
 // Narrow, intentional circular imports (same pattern already used by notes.js<->daily-note.js
 // and daily-note.js<->main.js): notes.js needs findTaskByLineId/stripLineId/LINE_ID_RE/
@@ -129,7 +129,7 @@ export async function setTaskStatus(id,status){
   if(state.ganttActiveView==='tasks') renderTasksView();
 }
 export function onTaskStatusDropdownChange(taskId,newStatus){
-  setTaskStatus(taskId,newStatus).catch(err=>alert('Could not update task: '+(err.message||err)));
+  setTaskStatus(taskId,newStatus).catch(err=>showNotification('Could not update task: '+(err.message||err),'error'));
 }
 
 // ══════════════════════════════════════════════════
@@ -267,9 +267,9 @@ export function renderTaskPopover(mode, opts){
       <button type="button" class="modal-close" onclick="closeTaskPopover()">×</button>
     </div>
     <label class="task-popover-label">Title</label>
-    <input type="text" id="taskPopoverTitle" class="task-popover-input" value="${esc(title)}">
+    <input type="text" id="taskPopoverTitle" class="form-input-compact task-popover-input" value="${esc(title)}">
     <label class="task-popover-label">Due date <span class="task-popover-label-optional">(optional)</span></label>
-    <input type="date" id="taskPopoverDue" class="task-popover-input" value="${esc(due)}">
+    <input type="date" id="taskPopoverDue" class="form-input-compact task-popover-input" value="${esc(due)}">
     <label class="task-popover-label">Priority</label>
     <div class="task-priority-selector">
       <button type="button" class="task-priority-opt tpo-important ${priority==='important'?'active':''}" data-priority="important" onclick="selectTaskPopoverPriority(this)">Important</button>
@@ -309,7 +309,7 @@ export async function submitTaskPopover(){
         sourceLineSnapshot: ctx.lineText||null
       });
     }
-  }catch(err){ alert('Could not save task: '+(err.message||err)); return; }
+  }catch(err){ showNotification('Could not save task: '+(err.message||err),'error'); return; }
   closeTaskPopover();
   const note = ctx.noteId ? state.notes.find(n=>n.id===ctx.noteId) : null;
   if(note) renderDetail(note);
@@ -391,7 +391,7 @@ export function renderTasksView(){
       <button type="button" class="task-add-btn" onclick="openAddTaskInline('${col.key}')" title="Add task">+ Add task</button>
     </div>
     <div class="task-column-body">
-      ${col.tasks.length ? col.tasks.map(renderTaskCard).join('') : '<div class="task-column-empty">No tasks</div>'}
+      ${col.tasks.length ? col.tasks.map(renderTaskCard).join('') : '<div class="empty-list-sm">No tasks</div>'}
     </div>
   </div>`).join('');
 }

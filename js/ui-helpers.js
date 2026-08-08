@@ -10,6 +10,20 @@ export function escJs(s){ return String(s==null?'':s).replace(/\\/g,'\\\\').repl
 export function authorName(ownerId){ return state.profilesMap[ownerId]||'Unknown'; }
 
 // ══════════════════════════════════════════════════
+// TOAST NOTIFICATION — #notificationBanner (basebi.css .notification-banner).
+// One visible at a time: a new call replaces whatever's showing and resets the timer.
+// ══════════════════════════════════════════════════
+let notificationTimer=null;
+export function showNotification(msg,type='error'){
+  const el=document.getElementById('notificationBanner');
+  if(!el) return;
+  clearTimeout(notificationTimer);
+  el.textContent=msg;
+  el.className='notification-banner open is-'+type;
+  notificationTimer=setTimeout(()=>{ el.classList.remove('open'); },4000);
+}
+
+// ══════════════════════════════════════════════════
 // GEAR MENU
 // ══════════════════════════════════════════════════
 export function toggleGearMenu(){
