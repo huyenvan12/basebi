@@ -1145,6 +1145,36 @@ table.monitor-report-table{table-layout:fixed;width:100%;min-width:0}
 .task-popover-jump-btn{display:block;width:100%;text-align:left;margin-top:8px;font-size:10px;color:var(--accent);background:none;border:none;cursor:pointer;padding:2px 0;font-family:inherit}
 .task-popover-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:10px}
 
+/* TASK DETAIL MODAL — #taskModalOverlay, composed from .modal.modal-sm + Links section
+   (chips, picker, reverse-relations) added on top of the shared form-row/form-input recipe. */
+.task-modal-source-link{display:block;font-size:10px;color:var(--accent);background:none;border:none;cursor:pointer;padding:0;margin-top:-6px;font-family:inherit;text-align:left}
+.task-modal-divider{border-top:1px solid var(--border);margin:2px 0}
+.task-modal-links-header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.task-modal-links-title{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text)}
+.task-modal-quick-action{font-size:10px;color:var(--accent);background:none;border:none;cursor:pointer;padding:2px 0;font-family:inherit}
+.task-modal-quick-action:hover{text-decoration:underline}
+.task-link-row{display:flex;align-items:center;gap:8px}
+.task-link-row-label{font-size:10px;color:var(--text-dim);width:76px;flex-shrink:0}
+.task-link-chip{flex:1;display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:4px 8px;border-radius:12px;min-width:0}
+.task-link-chip span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.task-link-chip button{background:none;border:none;cursor:pointer;color:inherit;opacity:.7;font-size:11px;line-height:1;padding:0;flex:none}
+.task-link-chip button:hover{opacity:1}
+.task-link-chip.follow-up{background:var(--accent-dim);color:var(--accent)}
+.task-link-chip.depends-blocked{background:var(--tag-bg);color:var(--amber);border:1px solid var(--amber)}
+.task-link-chip.depends-resolved{background:var(--tag-bg);color:var(--text-muted)}
+.task-link-add-row{display:flex;align-items:center;gap:6px;height:28px;border:1px dashed var(--border);border-radius:8px;padding:0 10px;color:var(--text-dim);font-size:11px;cursor:pointer}
+.task-link-add-row:hover{color:var(--accent);border-color:var(--accent)}
+.task-link-add-row.is-disabled{opacity:.45;cursor:default;pointer-events:none}
+.task-link-field-toggle{display:flex;gap:6px;margin-bottom:6px}
+.task-link-field-btn{flex:1;padding:5px 0;font-size:10px;text-align:center;cursor:pointer;border:1px solid var(--border);border-radius:4px;color:var(--text-muted);background:var(--surface);font-family:inherit}
+.task-link-field-btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+.task-link-field-btn.is-disabled{opacity:.4;cursor:default;pointer-events:none}
+.task-referenced-label{font-size:10px;color:var(--text-dim)}
+.task-referenced-row{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-muted);cursor:pointer;padding:2px 0}
+.task-referenced-row:hover .task-referenced-title{color:var(--accent);text-decoration:underline}
+.task-referenced-kind{color:var(--text-dim)}
+.task-referenced-title{color:var(--text)}
+
 /* DAILY NOTE — per-line log rows with a hover-revealed convert-to-task icon */
 .daily-log-body{display:flex;flex-direction:column;gap:2px}
 .daily-log-line{display:flex;align-items:center;gap:6px}

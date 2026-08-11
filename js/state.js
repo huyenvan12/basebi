@@ -94,6 +94,11 @@ export const state = {
   taskPopoverMode: null,                      // 'create' | 'edit'
   taskPopoverCtx: null,                       // {noteId, lineIndex, lineText, taskId}
   taskLineBusy: {},                           // { [noteId]: bool } — guards against overlapping ensureLineId backfill saves
+  taskModalOpen: false, taskModalTaskId: null, taskModalCtx: null,   // ctx: {openedFrom} e.g. 'dailyNote'
+  taskModalDirty: false, taskModalOpenedWith: null,   // {title, comment} snapshot taken on open, for the dirty check
+  taskLinkPickerOpen: false,
+  taskLinkPickerField: null,                  // 'follow_up_of_task_id' | 'depends_on_task_id' — which relation the open picker targets
+  taskFollowUpModalCtx: null,                 // {followUpOfTaskId, titlePrefill} while the follow-up create modal is open
 
   // monitor report state
   monitorReports: [], activeMonitorReportId: null,

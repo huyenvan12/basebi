@@ -701,7 +701,12 @@ export function openConfirmModal(message,onConfirm,opts={}){
   btn.className='btn '+(opts.danger===false?'btn-primary':'btn-danger');
   confirmModalOnCancel=opts.onCancel||null;
   overlay.classList.add('open');
-  btn.onclick=async()=>{
+  btn.onclick=async(event)=>{
+    // Stop this click from bubbling to any document-level outside-click-to-close listener
+    // (e.g. tasks.js's #taskPopover guard). Without this, an onConfirm() callback that opens
+    // another click-outside-to-close popover as a side effect gets its own opening click
+    // immediately treated as an "outside click" by that listener and closes right back up.
+    if(event) event.stopPropagation();
     overlay.classList.remove('open');
     confirmModalOnCancel=null;
     await onConfirm();
