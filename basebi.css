@@ -179,7 +179,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 .logo{font-size:15px;font-weight:600;color:var(--accent);letter-spacing:-.3px;white-space:nowrap}
 .logo em{color:var(--text-muted);font-style:normal;font-weight:300}
 .search-wrap{flex:1;position:relative;max-width:420px}
-.search-wrap input{width:100%;padding:7px 12px 7px 32px;outline:none;transition:border-color .15s;-webkit-appearance:none;appearance:none}
+.search-wrap input{width:100%;padding:7px 12px 7px 32px;font-size:13px;border-width:1px;outline:none;transition:border-color .15s;-webkit-appearance:none;appearance:none}
 .search-wrap input:focus{border-color:var(--accent)}
 .search-wrap input::placeholder{color:var(--text-dim)}
 /* type="search" (used to dodge Chrome's Password Manager autofill heuristic) adds a native
