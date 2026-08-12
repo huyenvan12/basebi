@@ -52,6 +52,38 @@ export function closeMobDrawer(){
 }
 
 // ══════════════════════════════════════════════════
+// SHARED APP-WIDE CONFIRM MODAL — #confirmModalOverlay (index.html). Single overlay reused by
+// every caller; each call rewires the Confirm button's onclick, so callers don't collide.
+// Intended pattern for future modules — Delivery Tracker's #dtConfirmModalOverlay predates this
+// and is intentionally left as its own separate instance (js/gantt-tracker.js).
+// ══════════════════════════════════════════════════
+let confirmModalOnCancel=null;
+export function showConfirmModal(message,onConfirm,opts={}){
+  const overlay=document.getElementById('confirmModalOverlay');
+  if(!overlay) return;
+  document.getElementById('confirmModalTitle').textContent=opts.title||'Confirm';
+  document.getElementById('confirmModalMessage').textContent=message;
+  const btn=document.getElementById('confirmModalConfirmBtn');
+  btn.textContent=opts.confirmLabel||'Confirm';
+  btn.className='btn '+(opts.danger===false?'btn-primary':'btn-danger');
+  confirmModalOnCancel=opts.onCancel||null;
+  overlay.classList.add('open');
+  btn.onclick=async(event)=>{
+    if(event) event.stopPropagation();
+    overlay.classList.remove('open');
+    confirmModalOnCancel=null;
+    await onConfirm();
+  };
+}
+export function hideConfirmModal(){
+  const overlay=document.getElementById('confirmModalOverlay');
+  if(overlay) overlay.classList.remove('open');
+  const onCancel=confirmModalOnCancel;
+  confirmModalOnCancel=null;
+  if(onCancel) onCancel();
+}
+
+// ══════════════════════════════════════════════════
 // SHORTCUTS MODAL
 // ══════════════════════════════════════════════════
 export function openShortcutsModal(){ document.getElementById('shortcutsOverlay').classList.add('open'); }
@@ -159,6 +191,9 @@ export function initUiHelpers(){
     document.getElementById('resizer'+resizing).classList.remove('dragging');
     document.body.style.cursor=''; document.body.style.userSelect=''; resizing=null;
   });
+
+  document.getElementById('confirmModalCloseBtn').onclick=hideConfirmModal;
+  document.getElementById('confirmModalCancelBtn').onclick=hideConfirmModal;
 
   document.querySelector('.gear-btn[title="Options"]').onclick=toggleGearMenu;
   document.getElementById('themeToggleItem').onclick=()=>{toggleTheme();closeGearMenu();};

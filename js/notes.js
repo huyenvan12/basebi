@@ -5,7 +5,7 @@
 // ══════════════════════════════════════════════════
 import { GRAPH_TAG_HUB_CAP, SEED_NOTES } from './constants.js';
 import { state } from './state.js';
-import { esc, authorName } from './ui-helpers.js';
+import { esc, authorName, showNotification, showConfirmModal } from './ui-helpers.js';
 import { sb } from './supabase-client.js';
 // Narrow, intentional circular import: folders.js already imports renderFolders/selectFolder
 // from this file (via renderAll), and this file needs myNotes/saveNotes/renderAll from
@@ -266,8 +266,8 @@ export function renderTagCloud(){
     .map(([t,c])=>`<div class="tag-row">
       <span class="tag-chip ${state.activeTag===t?'active':''}" onclick="selectTag('${esc(t)}')">
         <span class="tag-name">#${esc(t)}</span><span class="tag-count">${c}</span></span>
-      <button class="tag-act-btn" onclick="openTagModal('${esc(t)}')" title="Rename">✎</button>
-      <button class="tag-act-btn del" onclick="deleteTag('${esc(t)}')" title="Delete">×</button>
+      <button class="icon-btn-sm tag-act-btn" onclick="openTagModal('${esc(t)}')" title="Rename">✎</button>
+      <button class="icon-btn-sm tag-act-btn del" onclick="deleteTag('${esc(t)}')" title="Delete">×</button>
     </div>`).join('');
 }
 
@@ -279,7 +279,7 @@ export function renderNoteList(){
   document.getElementById('listTitle').textContent=state.activeFolder==='all'?'All Notes':state.activeFolder;
   document.getElementById('noteCount').textContent=filtered.length+' note'+(filtered.length!==1?'s':'');
   document.getElementById('noteItems').innerHTML=filtered.length===0
-    ?'<div class="note-empty">No notes found</div>'
+    ?'<div class="empty-list">No notes found</div>'
     :filtered.map(n=>{
       const excerpt=(n.body||n.code||'').slice(0,55).replace(/\n/g,' ');
       return`<div class="note-item ${n.id===state.activeNoteId?'active':''}" onclick="selectNote('${n.id}')">
@@ -297,10 +297,10 @@ export function renderNoteList(){
   const cardsWrap=document.getElementById('noteCardsWrap');
   if(cardsWrap){
     cardsWrap.innerHTML=filtered.length===0
-      ?'<div class="note-empty">No notes found</div>'
+      ?'<div class="empty-list">No notes found</div>'
       :filtered.map(n=>{
         const excerpt=(n.body||n.code||'').slice(0,55).replace(/\n/g,' ');
-        return`<div class="mob-team-card ${n.id===state.activeNoteId?'active':''}" onclick="selectNote('${n.id}')">
+        return`<div class="card mob-team-card ${n.id===state.activeNoteId?'is-selected':''}" onclick="selectNote('${n.id}')">
           <div class="mob-team-card-title">${n.pinned?'📌 ':''}${hl(n.title,state.searchQuery)}</div>
           <div class="mob-team-card-meta">
             <span class="note-type-badge ${n.type==='code'?'type-code':'type-plain'}">${n.type==='code'?'Code':'Plain'}</span>
@@ -333,14 +333,14 @@ export function renderDetail(note){
   }else if(note.daily_date){body=`<div class="note-body daily-log-body">${renderDailyBodyLines(note,state.searchQuery)}</div>`;}
   else{body=`<div class="note-body">${renderBodyWithLinks(note.body||'',state.searchQuery)}</div>`;}
   const linkedSection=links.length?`<div class="linked-section">
-    <div class="linked-label">Linked Notes</div>
+    <div class="section-label-sub linked-label">Linked Notes</div>
     <div class="linked-chips">${links.map(l=>`<span class="linked-chip" onclick="jumpToLink('${esc(l)}')">↗ ${esc(l)}</span>`).join('')}</div>
   </div>`:'';
   buildLinkIndex();
   const outgoingTitles=new Set(links.map(l=>l.trim().toLowerCase()));
   const incoming=getIncomingLinks(note.id).filter(bn=>!outgoingTitles.has(bn.title.trim().toLowerCase()));
   const backlinksSection=incoming.length?`<div class="linked-section">
-    <div class="linked-label">Backlinks</div>
+    <div class="section-label-sub linked-label">Backlinks</div>
     <div class="linked-chips">${incoming.map(bn=>`<span class="linked-chip" onclick="jumpToLink('${esc(bn.title)}')">↙ ${esc(bn.title)}</span>`).join('')}</div>
   </div>`:'';
   const modLine=note.modified&&note.modified!==note.created?`<span>modified ${fmtDate(note.modified)}</span>`:'';
@@ -423,7 +423,7 @@ export function renderTeamList(){
   const list=getTeamSharedNotes();
   document.getElementById('teamCount').textContent=list.length+' note'+(list.length!==1?'s':'');
   document.getElementById('teamItems').innerHTML=list.length===0
-    ?'<div class="note-empty">No team-shared notes yet</div>'
+    ?'<div class="empty-list">No team-shared notes yet</div>'
     :list.map(n=>{
       const excerpt=(n.body||n.code||'').slice(0,55).replace(/\n/g,' ');
       return`<div class="note-item ${n.id===state.activeTeamNoteId?'active':''}" onclick="selectTeamNote('${n.id}')">
@@ -441,10 +441,10 @@ export function renderTeamList(){
   const cardsWrap=document.getElementById('teamCardsWrap');
   if(cardsWrap){
     cardsWrap.innerHTML=list.length===0
-      ?'<div class="note-empty">No team-shared notes yet</div>'
+      ?'<div class="empty-list">No team-shared notes yet</div>'
       :list.map(n=>{
         const excerpt=(n.body||n.code||'').slice(0,55).replace(/\n/g,' ');
-        return`<div class="mob-team-card ${n.id===state.activeTeamNoteId?'active':''}" onclick="selectTeamNote('${n.id}')">
+        return`<div class="card mob-team-card ${n.id===state.activeTeamNoteId?'is-selected':''}" onclick="selectTeamNote('${n.id}')">
           <div class="mob-team-card-title">${hl(n.title,'')}</div>
           <div class="mob-team-card-meta">
             <span class="note-type-badge ${n.type==='code'?'type-code':'type-plain'}">${n.type==='code'?'Code':'Plain'}</span>
@@ -618,7 +618,7 @@ export function renderPopupContent(note,q){
     <div class="popup-divider"></div>
     ${bodyHtml}
     <div class="popup-linked hidden" id="popupLinked">
-      <div class="popup-linked-label">Linked Notes</div>
+      <div class="section-label-sub popup-linked-label">Linked Notes</div>
       ${linkedHtml}
     </div>`;
 }
@@ -641,11 +641,12 @@ export function saveTagRename(){
   if(changed.length)saveNotes(changed).then(()=>renderAll());closeTagModal();renderAll();if(state.activeNoteId)renderDetail(state.notes.find(n=>n.id===state.activeNoteId));
 }
 export function deleteTag(tag){
-  if(!confirm(`Remove tag "#${tag}" from your notes?`))return;
-  const changed=myNotes().filter(n=>(n.tags||[]).includes(tag));
-  changed.forEach(n=>{n.tags=(n.tags||[]).filter(t=>t!==tag);});
-  if(state.activeTag===tag)state.activeTag=null;
-  if(changed.length)saveNotes(changed).then(()=>buildIndex());renderAll();if(state.activeNoteId)renderDetail(state.notes.find(n=>n.id===state.activeNoteId));
+  showConfirmModal(`Remove tag "#${tag}" from your notes?`,()=>{
+    const changed=myNotes().filter(n=>(n.tags||[]).includes(tag));
+    changed.forEach(n=>{n.tags=(n.tags||[]).filter(t=>t!==tag);});
+    if(state.activeTag===tag)state.activeTag=null;
+    if(changed.length)saveNotes(changed).then(()=>buildIndex());renderAll();if(state.activeNoteId)renderDetail(state.notes.find(n=>n.id===state.activeNoteId));
+  });
 }
 
 // ══════════════════════════════════════════════════
@@ -810,7 +811,7 @@ export async function saveNote(){
       Object.assign(note,prev);
       buildIndex();renderAll();selectNote(savedId);
       if(isUniqueViolation(err)) showTitleError('You already have a note with this title.');
-      else alert('Could not save note: '+(err.message||err));
+      else showNotification('Could not save note: '+(err.message||err), 'error');
       return;
     }
     buildIndex();closeNoteModal();
@@ -830,7 +831,7 @@ export async function saveNote(){
       state.notes=state.notes.filter(n=>n.id!==note.id);
       buildIndex();renderAll();
       if(isUniqueViolation(err)) showTitleError('You already have a note with this title.');
-      else alert('Could not save note: '+(err.message||err));
+      else showNotification('Could not save note: '+(err.message||err), 'error');
       return;
     }
     buildIndex();closeNoteModal();renderAll();selectNote(note.id);
@@ -843,20 +844,12 @@ export async function saveNote(){
 export function confirmDeleteNote(id,targetId){
   targetId=targetId||'noteDetail';
   const note=state.notes.find(n=>n.id===id);if(!note)return;
-  const el=document.getElementById(targetId);
-  const existing=el.querySelector('.confirm-box');if(existing){existing.remove();return;}
-  const box=document.createElement('div');box.className='confirm-box';
-  box.innerHTML=`<p>Delete "<strong>${esc(note.title)}</strong>"? This cannot be undone.</p>
-    <div class="confirm-actions">
-      <button class="btn btn-ghost" style="font-size:11px" onclick="this.closest('.confirm-box').remove()">Cancel</button>
-      <button class="btn btn-danger" style="font-size:11px" onclick="deleteNote('${id}','${targetId}')">Yes, delete</button>
-    </div>`;
-  el.querySelector('.detail-actions').insertAdjacentElement('afterend',box);
+  showConfirmModal(`Delete "${note.title}"? This cannot be undone.`,()=>deleteNote(id,targetId),{confirmLabel:'Yes, delete'});
 }
 export async function deleteNote(id,targetId){
   const{data,error}=await sb.from('notes').update({deleted:true,deleted_at:new Date().toISOString()}).eq('id',id).select('id');
   if(error||!data||!data.length){
-    alert("You don't have permission to delete this note.");
+    showNotification("You don't have permission to delete this note.", 'error');
     return;
   }
   state.notes=state.notes.filter(n=>n.id!==id);
@@ -889,7 +882,7 @@ export function renderInlineLinkDd(ta){
   const dd=document.getElementById('inlineLinkDd');
   dd.innerHTML=inlineLinkResults.length
     ?inlineLinkResults.map((n,i)=>`<div class="inline-link-dd-item ${i===inlineLinkCursor?'focused':''}" onclick="insertInlineLink('${esc(n.title)}')">${esc(n.title)}<span class="dd-folder">${esc(n.folder)}</span></div>`).join('')
-    :'<div class="inline-link-dd-empty">No notes found</div>';
+    :'<div class="dropdown-empty">No notes found</div>';
   const rect=ta.getBoundingClientRect();
   const wrapRect=document.getElementById('bodyRow').getBoundingClientRect();
   dd.style.top=(rect.bottom-wrapRect.top+4)+'px';
