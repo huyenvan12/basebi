@@ -409,10 +409,10 @@
     <div class="team-subview" id="teamChecklistsSubview">
       <div class="checklist-panel" id="checklistPanel">
         <div class="checklist-innernav" id="checklistInnerNav" style="display:none">
-          <div class="tab-group checklist-subtab-group">
-            <button class="tab-btn" id="checklistTabTemplates" onclick="switchChecklistSubView('templates')">📋 Templates</button>
-            <button class="tab-btn active" id="checklistTabMine" onclick="switchChecklistSubView('mine')">✅ My Checklists</button>
-            <button class="tab-btn" id="checklistTabShared" onclick="switchChecklistSubView('shared')">🔗 Shared with me <span class="tab-count-badge" id="sharedWithMeBadge" style="display:none"></span></button>
+          <div class="subtab-l3a-group checklist-subtab-group">
+            <button class="subtab-l3a" id="checklistTabTemplates" onclick="switchChecklistSubView('templates')">📋 Templates</button>
+            <button class="subtab-l3a active" id="checklistTabMine" onclick="switchChecklistSubView('mine')">✅ My Checklists</button>
+            <button class="subtab-l3a" id="checklistTabShared" onclick="switchChecklistSubView('shared')">🔗 Shared with me <span class="tab-count-badge" id="sharedWithMeBadge" style="display:none"></span></button>
           </div>
         </div>
 
@@ -498,7 +498,7 @@
 
   <!-- DELIVERY TRACKER VIEW -->
   <div class="team-view" id="ganttView">
-    <div class="dt-view-switcher">
+    <div class="dt-view-switcher subtab-l3a-group">
       <button class="subtab-l3a active" id="dtSubTabTimeline" onclick="switchGanttView('timeline')">Timeline</button>
       <button class="subtab-l3a" id="dtSubTabCalendar" onclick="switchGanttView('calendar')">Calendar</button>
       <button class="subtab-l3a" id="dtSubTabTasks" onclick="switchGanttView('tasks')">Tasks</button>
