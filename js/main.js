@@ -153,6 +153,7 @@ export function switchTeamSubTab(sub){
 function renderTeamSubnav(){
   document.getElementById('checklistInnerNav').style.display='';
   document.getElementById('checklistTabTemplates').style.display=state.currentUserIsAdmin?'':'none';
+  document.getElementById('checklistTemplatesSep').style.display=state.currentUserIsAdmin?'':'none';
   if(!state.currentUserIsAdmin&&state.currentChecklistView==='templates') state.currentChecklistView='mine';
   updateSharedWithMeBadge();
   showChecklistPage(state.currentChecklistView);
