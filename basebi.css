@@ -112,7 +112,7 @@
    Recipe extracted from Delivery Tracker's former .dt-subtab (visually
    unchanged). See docs/DESIGN_SYSTEM.md "## 1. Navigation" for the spec note. */
 .subtab-l3a-group{display:inline-flex;align-items:center;gap:2px;background:var(--surface2);padding:3px;border-radius:9px}
-.subtab-l3a{padding:5px 12px;font-size:10.5px;font-weight:500;cursor:pointer;color:var(--text-muted);background:transparent;border:none;border-radius:6px;font-family:inherit}
+.subtab-l3a{padding:5px 13px;font-size:11px;font-weight:500;cursor:pointer;color:var(--text-muted);background:transparent;border:none;border-radius:6px;font-family:inherit}
 .subtab-l3a.active{background:var(--accent);color:#fff}
 
 /* 1. Section labels */
@@ -1068,8 +1068,8 @@ table.monitor-report-table{table-layout:fixed;width:100%;min-width:0}
    TASKS — Kanban sub-view (Delivery Tracker) + Daily Note log-to-task conversion
    ══════════════════════════════════════════════════ */
 .task-groupby-switcher{display:flex;align-items:center;gap:6px}
-.task-groupby-label{font-size:10px;color:var(--text-dim);margin-right:2px}
-.task-gb-btn{padding:5px 12px;font-size:11px;font-weight:500;cursor:pointer;color:var(--text-muted);background:var(--surface);border:1px solid var(--border);border-radius:6px;font-family:inherit}
+.task-groupby-label{font-size:9.5px;color:var(--text-dim);margin-right:2px}
+.task-gb-btn{padding:4px 11px;font-size:10px;font-weight:500;cursor:pointer;color:var(--text-muted);background:var(--surface);border:1px solid var(--border);border-radius:6px;font-family:inherit}
 .task-gb-btn.active{background:transparent;color:var(--accent);border-color:var(--accent)}
 
 .task-kanban-wrap{flex:1;display:flex;gap:12px;overflow-x:auto;overflow-y:hidden;padding-bottom:8px}
