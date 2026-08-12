@@ -30,10 +30,10 @@
   </div>
   <div class="search-wrap" id="notesSearchWrap">
     <span class="search-icon">⌕</span>
-    <input type="search" id="searchInput" name="search-notes-query" placeholder="Search notes, code, tags… (Ctrl+K)" autocomplete="search-notes-query-nofill" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <input type="search" class="form-input-search" id="searchInput" name="search-notes-query" placeholder="Search notes, code, tags… (Ctrl+K)" autocomplete="search-notes-query-nofill" autocorrect="off" autocapitalize="off" spellcheck="false">
   </div>
   <div class="topbar-actions">
-    <button class="gear-btn" id="dailyNoteBtn" title="Today's note (Ctrl+Alt+D)">📅</button>
+    <button class="icon-btn" id="dailyNoteBtn" title="Today's note (Ctrl+Alt+D)">📅</button>
     <button class="btn btn-primary" id="topbarActionBtn">+ New Note</button>
     <!-- mobile-web only mirror of #topbarActionBtn (hidden on desktop, shown <=768px —
          see basebi.css @media block); text/onclick/visibility are driven from the exact
@@ -149,7 +149,7 @@
   <div class="mob-screens" id="mobScreens">
     <div class="mob-screen active" id="mobNotesListScreen">
       <div class="mob-folder-chips" id="mobFolderChips"></div>
-      <div class="mob-note-cards" id="mobNoteCards"></div>
+      <div class="mob-card-list mob-note-cards" id="mobNoteCards"></div>
     </div>
 
     <div class="mob-screen" id="mobNoteDetailScreen">
@@ -182,11 +182,11 @@
           <div class="mob-profile-email" id="mobProfileEmail">—</div>
           <div class="mob-profile-role-pill" id="mobProfileRolePill">—</div>
         </div>
-        <div class="mob-section-label">Account</div>
+        <div class="section-label-sub mob-section-label">Account</div>
         <div class="mob-profile-info-row"><span>Role</span><span id="mobProfileRole">—</span></div>
         <div class="mob-profile-info-row"><span>QA Seat</span><span id="mobProfileQaSeat">—</span></div>
 
-        <div class="mob-section-label" id="mobSavedAccountsLabel" style="display:none">Saved Accounts</div>
+        <div class="section-label-sub mob-section-label" id="mobSavedAccountsLabel" style="display:none">Saved Accounts</div>
         <div id="mobSavedAccountsList"></div>
 
         <div class="mob-profile-logout-btn" id="mobProfileLogoutBtn">Log out</div>
@@ -227,16 +227,16 @@
   <div class="notes-view" id="notesView">
     <div class="sidebar" id="sidebar">
       <div class="sidebar-section">
-        <div class="sidebar-label">Folders<button id="addFolderBtn" title="Add folder">＋</button><button class="pane-collapse-btn" id="collapseA" title="Collapse sidebar">‹</button></div>
+        <div class="section-label sidebar-label">Folders<button id="addFolderBtn" title="Add folder">＋</button><button class="pane-collapse-btn" id="collapseA" title="Collapse sidebar">‹</button></div>
         <div id="folderList"></div>
       </div>
-      <div class="sidebar-section"><div class="sidebar-label">Tags</div></div>
+      <div class="sidebar-section"><div class="section-label sidebar-label">Tags</div></div>
       <div class="sidebar-tags" id="tagCloud"></div>
     </div>
     <div class="resizer" id="resizerA"></div>
     <div class="note-list" id="noteListPane">
       <div class="note-list-header">
-        <span class="note-list-title" id="listTitle">All Notes</span>
+        <span class="section-label" id="listTitle">All Notes</span>
         <span class="note-count" id="noteCount">0 notes</span>
         <button class="pane-collapse-btn" id="collapseB" title="Collapse note list">‹</button>
       </div>
@@ -368,10 +368,10 @@
         <div class="graph-node-meta" id="gnMeta"></div>
         <div class="graph-node-tags" id="gnTags"></div>
         <div class="graph-link-list">
-          <div class="graph-link-list-title">Linked notes</div>
+          <div class="section-label-sub graph-link-list-title">Linked notes</div>
           <div id="gnLinks"></div>
         </div>
-        <button class="graph-open-btn" id="gnOpenBtn">Open note →</button>
+        <button class="btn btn-primary graph-open-btn" id="gnOpenBtn">Open note →</button>
       </div>
     </div>
   </div>
@@ -379,10 +379,10 @@
   <!-- TEAM SHARED VIEW -->
   <div class="team-view" id="teamView">
     <div class="team-subnav">
-      <div class="tab-group team-subtab-group">
-        <button class="tab-btn active" id="teamSubTabNotes" onclick="switchTeamSubTab('notes')">🌐 Shared Notes</button>
-        <button class="tab-btn" id="teamSubTabChecklists" onclick="switchTeamSubTab('checklists')">✅ Checklists</button>
-        <button class="tab-btn" id="teamSubTabMonitorLog" onclick="switchTeamSubTab('monitorlog')">📈 Monitor Log</button>
+      <div class="subtab-l3a-group team-subtab-group">
+        <button class="subtab-l3a active" id="teamSubTabNotes" onclick="switchTeamSubTab('notes')">🌐 Shared Notes</button>
+        <button class="subtab-l3a" id="teamSubTabChecklists" onclick="switchTeamSubTab('checklists')">✅ Checklists</button>
+        <button class="subtab-l3a" id="teamSubTabMonitorLog" onclick="switchTeamSubTab('monitorlog')">📈 Monitor Log</button>
       </div>
     </div>
 
@@ -390,7 +390,7 @@
     <div class="team-subview active" id="teamNotesSubview">
       <div class="note-list" id="teamListPane">
         <div class="note-list-header">
-          <span class="note-list-title">🌐 Team Shared</span>
+          <span class="section-label">🌐 Team Shared</span>
           <span class="note-count" id="teamCount">0 notes</span>
         </div>
         <div class="note-items" id="teamItems"></div>
@@ -576,7 +576,7 @@
 <div class="search-screen" id="searchScreen">
   <div class="search-screen-bar-wrap">
     <span class="search-screen-icon">⌕</span>
-    <input type="search" class="search-screen-input" id="searchScreenInput" name="search-notes-screen-query"
+    <input type="search" class="form-input-search search-screen-input" id="searchScreenInput" name="search-notes-screen-query"
       autocomplete="search-notes-screen-query-nofill" autocorrect="off" autocapitalize="off" spellcheck="false"
       placeholder="Search notes…">
   </div>
@@ -604,7 +604,7 @@
     <div class="form-row">
       <label class="form-label">Title *</label>
       <input class="form-input" id="f-title" placeholder="e.g. PROC SQL – Insert multiple rows">
-      <div class="form-hint" id="f-title-error" style="color:#f87171;display:none"></div>
+      <div class="form-hint is-error" id="f-title-error" style="display:none"></div>
     </div>
     <div class="form-row">
       <label class="form-label">Folder *</label>
@@ -630,9 +630,9 @@
     <div class="form-row" id="bodyRow" style="position:relative">
       <label class="form-label">Content <span style="font-size:9px;color:var(--text-dim);font-weight:400">— type [[ to link a note</span></label>
       <div class="fmt-toolbar">
-        <button type="button" class="fmt-btn" onclick="wrapSelection('**')" title="Bold"><b>B</b></button>
-        <button type="button" class="fmt-btn" onclick="wrapSelection('*')" title="Italic"><i>I</i></button>
-        <button type="button" class="fmt-btn" onclick="wrapSelection('==')" title="Highlight">H</button>
+        <button type="button" class="icon-btn-sm fmt-btn" onclick="wrapSelection('**')" title="Bold"><b>B</b></button>
+        <button type="button" class="icon-btn-sm fmt-btn" onclick="wrapSelection('*')" title="Italic"><i>I</i></button>
+        <button type="button" class="icon-btn-sm fmt-btn" onclick="wrapSelection('==')" title="Highlight">H</button>
       </div>
       <textarea class="form-input" id="f-body" placeholder="Write your note here…"></textarea>
       <div class="inline-link-dd" id="inlineLinkDd"></div>
@@ -670,7 +670,7 @@
     <div class="form-row">
       <label class="form-label">Folder name *</label>
       <input class="form-input" id="f-folder-name" placeholder="e.g. Reference">
-      <div class="form-hint" id="f-folder-name-error" style="color:#f87171;display:none"></div>
+      <div class="form-hint is-error" id="f-folder-name-error" style="display:none"></div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeFolderModal()">Cancel</button>
@@ -1021,8 +1021,25 @@
   <div class="modal modal-sm" id="taskFollowUpModalInner"></div>
 </div>
 
-<!-- GENERIC CONFIRM MODAL — replaces window.confirm() for destructive actions.
-     Opened via openConfirmModal()/closeConfirmModal() in js/gantt-tracker.js. -->
+<!-- SHARED APP-WIDE CONFIRM MODAL — replaces window.confirm() for destructive actions across
+     modules. Opened via showConfirmModal()/hideConfirmModal() in js/ui-helpers.js. This is the
+     intended pattern for all future module PRs (Delivery Tracker's #dtConfirmModalOverlay below
+     predates this and is left as its own independent instance, not retrofitted). -->
+<div class="modal-overlay" id="confirmModalOverlay">
+  <div class="modal modal-sm">
+    <div class="modal-title">
+      <span id="confirmModalTitle">Confirm</span>
+      <button class="modal-close" id="confirmModalCloseBtn">×</button>
+    </div>
+    <div id="confirmModalMessage" class="form-hint" style="font-size:12px;color:var(--text-muted)"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="confirmModalCancelBtn">Cancel</button>
+      <button class="btn btn-danger" id="confirmModalConfirmBtn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delivery Tracker's own confirm modal — pre-existing, left untouched (see comment above). -->
 <div class="modal-overlay" id="dtConfirmModalOverlay">
   <div class="modal modal-sm">
     <div class="modal-title">

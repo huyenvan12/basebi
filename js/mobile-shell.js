@@ -13,7 +13,7 @@ import {
   openNoteModal, deleteNote, openSearchScreen
 } from './notes.js';
 import { today, getTodayNote, openDailyNote } from './daily-note.js';
-import { esc } from './ui-helpers.js';
+import { esc, showConfirmModal } from './ui-helpers.js';
 import { isFeatureVisible } from './feature-flags.js';
 import { doLogout } from './supabase-client.js';
 import { renderMobSavedAccountsList } from './saved-accounts.js';
@@ -52,10 +52,10 @@ function renderMobNotesList(){
   renderMobFolderChips();
   const filtered = getFiltered();
   const el = document.getElementById('mobNoteCards');
-  if(!filtered.length){ el.innerHTML = '<div class="mob-empty">No notes found</div>'; return; }
+  if(!filtered.length){ el.innerHTML = '<div class="empty-list">No notes found</div>'; return; }
   el.innerHTML = filtered.map(n=>{
     const excerpt = (n.body||n.code||'').slice(0,90).replace(/\n/g,' ');
-    return `<div class="mob-note-card" data-id="${n.id}">
+    return `<div class="card mob-note-card" data-id="${n.id}">
       <div class="mob-note-card-title">${n.pinned?'📌 ':''}${esc(n.title)}</div>
       <div class="mob-note-card-meta">
         <span class="note-type-badge ${n.type==='code'?'type-code':'type-plain'}">${n.type==='code'?'Code':'Plain'}</span>
@@ -97,9 +97,9 @@ function renderMobNoteDetail(note){
   const links = (note.links||[]).filter(Boolean);
   const outgoingTitles = new Set(links.map(l=>l.trim().toLowerCase()));
   const incoming = getIncomingLinks(note.id).filter(bn=>!outgoingTitles.has(bn.title.trim().toLowerCase()));
-  const linkedSection = links.length ? `<div class="linked-section"><div class="linked-label">Linked Notes</div>
+  const linkedSection = links.length ? `<div class="linked-section"><div class="section-label-sub linked-label">Linked Notes</div>
     <div class="linked-chips">${links.map(l=>`<span class="linked-chip" data-title="${esc(l)}">↗ ${esc(l)}</span>`).join('')}</div></div>` : '';
-  const backSection = incoming.length ? `<div class="linked-section"><div class="linked-label">Backlinks</div>
+  const backSection = incoming.length ? `<div class="linked-section"><div class="section-label-sub linked-label">Backlinks</div>
     <div class="linked-chips">${incoming.map(bn=>`<span class="linked-chip" data-title="${esc(bn.title)}">↙ ${esc(bn.title)}</span>`).join('')}</div></div>` : '';
 
   const isOwner = note.owner_id === state.currentUserId;
@@ -124,9 +124,10 @@ function renderMobNoteDetail(note){
   if(isOwner){
     document.getElementById('mobEditNoteBtn').onclick = () => openNoteModal(note.id);
     document.getElementById('mobDeleteNoteBtn').onclick = () => {
-      if(!confirm(`Delete "${note.title}"? This cannot be undone.`)) return;
-      deleteNote(note.id, 'mobNoteDetailScreen');
-      showMobScreen('list'); renderMobNotesList();
+      showConfirmModal(`Delete "${note.title}"? This cannot be undone.`, () => {
+        deleteNote(note.id, 'mobNoteDetailScreen');
+        showMobScreen('list'); renderMobNotesList();
+      }, {confirmLabel:'Yes, delete'});
     };
   }
 }
@@ -187,7 +188,7 @@ function renderMobProfileScreen(){
 export function renderMobileShell(){
   if(!isFeatureVisible('notes')){
     document.getElementById('mobFolderChips').innerHTML = '';
-    document.getElementById('mobNoteCards').innerHTML = '<div class="mob-empty">Notes is not enabled for your account.</div>';
+    document.getElementById('mobNoteCards').innerHTML = '<div class="empty-list">Notes is not enabled for your account.</div>';
     document.getElementById('mobFabBtn').style.display = 'none';
     return;
   }
