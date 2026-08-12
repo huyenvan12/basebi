@@ -138,6 +138,11 @@
 
 /* 4. Form inputs */
 .form-input-compact{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:5px 7px;font-size:11px;color:var(--text);font-family:inherit}
+/* Note: 2px border (vs. the more common 1px elsewhere) — when composing this inside a
+   fixed-height topbar/toolbar row alongside other always-visible elements, the extra border
+   width + font-size can shift the row's auto height (see #searchInput/.search-wrap input,
+   basebi.css ~line 182, which overrides font-size/border-width back down to compensate). Check
+   for this if reusing .form-input-search in another module's toolbar. */
 .form-input-search{border:2px solid var(--accent-dim);border-radius:10px;font-size:14px;background:var(--bg);color:var(--text);font-family:inherit}
 
 /* 5. Popover — consolidated recipe shared by .task-popover / .dt-type-picker-popover /
