@@ -424,16 +424,38 @@ function renderTaskLinkChip(linkedTask, field){
   const resolved=linkedTask.status==='done';
   return `<span class="task-link-chip ${resolved?'depends-resolved':'depends-blocked'}">${resolved?TASK_LOCK_OPEN_SVG:TASK_LOCK_SVG}<span>${esc(linkedTask.title)}</span><button type="button" onclick="unlinkTaskField('depends_on_task_id')" title="Unlink">×</button></span>`;
 }
+// Read-only reverse-relation chip ("Has follow-ups" / "Blocks" rows) — no unlink button,
+// purely a clickable jump-to-task pill. Computed fresh from state.tasks every render, no query.
+function renderTaskRelReverseChip(t){
+  return `<span class="task-rel-chip" onclick="jumpToReferencedTask('${escJs(t.id)}')" title="${esc(t.title)}">${esc(t.title)}</span>`;
+}
+// Inline "+ Link existing task" trigger shown in a forward row (Follow-up of / Blocked by)
+// when that field is empty — opens the picker scoped to exactly that field (no chooser needed,
+// since which block you're in already implies the target field).
+function renderTaskRelLinkInline(field){
+  const modifier=field==='follow_up_of_task_id'?'task-rel-link-inline-followup':'task-rel-link-inline-dependency';
+  return `<span class="task-rel-link-inline ${modifier}" onclick="openTaskLinkPicker('${field}')">+ Link existing task</span>`;
+}
+// Renders the search/select picker inline directly under whichever forward row is currently
+// targeted (state.taskLinkPickerField) — at most one picker is ever open at a time, so this is
+// a no-op (returns '') for the row that ISN'T the active target.
+function renderTaskLinkPickerWrap(field){
+  if(!(state.taskLinkPickerOpen && state.taskLinkPickerField===field)) return '';
+  return `<div class="selector-wrap" id="taskLinkPickerWrap">
+    <div class="selector-input-row">
+      <input type="text" class="form-input" id="taskLinkPickerInput" placeholder="Search your tasks…" autocomplete="off" oninput="filterTaskLinkPicker()">
+    </div>
+    <div class="dropdown-list open" id="taskLinkPickerDropdown"></div>
+  </div>`;
+}
 
 export function renderTaskModal(){
   const task=currentTaskModalTask();
   if(!task){ closeTaskModalForced(); return; }
   const followUp=task.follow_up_of_task_id ? state.tasks.find(t=>t.id===task.follow_up_of_task_id) : null;
   const dependsOn=task.depends_on_task_id ? state.tasks.find(t=>t.id===task.depends_on_task_id) : null;
-  const bothSet=!!(task.follow_up_of_task_id && task.depends_on_task_id);
-  const referencedBy=state.tasks.filter(t=>t.follow_up_of_task_id===task.id);
+  const hasFollowUps=state.tasks.filter(t=>t.follow_up_of_task_id===task.id);
   const blocks=state.tasks.filter(t=>t.depends_on_task_id===task.id);
-  const hasReferences=referencedBy.length>0 || blocks.length>0;
   const ctx=state.taskModalCtx||{};
 
   const inner=document.getElementById('taskModalInner');
@@ -453,92 +475,65 @@ export function renderTaskModal(){
       <textarea class="form-input" id="taskModalComment" rows="2" placeholder="Note anything worth remembering..." oninput="onTaskModalFieldInput()">${esc(task.comment||'')}</textarea>
     </div>
     <div class="task-modal-divider"></div>
-    <div class="task-modal-links-header">
-      <span class="task-modal-links-title">${TASK_LINK_ARROW_SVG} Links</span>
-      <button type="button" class="task-modal-quick-action" onclick="event.stopPropagation();createFollowUpTask()">+ Create follow-up task</button>
-    </div>
-    <div class="form-row" style="gap:8px">
-      <div class="task-link-row">
-        <span class="task-link-row-label">Follows up on</span>
-        ${followUp?renderTaskLinkChip(followUp,'follow_up_of_task_id'):'<span class="task-referenced-label">—</span>'}
+
+    <div class="task-rel-block task-rel-block-followup">
+      <div class="task-rel-block-header">
+        <span class="task-rel-block-title"><span class="task-rel-icon-followup">${TASK_LINK_ARROW_SVG}</span> Follow-up</span>
+        <button type="button" class="task-modal-quick-action" onclick="event.stopPropagation();createFollowUpTask()">+ Create follow-up</button>
       </div>
-      <div class="task-link-row">
-        <span class="task-link-row-label">Depends on</span>
-        ${dependsOn?renderTaskLinkChip(dependsOn,'depends_on_task_id'):'<span class="task-referenced-label">—</span>'}
+      <div class="task-rel-row">
+        <span class="task-rel-row-label">Follow-up of</span>
+        <div class="task-rel-row-body">${followUp?renderTaskLinkChip(followUp,'follow_up_of_task_id'):renderTaskRelLinkInline('follow_up_of_task_id')}</div>
       </div>
-      <div class="task-link-add-row${bothSet?' is-disabled':''}" ${bothSet?'':'onclick="openTaskLinkPicker()"'}>
-        <span>+</span><span>Link an existing task</span>
-      </div>
-      <div class="selector-wrap" id="taskLinkPickerWrap" style="display:none">
-        <div class="task-link-field-toggle">
-          <button type="button" class="task-link-field-btn" id="taskLinkFieldBtnFollowUp" onclick="selectTaskLinkField('follow_up_of_task_id')">Follows up on</button>
-          <button type="button" class="task-link-field-btn" id="taskLinkFieldBtnDependsOn" onclick="selectTaskLinkField('depends_on_task_id')">Depends on</button>
-        </div>
-        <div class="selector-input-row">
-          <input type="text" class="form-input" id="taskLinkPickerInput" placeholder="Search your tasks…" autocomplete="off" oninput="filterTaskLinkPicker()">
-        </div>
-        <div class="dropdown-list open" id="taskLinkPickerDropdown"></div>
+      ${renderTaskLinkPickerWrap('follow_up_of_task_id')}
+      <div class="task-rel-row">
+        <span class="task-rel-row-label">Has follow-ups</span>
+        <div class="task-rel-row-body">${hasFollowUps.length?hasFollowUps.map(renderTaskRelReverseChip).join(''):'<span class="task-rel-empty">— none —</span>'}</div>
       </div>
     </div>
-    ${hasReferences?`
-    <div class="task-modal-divider"></div>
-    <div class="task-referenced-label">Referenced by other tasks · click to open</div>
-    <div style="display:flex;flex-direction:column;gap:4px">
-      ${referencedBy.map(t=>`<div class="task-referenced-row" onclick="jumpToReferencedTask('${escJs(t.id)}')"><span class="task-referenced-kind">${TASK_LINK_ARROW_SVG} Followed up by</span><span class="task-referenced-title">${esc(t.title)}</span></div>`).join('')}
-      ${blocks.map(t=>`<div class="task-referenced-row" onclick="jumpToReferencedTask('${escJs(t.id)}')"><span class="task-referenced-kind">${TASK_LOCK_OPEN_SVG} Blocks</span><span class="task-referenced-title">${esc(t.title)}</span></div>`).join('')}
-    </div>`:''}
+
+    <div class="task-rel-block task-rel-block-dependency">
+      <div class="task-rel-block-header">
+        <span class="task-rel-block-title"><span class="task-rel-icon-dependency">${TASK_LOCK_SVG}</span> Dependency</span>
+      </div>
+      <div class="task-rel-row">
+        <span class="task-rel-row-label">Blocked by</span>
+        <div class="task-rel-row-body">${dependsOn?renderTaskLinkChip(dependsOn,'depends_on_task_id'):renderTaskRelLinkInline('depends_on_task_id')}</div>
+      </div>
+      ${renderTaskLinkPickerWrap('depends_on_task_id')}
+      <div class="task-rel-row">
+        <span class="task-rel-row-label">Blocks</span>
+        <div class="task-rel-row-body">${blocks.length?blocks.map(renderTaskRelReverseChip).join(''):'<span class="task-rel-empty">— nothing —</span>'}</div>
+      </div>
+    </div>
+
     <div class="modal-actions">
       <button type="button" class="btn btn-ghost" onclick="closeTaskModal()">Cancel</button>
       <button type="button" class="btn btn-primary" onclick="saveTaskModal()">Save</button>
     </div>
   `;
+  if(state.taskLinkPickerOpen){
+    const input=document.getElementById('taskLinkPickerInput');
+    if(input) filterTaskLinkPicker();
+  }
 }
 
-function updateTaskLinkFieldButtons(){
+// Opens the link picker scoped to exactly one relation field — the target is always known from
+// which block/row triggered it (Follow-up block only ever sets follow_up_of_task_id, Dependency
+// block only ever sets depends_on_task_id), so there's no chooser UI needed anymore.
+export function openTaskLinkPicker(field){
   const task=currentTaskModalTask();
-  if(!task) return;
-  const followBtn=document.getElementById('taskLinkFieldBtnFollowUp');
-  const dependsBtn=document.getElementById('taskLinkFieldBtnDependsOn');
-  if(followBtn){
-    followBtn.disabled=!!task.follow_up_of_task_id;
-    followBtn.classList.toggle('is-disabled',!!task.follow_up_of_task_id);
-    followBtn.classList.toggle('active',state.taskLinkPickerField==='follow_up_of_task_id');
-  }
-  if(dependsBtn){
-    dependsBtn.disabled=!!task.depends_on_task_id;
-    dependsBtn.classList.toggle('is-disabled',!!task.depends_on_task_id);
-    dependsBtn.classList.toggle('active',state.taskLinkPickerField==='depends_on_task_id');
-  }
-}
-export function selectTaskLinkField(field){
-  const task=currentTaskModalTask();
-  if(!task) return;
-  if(task[field]) return; // that slot is already taken — button is disabled, this is a no-op safety net
-  state.taskLinkPickerField=field;
-  updateTaskLinkFieldButtons();
-  const input=document.getElementById('taskLinkPickerInput');
-  if(input) input.focus();
-}
-export function openTaskLinkPicker(){
-  const task=currentTaskModalTask();
-  if(!task || (task.follow_up_of_task_id && task.depends_on_task_id)) return;
+  if(!task || task[field]) return; // slot already taken — trigger shouldn't be reachable, safety net
   state.taskLinkPickerOpen=true;
-  // default to whichever slot is free; if both are free, default to "Follows up on" —
-  // the user can still toggle to "Depends on" before searching.
-  state.taskLinkPickerField=task.follow_up_of_task_id ? 'depends_on_task_id' : 'follow_up_of_task_id';
-  const wrap=document.getElementById('taskLinkPickerWrap');
-  if(wrap) wrap.style.display='block';
-  updateTaskLinkFieldButtons();
+  state.taskLinkPickerField=field;
+  renderTaskModal();
   const input=document.getElementById('taskLinkPickerInput');
-  if(input) input.value='';
-  filterTaskLinkPicker();
   if(input) input.focus();
 }
 export function closeTaskLinkPicker(){
   state.taskLinkPickerOpen=false;
   state.taskLinkPickerField=null;
-  const wrap=document.getElementById('taskLinkPickerWrap');
-  if(wrap) wrap.style.display='none';
+  renderTaskModal();
 }
 export function filterTaskLinkPicker(){
   const task=currentTaskModalTask();
@@ -555,11 +550,12 @@ export function filterTaskLinkPicker(){
 }
 export async function assignTaskLink(linkedTaskId){
   const task=currentTaskModalTask();
-  if(!task) return;
-  const field=state.taskLinkPickerField || (!task.follow_up_of_task_id ? 'follow_up_of_task_id' : 'depends_on_task_id');
+  const field=state.taskLinkPickerField;
+  if(!task || !field) return;
   try{ await updateTask(task.id,{[field]:linkedTaskId}); }
   catch(err){ showNotification('Could not link task: '+(err.message||err),'error'); return; }
-  closeTaskLinkPicker();
+  state.taskLinkPickerOpen=false;
+  state.taskLinkPickerField=null;
   renderTaskModal();
   if(state.ganttActiveView==='tasks') renderTasksView();
 }
@@ -603,11 +599,20 @@ export function openTaskFollowUpModal(followUpOfTaskId, parentTitle){
   setTimeout(()=>{ const el=document.getElementById('taskFollowUpModalTitle'); if(el){ el.focus(); el.select(); } },30);
 }
 export function closeTaskFollowUpModal(){
+  // Capture the origin task id before clearing ctx — this modal is only ever opened via
+  // createFollowUpTask() from inside the Task Detail Modal, so followUpOfTaskId doubles as
+  // "which parent modal to return to" (no separate return-target field needed). Reopening it
+  // here covers both close paths that route through this function: Cancel/× (discard) and the
+  // post-create path in submitTaskFollowUpModal() (so the new "Has follow-ups" entry is visible
+  // immediately, read fresh off state.tasks — no stale render since createTask() already unshifted
+  // the new row into state.tasks before this runs).
+  const returnToTaskId=state.taskFollowUpModalCtx ? state.taskFollowUpModalCtx.followUpOfTaskId : null;
   state.taskFollowUpModalCtx=null;
   const overlay=document.getElementById('taskFollowUpModalOverlay');
   if(overlay) overlay.classList.remove('open');
   const inner=document.getElementById('taskFollowUpModalInner');
   if(inner) inner.innerHTML='';
+  if(returnToTaskId) openTaskModal(returnToTaskId);
 }
 function renderTaskFollowUpModal(){
   const ctx=state.taskFollowUpModalCtx||{};
@@ -772,7 +777,6 @@ export function initTasks(){
   window.saveTaskModal=saveTaskModal;
   window.onTaskModalFieldInput=onTaskModalFieldInput;
   window.openTaskLinkPicker=openTaskLinkPicker;
-  window.selectTaskLinkField=selectTaskLinkField;
   window.filterTaskLinkPicker=filterTaskLinkPicker;
   window.assignTaskLink=assignTaskLink;
   window.unlinkTaskField=unlinkTaskField;
@@ -798,11 +802,15 @@ export function initTasks(){
 
   // Outside-click-to-close for the link picker dropdown only — the task modal itself closes
   // via explicit ×/Cancel/Save (matching every other .modal-overlay in this app), not
-  // click-outside, so the guard here is scoped to #taskLinkPickerWrap and its trigger row.
+  // click-outside, so the guard here is scoped to #taskLinkPickerWrap and its trigger elements
+  // (the inline "+ Link existing task" row action and the Dependency block's header "+ Link"
+  // quick action — both call openTaskLinkPicker() directly, so they must not immediately
+  // re-close what they just opened on the same click's bubble).
   document.addEventListener('click',e=>{
     if(!state.taskLinkPickerOpen) return;
     if(e.target.closest('#taskLinkPickerWrap')) return;
-    if(e.target.closest('.task-link-add-row')) return;
+    if(e.target.closest('.task-rel-link-inline')) return;
+    if(e.target.closest('.task-modal-quick-action')) return;
     closeTaskLinkPicker();
   });
 }
