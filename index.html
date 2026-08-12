@@ -1002,6 +1002,25 @@
   </div>
 </div>
 
+<!-- TASK DETAIL MODAL (edit mode: title, comment, links) — inner content is fully JS-rendered
+     by renderTaskModal(), same convention as #taskPopover, so chip/list regeneration on every
+     link/unlink stays a single innerHTML rebuild. Must precede #dtConfirmModalOverlay in DOM
+     order — same-z-index .modal-overlay stacking relies on document order, and the unsaved-
+     changes confirm dialog needs to render above this modal. -->
+<div class="modal-overlay" id="taskModalOverlay">
+  <div class="modal modal-sm" id="taskModalInner"></div>
+</div>
+
+<!-- FOLLOW-UP TASK CREATE MODAL — same .modal-overlay/.modal-sm shell as #taskModalOverlay,
+     used only by createFollowUpTask() (the "+ Create follow-up task" quick action inside the
+     Task Detail Modal). Deliberately has NO unsaved-changes confirm on close, unlike
+     #taskModalOverlay — it's a short quick-create form, not an edit-in-place surface, so
+     closing it always discards immediately. Kanban "+ Add task" and the Daily Note create-task
+     icon are unaffected and keep using the lightweight anchored #taskPopover below. -->
+<div class="modal-overlay" id="taskFollowUpModalOverlay">
+  <div class="modal modal-sm" id="taskFollowUpModalInner"></div>
+</div>
+
 <!-- GENERIC CONFIRM MODAL — replaces window.confirm() for destructive actions.
      Opened via openConfirmModal()/closeConfirmModal() in js/gantt-tracker.js. -->
 <div class="modal-overlay" id="dtConfirmModalOverlay">

@@ -1145,6 +1145,52 @@ table.monitor-report-table{table-layout:fixed;width:100%;min-width:0}
 .task-popover-jump-btn{display:block;width:100%;text-align:left;margin-top:8px;font-size:10px;color:var(--accent);background:none;border:none;cursor:pointer;padding:2px 0;font-family:inherit}
 .task-popover-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:10px}
 
+/* TASK DETAIL MODAL — #taskModalOverlay, composed from .modal.modal-sm + two grouped
+   relationship blocks (Follow-up / Dependency) added on top of the shared form-row/
+   form-input recipe. Blocks group by relationship TYPE (forward+reverse together), not by
+   direction — see task-rel-block below. */
+.task-modal-source-link{display:block;font-size:10px;color:var(--accent);background:none;border:none;cursor:pointer;padding:0;margin-top:-6px;font-family:inherit;text-align:left}
+.task-modal-divider{border-top:1px solid var(--border);margin:2px 0}
+.task-modal-quick-action{font-size:10px;color:var(--accent);background:none;border:none;cursor:pointer;padding:2px 0;font-family:inherit}
+.task-modal-quick-action:hover{text-decoration:underline}
+.task-modal-quick-action.is-disabled{opacity:.4;cursor:default;pointer-events:none;text-decoration:none}
+.task-link-chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:4px 8px;border-radius:12px;min-width:0;max-width:100%}
+.task-link-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.task-link-chip button{background:none;border:none;cursor:pointer;color:inherit;opacity:.7;font-size:11px;line-height:1;padding:0;flex:none}
+.task-link-chip button:hover{opacity:1}
+.task-link-chip.follow-up{background:var(--accent-dim);color:var(--accent)}
+.task-link-chip.depends-blocked{background:var(--tag-bg);color:var(--amber);border:1px solid var(--amber)}
+.task-link-chip.depends-resolved{background:var(--tag-bg);color:var(--text-muted)}
+
+/* Two relationship blocks — always render (never hidden, even when empty). Per the locked
+   Design System decision, card containers use one neutral style (same recipe as .card:
+   var(--surface2) bg, var(--border) 1px border, 8px radius) rather than per-instance color
+   tints — a full-background tint here made label/placeholder text low-contrast. Blocks stay
+   scannable at a glance via a 3px accent-colored left border + accent-colored header icon/
+   inline-link only; all body text uses the modal's normal (already-legible) palette. */
+.task-rel-block{background:var(--surface2);border:1px solid var(--border);border-radius:8px;border-left-width:3px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.task-rel-block-followup{border-left-color:var(--accent)}
+.task-rel-block-dependency{border-left-color:var(--amber)}
+.task-rel-block-header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.task-rel-block-title{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text)}
+.task-rel-icon-followup{display:inline-flex;color:var(--accent)}
+.task-rel-icon-dependency{display:inline-flex;color:var(--amber)}
+.task-rel-row{display:flex;align-items:flex-start;gap:8px}
+.task-rel-row-label{font-size:10px;color:var(--text-muted);width:82px;flex-shrink:0;padding-top:4px}
+.task-rel-row-body{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.task-rel-empty{font-size:11px;color:var(--text-dim)}
+/* Read-only reverse-relation chips ("Has follow-ups" / "Blocks") — clickable jump-to-task pills,
+   no unlink button since these are computed from the OTHER task's forward field, not this one's. */
+.task-rel-chip{display:inline-flex;align-items:center;font-size:11px;padding:3px 9px;border-radius:12px;background:var(--surface);border:1px solid var(--border);color:var(--text);cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.task-rel-chip:hover{border-color:var(--accent);color:var(--accent)}
+/* Inline "+ Link existing task" trigger shown in a forward row when that field is empty —
+   doubles as the empty-state indicator (never a bare dash) and the picker's entry point.
+   Colored to match its block's accent so it reads as clickable, same as the header actions. */
+.task-rel-link-inline{font-size:11px;border-radius:12px;padding:3px 10px;cursor:pointer;background:none;font-family:inherit;border:1px dashed transparent}
+.task-rel-link-inline-followup{color:var(--accent);border-color:var(--accent)}
+.task-rel-link-inline-dependency{color:var(--amber);border-color:var(--amber)}
+.task-rel-link-inline:hover{opacity:.8}
+
 /* DAILY NOTE — per-line log rows with a hover-revealed convert-to-task icon */
 .daily-log-body{display:flex;flex-direction:column;gap:2px}
 .daily-log-line{display:flex;align-items:center;gap:6px}
