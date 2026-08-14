@@ -110,19 +110,24 @@
    Checklist, Monitor Log — see docs/GAP_ANALYSIS.md) migrate onto this same
    class in their own Phase 4 PRs rather than inventing per-module names.
    Recipe extracted from Delivery Tracker's former .dt-subtab (visually
-   unchanged). See docs/DESIGN_SYSTEM.md "## 1. Navigation" for the spec note. */
+   unchanged). See docs/DESIGN_SYSTEM.md "## 1. Navigation" for the spec note.
+   `.subtab-l3a-group` is the ONLY allowed L3a container class app-wide — no
+   module may define its own separate container, even with matching values
+   (explicit spec rule, to prevent silent drift between module copies). */
 .subtab-l3a-group{display:inline-flex;align-items:center;gap:2px;background:var(--surface2);padding:3px;border-radius:9px}
 .subtab-l3a{padding:5px 12px;font-size:10.5px;font-weight:500;cursor:pointer;color:var(--text-muted);background:transparent;border:none;border-radius:6px;font-family:inherit}
 .subtab-l3a.active{background:var(--accent);color:#fff}
 
-/* Breadcrumb — deepest nav tier, for modules with a genuine 3rd nesting level
+/* Text Tabs — deepest nav tier, for modules with a genuine 3rd nesting level
    (e.g. Team Shared > Checklists > Templates/My Checklists/Shared with me).
-   No fill, no icons — kept deliberately minimal so it doesn't read as a third
-   pill-group stacked under L2/L3a. See docs/DESIGN_SYSTEM.md "## 1. Navigation". */
-.breadcrumb-nav{display:flex;align-items:center;gap:6px;font-size:11px}
-.breadcrumb-nav .crumb{background:none;border:none;padding:0;font:inherit;cursor:pointer;color:var(--text-dim)}
-.breadcrumb-nav .crumb.active{color:var(--accent);font-weight:700;border-bottom:1.5px solid var(--accent)}
-.breadcrumb-nav .crumb-sep{color:var(--text-dim);opacity:.4}
+   Sibling views at the same level, not a hierarchical path — no fill, no icons,
+   "·" separators (not "/", which implies a path). Kept deliberately minimal so
+   it doesn't read as a third pill-group stacked under L2/L3a.
+   Renamed from "Breadcrumb" — see docs/DESIGN_SYSTEM.md "## 1. Navigation". */
+.text-tabs{display:flex;align-items:center;gap:6px;font-size:11px}
+.text-tabs .ttab{background:none;border:none;padding:0;font:inherit;cursor:pointer;color:var(--text-dim)}
+.text-tabs .ttab.active{color:var(--accent);font-weight:700;border-bottom:1.5px solid var(--accent)}
+.text-tabs .ttab-sep{color:var(--text-dim);opacity:.4}
 
 /* 1. Section labels */
 .section-label{font-size:11px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted)}
