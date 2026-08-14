@@ -110,19 +110,34 @@
    Checklist, Monitor Log — see docs/GAP_ANALYSIS.md) migrate onto this same
    class in their own Phase 4 PRs rather than inventing per-module names.
    Recipe extracted from Delivery Tracker's former .dt-subtab (visually
-   unchanged). See docs/DESIGN_SYSTEM.md "## 1. Navigation" for the spec note. */
-.subtab-l3a-group{display:inline-flex;align-items:center;gap:2px;background:var(--surface2);padding:3px;border-radius:9px}
+   unchanged). See docs/DESIGN_SYSTEM.md "## 1. Navigation" for the spec note.
+   `.subtab-l3a-group` is the ONLY allowed L3a container class app-wide — no
+   module may define its own separate container, even with matching values
+   (explicit spec rule, to prevent silent drift between module copies).
+   `width:100%` is explicit and load-bearing, not incidental: without it the
+   container only stretches full-row when it happens to be a *direct* flex-item
+   child of a `display:flex` parent (CSS blockification: an inline-flex box that's
+   a flex item computes to `display:flex` and stretches via the parent's default
+   `align-items:stretch`). Delivery Tracker's markup gets this for free because
+   its wrapper and `.subtab-l3a-group` are the same element sitting directly in
+   `.team-view`; Team Shared's is nested one level deeper inside `.team-subnav`
+   and doesn't, so it silently shrink-wrapped instead. Declaring `width:100%`
+   here makes full-width the guaranteed behavior for every consumer regardless
+   of DOM nesting, instead of relying on that accident of structure. */
+.subtab-l3a-group{display:inline-flex;align-items:center;gap:2px;width:100%;background:var(--surface2);padding:3px;border-radius:9px}
 .subtab-l3a{padding:5px 12px;font-size:10.5px;font-weight:500;cursor:pointer;color:var(--text-muted);background:transparent;border:none;border-radius:6px;font-family:inherit}
 .subtab-l3a.active{background:var(--accent);color:#fff}
 
-/* Breadcrumb — deepest nav tier, for modules with a genuine 3rd nesting level
+/* Text Tabs — deepest nav tier, for modules with a genuine 3rd nesting level
    (e.g. Team Shared > Checklists > Templates/My Checklists/Shared with me).
-   No fill, no icons — kept deliberately minimal so it doesn't read as a third
-   pill-group stacked under L2/L3a. See docs/DESIGN_SYSTEM.md "## 1. Navigation". */
-.breadcrumb-nav{display:flex;align-items:center;gap:6px;font-size:11px}
-.breadcrumb-nav .crumb{background:none;border:none;padding:0;font:inherit;cursor:pointer;color:var(--text-dim)}
-.breadcrumb-nav .crumb.active{color:var(--accent);font-weight:700;border-bottom:1.5px solid var(--accent)}
-.breadcrumb-nav .crumb-sep{color:var(--text-dim);opacity:.4}
+   Sibling views at the same level, not a hierarchical path — no fill, no icons,
+   "·" separators (not "/", which implies a path). Kept deliberately minimal so
+   it doesn't read as a third pill-group stacked under L2/L3a.
+   Renamed from "Breadcrumb" — see docs/DESIGN_SYSTEM.md "## 1. Navigation". */
+.text-tabs{display:flex;align-items:center;gap:6px;font-size:11px}
+.text-tabs .ttab{background:none;border:none;padding:0;font:inherit;cursor:pointer;color:var(--text-dim)}
+.text-tabs .ttab.active{color:var(--accent);font-weight:700;border-bottom:1.5px solid var(--accent)}
+.text-tabs .ttab-sep{color:var(--text-dim);opacity:.4}
 
 /* 1. Section labels */
 .section-label{font-size:11px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted)}
@@ -620,7 +635,14 @@ pre.popup-code-body{padding:12px;font-family:'JetBrains Mono',monospace;font-siz
 /* ══════════════════════════════════════
    TEAM SHARED — SUB-NAV
 ══════════════════════════════════════ */
-.team-subnav{padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface)}
+/* Layout-only, no fill of its own — predates the L3a consolidation (originally
+   had its own background/border-bottom/padding "header bar" strip, which was
+   leftover legacy markup never reconciled with .subtab-l3a-group becoming the
+   single source of truth for the pill's fill). Now mirrors Delivery Tracker's
+   .dt-view-switcher recipe exactly, so both modules' L3a rows sit directly on
+   the page background with no extra outer layer. See docs/DESIGN_SYSTEM.md
+   "## 1. Navigation". */
+.team-subnav{margin:8px 14px 0;flex-shrink:0}
 .team-subview{display:none;flex:1;overflow:hidden}
 .team-subview.active{display:flex}
 
