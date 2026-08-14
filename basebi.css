@@ -625,7 +625,14 @@ pre.popup-code-body{padding:12px;font-family:'JetBrains Mono',monospace;font-siz
 /* ══════════════════════════════════════
    TEAM SHARED — SUB-NAV
 ══════════════════════════════════════ */
-.team-subnav{padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface)}
+/* Layout-only, no fill of its own — predates the L3a consolidation (originally
+   had its own background/border-bottom/padding "header bar" strip, which was
+   leftover legacy markup never reconciled with .subtab-l3a-group becoming the
+   single source of truth for the pill's fill). Now mirrors Delivery Tracker's
+   .dt-view-switcher recipe exactly, so both modules' L3a rows sit directly on
+   the page background with no extra outer layer. See docs/DESIGN_SYSTEM.md
+   "## 1. Navigation". */
+.team-subnav{margin:8px 14px 0;flex-shrink:0}
 .team-subview{display:none;flex:1;overflow:hidden}
 .team-subview.active{display:flex}
 
