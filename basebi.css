@@ -113,8 +113,18 @@
    unchanged). See docs/DESIGN_SYSTEM.md "## 1. Navigation" for the spec note.
    `.subtab-l3a-group` is the ONLY allowed L3a container class app-wide — no
    module may define its own separate container, even with matching values
-   (explicit spec rule, to prevent silent drift between module copies). */
-.subtab-l3a-group{display:inline-flex;align-items:center;gap:2px;background:var(--surface2);padding:3px;border-radius:9px}
+   (explicit spec rule, to prevent silent drift between module copies).
+   `width:100%` is explicit and load-bearing, not incidental: without it the
+   container only stretches full-row when it happens to be a *direct* flex-item
+   child of a `display:flex` parent (CSS blockification: an inline-flex box that's
+   a flex item computes to `display:flex` and stretches via the parent's default
+   `align-items:stretch`). Delivery Tracker's markup gets this for free because
+   its wrapper and `.subtab-l3a-group` are the same element sitting directly in
+   `.team-view`; Team Shared's is nested one level deeper inside `.team-subnav`
+   and doesn't, so it silently shrink-wrapped instead. Declaring `width:100%`
+   here makes full-width the guaranteed behavior for every consumer regardless
+   of DOM nesting, instead of relying on that accident of structure. */
+.subtab-l3a-group{display:inline-flex;align-items:center;gap:2px;width:100%;background:var(--surface2);padding:3px;border-radius:9px}
 .subtab-l3a{padding:5px 12px;font-size:10.5px;font-weight:500;cursor:pointer;color:var(--text-muted);background:transparent;border:none;border-radius:6px;font-family:inherit}
 .subtab-l3a.active{background:var(--accent);color:#fff}
 
