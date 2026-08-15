@@ -255,7 +255,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 
 /* NOTE LIST */
 .note-list{width:260px;min-width:160px;max-width:420px;flex-shrink:0;flex:none;display:flex;flex-direction:column;overflow:hidden}
-.note-list-header{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.note-list-header{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .note-list-title{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px}
 .note-count{font-size:10px;color:var(--text-dim)}
 .note-items{flex:1;overflow-y:auto}
@@ -274,7 +274,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 /* NOTE DETAIL */
 .note-detail{flex:1;min-width:280px;display:flex;flex-direction:column;overflow:hidden}
 .note-detail-back-btn{display:none}
-.note-detail-header{padding:14px 20px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.note-detail-header{padding:14px 14px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
 .note-detail-title{font-size:18px;font-weight:600;color:var(--text);margin-bottom:8px}
 .note-detail-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .detail-folder-badge{font-size:10px;color:var(--accent);background:var(--accent-dim);padding:2px 8px;border-radius:4px;font-weight:500}
@@ -284,8 +284,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 .privacy-badge.is-private{color:var(--text-muted);background:var(--tag-bg);border:1px solid var(--border)}
 .privacy-badge.is-shared{color:var(--success);background:var(--success-dim)}
 .detail-dates{margin-left:auto;font-size:10px;color:var(--text-dim);display:flex;flex-direction:column;align-items:flex-end;gap:2px}
-.detail-actions{display:flex;gap:6px;padding:8px 20px;border-bottom:1px solid var(--border);flex-shrink:0}
-.note-detail-content{flex:1;padding:16px 20px;overflow-y:auto}
+.detail-actions{display:flex;gap:6px;padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.note-detail-content{flex:1;padding:16px 14px;overflow-y:auto}
 .capture-bar{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:10px 20px;border-top:1px solid var(--border);background:var(--surface)}
 .capture-bar input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;transition:border-color .15s}
 .capture-bar input:focus{border-color:var(--accent)}
@@ -964,7 +964,7 @@ td.cc-note.empty{color:var(--text-dim);opacity:.5}
    width is locked to the value below regardless of whether a given row renders a trash icon —
    under the default 'auto' layout the browser sizes columns from row content, so a column that's
    sometimes just "View →" and sometimes "[trash] View →" would visibly shift row to row. */
-table.monitor-log-list-table{table-layout:fixed;width:100%;min-width:0}
+table.monitor-log-list-table{table-layout:fixed;width:100%;min-width:0;padding:0 14px 14px}
 .monitor-log-list-table th:last-child,.monitor-log-list-table td:last-child{width:104px}
 .monitor-log-actions-cell{display:flex;align-items:center;justify-content:flex-end;gap:10px}
 /* "View →" is the alignment anchor and always sits last (rightmost); the trash button/
@@ -979,6 +979,7 @@ table.monitor-log-list-table{table-layout:fixed;width:100%;min-width:0}
    .monitor-report-detail-content instead, which is a non-scrolling descendant and so doesn't
    affect the sticky offset calculation. */
 #monitorLogDetailScroll{padding:0}
+/* --reading-width exception: capped/centered for report-text readability */
 .monitor-report-detail-content{padding:18px;max-width:560px}
 /* .camp-table sets min-width:860px for the wide campaigns list — override it here since this
    is a fixed 2-column table and doesn't need anywhere near that width. */
@@ -1091,6 +1092,7 @@ table.monitor-report-table{table-layout:fixed;width:100%;min-width:0}
    Fixed width (5 x column width) + margin:auto keeps the grid from stretching to fill the pane
    and centers it; fixed row height (matching column width) makes each day read as a square;
    removing flex-grow on the outer container stops it from expanding into unused vertical space. */
+/* --reading-width exception: fixed 7-column calendar shape doesn't benefit from stretching full-width */
 .dt-calendar-grid{width:702px;max-width:100%;margin:10px auto 0;overflow:auto;border:1px solid var(--border);border-radius:6px;flex-shrink:0}
 .dt-cal-week-row{position:relative;display:flex;flex-direction:column;height:140px;border-bottom:1px solid var(--border)}
 .dt-cal-day-labels{display:flex;flex-shrink:0}
