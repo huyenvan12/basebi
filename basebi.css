@@ -45,6 +45,14 @@
      --accent-hover above — the current rule isn't theme-scoped, so this preserves the exact
      current computed output. */
   --success-dim:rgba(74,222,128,.15);
+  /* --tp-skill-*: extracted from Test Prep's SKILL_PALETTE (js/test-prep.js), which hardcoded
+     8 raw hex values for skill pills/day-bar segments/legend swatches. Slots 3/5 duplicated
+     --success/--danger as inline hex, which is a real light-theme bug (raw hex never adapts) —
+     those two now reference the token directly. The other 6 stay theme-invariant raw hex,
+     matching the existing --teal/--lavender precedent of decorative tokens that don't vary
+     by theme. */
+  --tp-skill-1:#5b8dee;--tp-skill-2:#f59e0b;--tp-skill-3:var(--success);--tp-skill-4:#c4b5fd;
+  --tp-skill-5:var(--danger);--tp-skill-6:#34d399;--tp-skill-7:#f472b6;--tp-skill-8:#60a5fa;
 }
 
 /* ── LIGHT THEME ── */
@@ -94,6 +102,10 @@
   --card-shadow:0 12px 32px rgba(0,0,0,.4);
   --accent-hover:#4a7de0;
   --success-dim:rgba(74,222,128,.15);
+  /* --tp-skill-*: same 6 theme-invariant raw hexes as the dark block; slots 3/5 reference
+     --success/--danger so they adapt per theme (see dark block for full rationale). */
+  --tp-skill-1:#5b8dee;--tp-skill-2:#f59e0b;--tp-skill-3:var(--success);--tp-skill-4:#c4b5fd;
+  --tp-skill-5:var(--danger);--tp-skill-6:#34d399;--tp-skill-7:#f472b6;--tp-skill-8:#60a5fa;
 }
 
 /* Base reset: form controls don't inherit font-family from their parent by
@@ -772,8 +784,14 @@ pre.popup-code-body{padding:12px;font-family:'JetBrains Mono',monospace;font-siz
 .checklist-detail-tpl{font-size:11px;color:var(--text-dim)}
 .checklist-detail-meta-row{display:flex;align-items:center;gap:14px;font-size:11px;color:var(--text-muted)}
 
+/* Shared accordion-card visual recipe (border/radius/margin/overflow only) — composed
+   alongside .checklist-phase (Checklist + Test Prep per-week accordions, always collapsible
+   on any viewport) and .tp-accordion-section (Test Prep's outer sections, desktop-always-
+   expanded/mobile-collapsible-only via its own @media override below). The two consumers
+   have different collapse *behavior*, so only the identical visual declarations live here. */
+.accordion-card{border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden}
+
 /* Phase collapsibles (only rendered when items carry a phase field) */
-.checklist-phase{border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden}
 .checklist-phase-summary{cursor:pointer;list-style:none;padding:10px 12px;background:var(--surface2);display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;font-weight:600;color:var(--text)}
 .checklist-phase-summary::-webkit-details-marker{display:none}
 .checklist-phase-progress{font-size:10px;color:var(--text-muted);font-weight:500;white-space:nowrap}
@@ -1243,13 +1261,12 @@ table.monitor-report-table{table-layout:fixed;width:100%;min-width:0}
    with the rest of the app; degrades via flex-wrap at narrow widths).
    ══════════════════════════════════════════════════ */
 .tp-scroll{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:20px}
-.tp-header{display:flex;flex-direction:column;gap:8px;padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px}
+.tp-header{display:flex;flex-direction:column;gap:8px;padding:14px}
 .tp-header-title{font-size:16px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px}
-.tp-header-edit-btn{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:4px}
-.tp-header-edit-btn:hover{color:var(--text);background:var(--tag-bg)}
+.tp-header-edit-btn{color:var(--text-dim);font-size:13px}
+.tp-header-edit-btn:hover{color:var(--text)}
 .tp-header-stats{display:flex;flex-wrap:wrap;gap:20px}
 .tp-header-stat{display:flex;flex-direction:column;gap:2px}
-.tp-header-stat-label{font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-dim)}
 .tp-header-stat-val{font-size:14px;font-weight:600;color:var(--text)}
 
 .tp-section{display:flex;flex-direction:column;gap:10px}
@@ -1266,7 +1283,7 @@ table.monitor-report-table{table-layout:fixed;width:100%;min-width:0}
    whatever content no longer fit instead of just letting #tpScroll scroll. flex-shrink:0
    keeps every section at its natural content height regardless of siblings' state, so
    #tpScroll's own overflow-y:auto handles overflow correctly via scrolling instead. */
-.tp-accordion-section{border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden;flex-shrink:0}
+.tp-accordion-section{flex-shrink:0}
 .tp-accordion-summary{cursor:pointer;list-style:none;padding:10px 12px;background:var(--surface2);font-size:12px;font-weight:600;color:var(--text)}
 .tp-accordion-summary::-webkit-details-marker{display:none}
 .tp-accordion-body{display:flex;flex-direction:column;gap:10px;padding:10px 12px}
@@ -1281,7 +1298,7 @@ table.monitor-report-table{table-layout:fixed;width:100%;min-width:0}
 .tp-skill-pill{border:1px solid var(--border);background:var(--surface2)}
 .tp-minutes-input{width:100px;flex:none}
 
-.tp-seven-day{display:flex;flex-direction:column;gap:6px;padding:12px;border:1px solid var(--border);border-radius:8px}
+.tp-seven-day{display:flex;flex-direction:column;gap:6px;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px}
 .tp-day-list{display:flex;flex-direction:column;gap:6px}
 .tp-day-row{display:flex;align-items:center;gap:10px}
 .tp-day-label{width:44px;flex-shrink:0;font-size:10px;color:var(--text-dim)}
@@ -1297,7 +1314,7 @@ table.monitor-report-table{table-layout:fixed;width:100%;min-width:0}
 
 .tp-task-text{flex:1;cursor:text}
 .tp-task-edit-input{flex:1;font-family:inherit;font-size:12px;background:var(--bg);border:1px solid var(--accent);border-radius:4px;padding:4px 6px;color:var(--text);outline:none}
-.tp-task-del{background:none;border:none;padding:2px 4px;font-family:inherit;color:var(--text-dim);cursor:pointer;flex-shrink:0}
+.tp-task-del{font-family:inherit;color:var(--text-dim);flex-shrink:0}
 .tp-task-del:hover{color:var(--danger)}
 .tp-week-actions{display:flex;align-items:center;gap:14px;margin-top:8px}
 .tp-add-task-btn{align-self:flex-start;margin-top:0;background:none;border:none;padding:0;font-family:inherit;font-size:11px;color:var(--accent);cursor:pointer}

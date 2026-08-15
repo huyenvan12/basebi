@@ -6,11 +6,11 @@
 // ══════════════════════════════════════════════════
 import { state } from './state.js';
 import { sb } from './supabase-client.js';
-import { esc, escJs } from './ui-helpers.js';
+import { esc, escJs, showNotification, showConfirmModal } from './ui-helpers.js';
 
 // Fixed palette indexed by each skill's position in the (sort_order-ordered) skills list —
 // never keyed by skill name, so this keeps working if skill names/count change later.
-const SKILL_PALETTE = ['#5b8dee','#f59e0b','#4ade80','#c4b5fd','#f87171','#34d399','#f472b6','#60a5fa'];
+const SKILL_PALETTE = ['var(--tp-skill-1)','var(--tp-skill-2)','var(--tp-skill-3)','var(--tp-skill-4)','var(--tp-skill-5)','var(--tp-skill-6)','var(--tp-skill-7)','var(--tp-skill-8)'];
 export function skillColor(skillId){
   const idx = state.testPrepSkills.findIndex(s=>s.id===skillId);
   return SKILL_PALETTE[(idx<0?0:idx) % SKILL_PALETTE.length];
@@ -114,12 +114,12 @@ function renderTestPrepHeader(){
   if(!exam){ el.innerHTML=''; return; }
   el.innerHTML=`
     <div class="tp-header-title">${esc(exam.name)}
-      <button type="button" class="tp-header-edit-btn" title="Edit exam info" onclick="openTestPrepEditModal()">✎</button>
+      <button type="button" class="tp-header-edit-btn icon-btn" title="Edit exam info" onclick="openTestPrepEditModal()">✎</button>
     </div>
     <div class="tp-header-stats">
-      <div class="tp-header-stat"><span class="tp-header-stat-label">Current</span><span class="tp-header-stat-val">${fmtScore(exam.current_score)}</span></div>
-      <div class="tp-header-stat"><span class="tp-header-stat-label">Target</span><span class="tp-header-stat-val">${fmtScore(exam.target_score)}</span></div>
-      <div class="tp-header-stat"><span class="tp-header-stat-label">Exam Date</span><span class="tp-header-stat-val">${esc(fmtDate(exam.exam_date))}</span></div>
+      <div class="tp-header-stat"><span class="tp-header-stat-label section-label-sub">Current</span><span class="tp-header-stat-val">${fmtScore(exam.current_score)}</span></div>
+      <div class="tp-header-stat"><span class="tp-header-stat-label section-label-sub">Target</span><span class="tp-header-stat-val">${fmtScore(exam.target_score)}</span></div>
+      <div class="tp-header-stat"><span class="tp-header-stat-label section-label-sub">Exam Date</span><span class="tp-header-stat-val">${esc(fmtDate(exam.exam_date))}</span></div>
     </div>`;
 }
 
@@ -151,7 +151,7 @@ export async function saveTestPrepExam(){
     state.testPrepExam=updated;
     closeTestPrepEditModal();
     renderTestPrepHeader();
-  }catch(err){ alert('Could not save exam info: '+(err.message||err)); }
+  }catch(err){ showNotification('Could not save exam info: '+(err.message||err),'error'); }
 }
 
 // ══════════════════════════════════════════════════
@@ -161,7 +161,7 @@ function renderSkillPicker(){
   const el=document.getElementById('tpSkillPicker');
   el.innerHTML=state.testPrepSkills.map(s=>`
     <button type="button" class="tag-chip tp-skill-pill ${state.testPrepActiveSkillId===s.id?'active':''}"
-      style="${state.testPrepActiveSkillId===s.id?`background:${skillColor(s.id)}22;border-color:${skillColor(s.id)};color:${skillColor(s.id)}`:''}"
+      style="${state.testPrepActiveSkillId===s.id?`background:color-mix(in srgb, ${skillColor(s.id)} 13%, transparent);border-color:${skillColor(s.id)};color:${skillColor(s.id)}`:''}"
       onclick="setTestPrepActiveSkill('${escJs(s.id)}')">${esc(s.name)}</button>
   `).join('');
 }
@@ -212,7 +212,7 @@ function skillName(id){ const s=state.testPrepSkills.find(sk=>sk.id===id); retur
 function renderRecentEntries(){
   const el=document.getElementById('tpRecentEntries');
   const recent=state.testPrepTimeLogs.slice(0,10);
-  if(!recent.length){ el.innerHTML='<div class="note-empty">No time logged yet</div>'; return; }
+  if(!recent.length){ el.innerHTML='<div class="empty-list">No time logged yet</div>'; return; }
   el.innerHTML=`<table class="tp-recent-table">
     <thead><tr><th>Date</th><th>Skill</th><th>Minutes</th></tr></thead>
     <tbody>${recent.map(l=>`<tr>
@@ -226,7 +226,7 @@ function renderRecentEntries(){
 export async function logTestPrepTime(){
   const minutesEl=document.getElementById('tpMinutesInput');
   const minutes=parseInt(minutesEl.value,10);
-  if(!state.testPrepActiveSkillId){ alert('Pick a skill first.'); return; }
+  if(!state.testPrepActiveSkillId){ showNotification('Pick a skill first.','warning'); return; }
   if(!minutes||minutes<=0){ minutesEl.focus(); return; }
   const log_date=localDateStr();
   try{
@@ -235,7 +235,7 @@ export async function logTestPrepTime(){
     minutesEl.value='';
     renderSevenDayView();
     renderRecentEntries();
-  }catch(err){ alert('Could not log time: '+(err.message||err)); }
+  }catch(err){ showNotification('Could not log time: '+(err.message||err),'error'); }
 }
 
 // ══════════════════════════════════════════════════
@@ -267,7 +267,7 @@ function renderChecklistItemRow(item){
     <div class="checklist-item-body">
       <span class="checklist-item-text tp-task-text" tabindex="0" onclick="startEditTestPrepTask(this,'${escJs(item.id)}')">${esc(item.task_text)}</span>
     </div>
-    <button type="button" class="tp-task-del" title="Remove task" onclick="deleteTestPrepTask('${escJs(item.id)}')">×</button>
+    <button type="button" class="tp-task-del icon-btn-sm" title="Remove task" onclick="deleteTestPrepTask('${escJs(item.id)}')">×</button>
   </div>`;
 }
 
@@ -283,7 +283,7 @@ function renderChecklist(openWeeksOverride){
     const total=w.items.length, done=w.items.filter(i=>i.is_done).length;
     const isOpen=openWeeks.has(String(w.week));
     const removeBtn=total===0?`<button type="button" class="tp-remove-week-btn" onclick="removeTestPrepWeek(${w.week})">Remove week</button>`:'';
-    return `<details class="checklist-phase" data-week="${w.week}" ${isOpen?'open':''}>
+    return `<details class="accordion-card checklist-phase" data-week="${w.week}" ${isOpen?'open':''}>
       <summary class="checklist-phase-summary">
         <span class="checklist-phase-name">Week ${w.week}</span>
         <span class="checklist-phase-progress">${done}/${total} done</span>
@@ -302,15 +302,16 @@ function renderChecklist(openWeeksOverride){
 export function removeTestPrepWeek(weekNumber){
   const hasTasks=state.testPrepChecklist.some(i=>i.week_number===weekNumber);
   if(hasTasks) return; // guard: this control only ever appears on an empty shell
-  if(!confirm('Remove Week '+weekNumber+'? Other week numbers will not be renumbered.')) return;
-  state.testPrepKnownWeeks=(state.testPrepKnownWeeks||[]).filter(w=>w!==weekNumber);
-  renderChecklist();
+  showConfirmModal('Remove Week '+weekNumber+'? Other week numbers will not be renumbered.',()=>{
+    state.testPrepKnownWeeks=(state.testPrepKnownWeeks||[]).filter(w=>w!==weekNumber);
+    renderChecklist();
+  },{confirmLabel:'Remove'});
 }
 
 export async function toggleTestPrepTaskDone(id,checked){
   const item=state.testPrepChecklist.find(i=>i.id===id); if(!item) return;
   item.is_done=checked;
-  try{ await updateChecklistItemDB(id,{is_done:checked}); }catch(err){ alert('Could not update task: '+(err.message||err)); }
+  try{ await updateChecklistItemDB(id,{is_done:checked}); }catch(err){ showNotification('Could not update task: '+(err.message||err),'error'); }
   renderChecklist();
 }
 
@@ -329,16 +330,17 @@ async function saveTestPrepTaskEdit(input,id){
   const text=input.value.trim();
   if(text&&text!==item.task_text){
     item.task_text=text;
-    try{ await updateChecklistItemDB(id,{task_text:text}); }catch(err){ alert('Could not save task: '+(err.message||err)); }
+    try{ await updateChecklistItemDB(id,{task_text:text}); }catch(err){ showNotification('Could not save task: '+(err.message||err),'error'); }
   }
   renderChecklist();
 }
 
 export async function deleteTestPrepTask(id){
-  if(!confirm('Remove this task?')) return;
-  try{ await deleteChecklistItemDB(id); }catch(err){ alert('Could not delete task: '+(err.message||err)); return; }
-  state.testPrepChecklist=state.testPrepChecklist.filter(i=>i.id!==id);
-  renderChecklist();
+  showConfirmModal('Remove this task?',async()=>{
+    try{ await deleteChecklistItemDB(id); }catch(err){ showNotification('Could not delete task: '+(err.message||err),'error'); return; }
+    state.testPrepChecklist=state.testPrepChecklist.filter(i=>i.id!==id);
+    renderChecklist();
+  },{confirmLabel:'Remove'});
 }
 
 // ══════════════════════════════════════════════════
@@ -395,7 +397,7 @@ async function commitAddTestPrepTask(weekNumber, text){
     renderChecklist();
     const details=document.querySelector(`.checklist-phase[data-week="${weekNumber}"]`);
     if(details) details.open=true;
-  }catch(err){ alert('Could not add task: '+(err.message||err)); }
+  }catch(err){ showNotification('Could not add task: '+(err.message||err),'error'); }
 }
 
 async function commitAddTestPrepWeek(nextWeek, text){
@@ -407,7 +409,7 @@ async function commitAddTestPrepWeek(nextWeek, text){
     renderChecklist();
     const details=document.querySelector(`.checklist-phase[data-week="${nextWeek}"]`);
     if(details) details.open=true;
-  }catch(err){ alert('Could not add week: '+(err.message||err)); }
+  }catch(err){ showNotification('Could not add week: '+(err.message||err),'error'); }
 }
 
 // ══════════════════════════════════════════════════
@@ -419,7 +421,7 @@ async function commitAddTestPrepWeek(nextWeek, text){
 // single source of markup for both widths; the inner content ids below are untouched by
 // renderTestPrepHeader()/renderSkillPicker()/renderSevenDayView()/renderRecentEntries()/renderChecklist().
 const TP_SECTIONS = [
-  {key:'header', label:'Overview', defaultOpen:true, bodyHtml:'<div class="tp-header" id="tpHeader"></div>'},
+  {key:'header', label:'Overview', defaultOpen:true, bodyHtml:'<div class="card tp-header" id="tpHeader"></div>'},
   {key:'timelog', label:'Time Log', defaultOpen:false, bodyHtml:`
     <div class="tp-log-form">
       <div class="tp-skill-picker" id="tpSkillPicker"></div>
@@ -432,9 +434,15 @@ const TP_SECTIONS = [
 ];
 function renderTpAccordionShell(){
   const el=document.getElementById('tpScroll');
+  // Desktop (>768px, matches basebi.css's @media (min-width:769px) chrome-hiding block) always
+  // renders every section expanded per this shell's own header comment above — the disclosure
+  // <summary> is CSS-hidden there, so a section that isn't forced open at render time becomes
+  // permanently unreachable (native <details> content stays hidden with no trigger left to open
+  // it). Only mobile actually uses defaultOpen/state.testPrepSectionOpen for real collapse.
+  const isDesktop = window.matchMedia('(min-width:769px)').matches;
   el.innerHTML = TP_SECTIONS.map(s=>{
-    const isOpen = Object.prototype.hasOwnProperty.call(state.testPrepSectionOpen,s.key) ? state.testPrepSectionOpen[s.key] : s.defaultOpen;
-    return `<details class="tp-accordion-section" data-section="${s.key}" ${isOpen?'open':''} ontoggle="onTpSectionToggle('${s.key}',this.open)">
+    const isOpen = isDesktop ? true : (Object.prototype.hasOwnProperty.call(state.testPrepSectionOpen,s.key) ? state.testPrepSectionOpen[s.key] : s.defaultOpen);
+    return `<details class="accordion-card tp-accordion-section" data-section="${s.key}" ${isOpen?'open':''} ontoggle="onTpSectionToggle('${s.key}',this.open)">
       <summary class="tp-accordion-summary">${esc(s.label)}</summary>
       <div class="tp-accordion-body">${s.bodyHtml}</div>
     </details>`;

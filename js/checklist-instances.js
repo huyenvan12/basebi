@@ -191,7 +191,7 @@ export function renderChecklistSections(inst,grouped,readOnly){
         <div class="section-label checklist-section-title">${esc(s.name)}</div>
         <div class="checklist-item-list">${s.items.map(it=>renderChecklistItemRow(it,inst,readOnly)).join('')}</div>
       `).join('');
-      return`<details class="checklist-phase" ${isOpen?'open':''} ontoggle="onChecklistPhaseToggle('${escJs(phKey)}',this.open)">
+      return`<details class="accordion-card checklist-phase" ${isOpen?'open':''} ontoggle="onChecklistPhaseToggle('${escJs(phKey)}',this.open)">
         <summary class="checklist-phase-summary">
           <span class="checklist-phase-name">${esc(ph.name)}</span>
           <span class="checklist-phase-progress">${phDone}/${phTotal} done</span>
