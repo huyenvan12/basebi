@@ -126,6 +126,7 @@ export async function checkAuthAndInit(){
     state.currentUserEmail = session.user.email;
     if(onAuthenticated)onAuthenticated();
   } else {
+    history.replaceState(null,'','/');
     document.getElementById('connectGate').style.display='none';
     document.getElementById('loginGate').style.display='block';
   }

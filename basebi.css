@@ -226,6 +226,14 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 
 /* TOPBAR */
 .topbar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;min-height:46px}
+
+/* ROUTE ACCESS-DENIED OVERLAY — content-area only; top is set at runtime by
+   showAccessDenied() in js/router.js to sit below the topbar + any active sub-nav. */
+#routeAccessDeniedScreen{position:fixed;left:0;right:0;bottom:0;z-index:500;background:var(--bg);display:flex;align-items:center;justify-content:center}
+.route-denied-card{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
+.route-denied-msg{font-size:14px;color:var(--text-dim)}
+.route-denied-btn{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;cursor:pointer}
+
 .logo{font-size:15px;font-weight:600;color:var(--accent);letter-spacing:-.3px;white-space:nowrap}
 .logo em{color:var(--text-muted);font-style:normal;font-weight:300}
 .search-wrap{flex:1;position:relative;max-width:420px}
