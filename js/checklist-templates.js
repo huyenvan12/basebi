@@ -2,7 +2,7 @@
 // CHECKLIST TEMPLATES — admin-only CRUD for the template library.
 // ══════════════════════════════════════════════════
 import { state } from './state.js';
-import { esc, escJs } from './ui-helpers.js';
+import { esc, escJs, showNotification, showConfirmModal } from './ui-helpers.js';
 import { sb } from './supabase-client.js';
 
 // ══════════════════════════════════════════════════
@@ -37,10 +37,10 @@ export async function countInstancesUsingTemplate(id){
 export function renderChecklistTemplates(){
   const grid=document.getElementById('checklistTemplateGrid');
   if(!state.currentUserIsAdmin){grid.innerHTML='';return;}
-  if(!state.checklistTemplates.length){grid.innerHTML='<div class="note-empty">No checklist templates yet</div>';return;}
+  if(!state.checklistTemplates.length){grid.innerHTML='<div class="empty-list">No checklist templates yet</div>';return;}
   grid.innerHTML=state.checklistTemplates.map(t=>{
     const count=(t.items||[]).length;
-    return`<div class="checklist-template-card">
+    return`<div class="card checklist-template-card">
       <div class="tpl-card-header">
         <span class="tpl-card-title">${esc(t.title)}</span>
         <span class="template-badge-admin">🔒 Admin-managed</span>
@@ -83,24 +83,24 @@ export function renderTemplateItemsEditor(){
   const el=document.getElementById('tplItemsEditor');
   el.innerHTML=state.templateEditItems.map((it,idx)=>`
     <div class="tpl-item-row">
-      <input class="form-input" placeholder="Phase (optional)" value="${esc(it.phase||'')}" onchange="updateTplItemField(${idx},'phase',this.value)">
-      <input class="form-input" placeholder="Section *" value="${esc(it.section||'')}" onchange="updateTplItemField(${idx},'section',this.value)">
-      <input class="form-input" placeholder="Item text *" value="${esc(it.text||'')}" onchange="updateTplItemField(${idx},'text',this.value)">
-      <input class="form-input" placeholder="Hint (optional)" value="${esc(it.hint||'')}" onchange="updateTplItemField(${idx},'hint',this.value)">
+      <input class="form-input-compact" placeholder="Phase (optional)" value="${esc(it.phase||'')}" onchange="updateTplItemField(${idx},'phase',this.value)">
+      <input class="form-input-compact" placeholder="Section *" value="${esc(it.section||'')}" onchange="updateTplItemField(${idx},'section',this.value)">
+      <input class="form-input-compact" placeholder="Item text *" value="${esc(it.text||'')}" onchange="updateTplItemField(${idx},'text',this.value)">
+      <input class="form-input-compact" placeholder="Hint (optional)" value="${esc(it.hint||'')}" onchange="updateTplItemField(${idx},'hint',this.value)">
       <button type="button" class="btn btn-danger tpl-item-remove" onclick="removeTemplateItemRow(${idx})" title="Remove item">✕</button>
     </div>`).join('');
 }
 export async function saveTemplate(){
   const title=document.getElementById('tpl-title').value.trim();
   const description=document.getElementById('tpl-desc').value.trim();
-  if(!title){alert('Title is required.');return;}
+  if(!title){showNotification('Title is required.');return;}
   const items=state.templateEditItems.filter(it=>it.text&&it.text.trim()).map(it=>{
     const clean={section:(it.section||'').trim()||'General',text:it.text.trim()};
     if(it.phase&&it.phase.trim())clean.phase=it.phase.trim();
     if(it.hint&&it.hint.trim())clean.hint=it.hint.trim();
     return clean;
   });
-  if(!items.length){alert('Add at least one item with text.');return;}
+  if(!items.length){showNotification('Add at least one item with text.');return;}
   try{
     if(state.editingTemplateId){
       await updateTemplateDB(state.editingTemplateId,title,description,items);
@@ -112,21 +112,20 @@ export async function saveTemplate(){
     }
     closeTemplateModal();
     renderChecklistTemplates();
-  }catch(err){alert('Could not save template: '+(err.message||err));}
+  }catch(err){showNotification('Could not save template: '+(err.message||err));}
 }
 export async function confirmDeleteTemplate(id){
   const t=state.checklistTemplates.find(t=>t.id===id);if(!t)return;
   const inUseCount=await countInstancesUsingTemplate(id);
-  if(inUseCount>0){alert(`Can't delete — ${inUseCount} checklist${inUseCount>1?'s are':' is'} using this template.`);return;}
-  if(!confirm(`Delete template "${t.title}"? This cannot be undone.`))return;
-  deleteTemplateAction(id);
+  if(inUseCount>0){showNotification(`Can't delete — ${inUseCount} checklist${inUseCount>1?'s are':' is'} using this template.`);return;}
+  showConfirmModal(`Delete template "${esc(t.title)}"? This cannot be undone.`,()=>deleteTemplateAction(id),{confirmLabel:'Yes, delete'});
 }
 export async function deleteTemplateAction(id){
   try{
     await deleteTemplateDB(id);
     state.checklistTemplates=state.checklistTemplates.filter(t=>t.id!==id);
     renderChecklistTemplates();
-  }catch(err){alert('Could not delete template: '+(err.message||err));}
+  }catch(err){showNotification('Could not delete template: '+(err.message||err));}
 }
 
 export function initChecklistTemplates(){

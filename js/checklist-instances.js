@@ -4,7 +4,7 @@
 // exported for reuse by checklist-share.js's read-only reviewer view.
 // ══════════════════════════════════════════════════
 import { state } from './state.js';
-import { esc, escJs } from './ui-helpers.js';
+import { esc, escJs, showNotification, showInlineConfirm } from './ui-helpers.js';
 import { sb } from './supabase-client.js';
 // Intentional narrow circular import (same pattern as folders.js<->notes.js): main.js
 // imports this module's exports for wiring, and this module needs main.js's cross-domain
@@ -78,7 +78,7 @@ export function closeNewChecklistModal(){
 }
 export function renderTemplatePickerList(){
   const el=document.getElementById('templatePickerList');
-  if(!state.checklistTemplates.length){el.innerHTML='<div class="note-empty">No checklist templates available yet</div>';return;}
+  if(!state.checklistTemplates.length){el.innerHTML='<div class="empty-list">No checklist templates available yet</div>';return;}
   el.innerHTML=state.checklistTemplates.map(t=>{
     const expanded=state.templatePickerExpandedId===t.id;
     let previewHtml='';
@@ -98,7 +98,7 @@ export function renderTemplatePickerList(){
         `).join('');
       }
     }
-    return`<div class="template-picker-row">
+    return`<div class="card template-picker-row">
       <div class="template-picker-row-header" onclick="toggleTemplatePickerPreview('${escJs(t.id)}')">
         <span class="tpr-chevron">${expanded?'▾':'▸'}</span>
         <span class="tpr-title">${esc(t.title)}</span>
@@ -131,9 +131,9 @@ export function newChecklistBackToStep1(){
 }
 export async function createChecklistInstance(){
   const title=document.getElementById('newChecklistTitle').value.trim();
-  if(!title){alert('Please enter a title for this checklist.');return;}
+  if(!title){showNotification('Please enter a title for this checklist.');return;}
   const tpl=state.checklistTemplates.find(t=>t.id===state.newChecklistSelectedTemplateId);
-  if(!tpl){alert('Please pick a template.');return;}
+  if(!tpl){showNotification('Please pick a template.');return;}
   const items=JSON.parse(JSON.stringify(tpl.items||[])).map(it=>({...it,done:false,note:''}));
   try{
     const row=await insertChecklistInstanceDB(tpl.id,title,items);
@@ -142,7 +142,7 @@ export async function createChecklistInstance(){
     state.checklistInstances.unshift(row);
     closeNewChecklistModal();
     openChecklistDetail(row.id);
-  }catch(err){alert('Could not create checklist: '+(err.message||err));}
+  }catch(err){showNotification('Could not create checklist: '+(err.message||err));}
 }
 
 // ── Checklist detail view ─────────────────────────
@@ -188,7 +188,7 @@ export function renderChecklistSections(inst,grouped,readOnly){
       let isOpen=Object.prototype.hasOwnProperty.call(state.checklistPhaseOpen,phKey)?state.checklistPhaseOpen[phKey]:(phIdx===0&&!allDone);
       if(allDone)isOpen=false;
       const sectionsInner=ph.sections.map(s=>`
-        <div class="checklist-section-title">${esc(s.name)}</div>
+        <div class="section-label checklist-section-title">${esc(s.name)}</div>
         <div class="checklist-item-list">${s.items.map(it=>renderChecklistItemRow(it,inst,readOnly)).join('')}</div>
       `).join('');
       return`<details class="checklist-phase" ${isOpen?'open':''} ontoggle="onChecklistPhaseToggle('${escJs(phKey)}',this.open)">
@@ -201,7 +201,7 @@ export function renderChecklistSections(inst,grouped,readOnly){
     }).join('');
   }
   return grouped.sections.map(s=>`
-    <div class="checklist-section-title">${esc(s.name)}</div>
+    <div class="section-label checklist-section-title">${esc(s.name)}</div>
     <div class="checklist-item-list">${s.items.map(it=>renderChecklistItemRow(it,inst,readOnly)).join('')}</div>
   `).join('');
 }
@@ -229,7 +229,7 @@ export function renderChecklistDetail(){
       <div class="checklist-detail-meta-row">
         <span>${doneCount}/${total} items done (${pct}%)</span>
         <span class="checklist-flag-badge" id="checklistDetailFlagBadge">${flagged?`🚩 ${flagged} flagged`:''}</span>
-        ${!isDone?`<button class="btn btn-primary" style="margin-left:auto" onclick="markChecklistDone()">Mark Checklist Done</button>`:''}
+        ${!isDone?`<button class="btn btn-primary" style="margin-left:auto" onclick="markChecklistDone(this)">Mark Checklist Done</button>`:''}
       </div>
     </div>
     <div class="checklist-detail-body">${sectionsHtml}</div>`;
@@ -269,12 +269,13 @@ export function onChecklistNoteBlur(idx,textareaEl){
   clearTimeout(state.checklistNoteSaveTimer);
   saveChecklistInstanceItemsDB(inst.id,inst.items);
 }
-export async function markChecklistDone(){
+export function markChecklistDone(btnEl){
   const inst=getActiveChecklistInstance();if(!inst)return;
-  if(!confirm(`Mark "${inst.title}" as done?`))return;
-  await markChecklistInstanceDoneDB(inst.id);
-  inst.status='done';inst.completed_at=new Date().toISOString();
-  renderChecklistDetail();
+  showInlineConfirm(btnEl,`Mark "${esc(inst.title)}" as done?`,async()=>{
+    await markChecklistInstanceDoneDB(inst.id);
+    inst.status='done';inst.completed_at=new Date().toISOString();
+    renderChecklistDetail();
+  },{container:'.checklist-detail-header',confirmLabel:'Yes, mark done'});
 }
 
 export function initChecklistInstances(){

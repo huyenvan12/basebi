@@ -3,7 +3,7 @@
 // share modal, and the read-only Shared-with-me / reviewer views.
 // ══════════════════════════════════════════════════
 import { state } from './state.js';
-import { esc, escJs, authorName } from './ui-helpers.js';
+import { esc, escJs, authorName, showInlineConfirm } from './ui-helpers.js';
 import { sb } from './supabase-client.js';
 import { groupChecklistItems, renderChecklistSections, openChecklistDetail } from './checklist-instances.js';
 // Intentional narrow circular import (same accepted pattern as folders.js<->notes.js):
@@ -54,12 +54,12 @@ export function renderMyChecklists(){
     const unackCount=shares.filter(s=>s.comment&&s.comment.trim()&&(!s.owner_ack_at||(s.comment_updated_at&&s.comment_updated_at>s.owner_ack_at))).length;
     const panelOpen=!!state.checklistSharePanelOpen[c.id];
     const shareControl=shares.length===0
-      ?`<button class="ci-share-btn" data-tour-id="checklist-share" onclick="openShareModal('${escJs(c.id)}')">+ Share</button>`
+      ?`<button class="btn btn-ghost ci-share-btn" data-tour-id="checklist-share" onclick="openShareModal('${escJs(c.id)}')">+ Share</button>`
       :`<button class="ci-share-badge-btn" onclick="toggleSharePanel('${escJs(c.id)}')">
           <span class="ci-share-badge-seg">🔗 ${shares.length}</span>${unackCount?`<span class="ci-share-badge-divider"></span><span class="ci-share-badge-seg ci-share-badge-comment">💬 ${unackCount}</span>`:''}
           <span class="ci-share-badge-chevron">${panelOpen?'▴':'▾'}</span>
         </button>`;
-    return`<div class="checklist-instance-card">
+    return`<div class="card checklist-instance-card">
       <div class="ci-card-header-row">
         <div class="ci-card-title">${esc(c.title)}</div>
         <div class="ci-card-share-wrap">
@@ -79,10 +79,10 @@ export function renderMyChecklists(){
     </div>`;
   };
   let html='';
-  html+=`<div class="checklist-group-label">In Progress (${inProgress.length})</div>`;
-  html+=inProgress.length?`<div class="checklist-instance-grid">${inProgress.map(cardHtml).join('')}</div>`:'<div class="note-empty">No checklists in progress</div>';
-  html+=`<div class="checklist-group-label">Done (${done.length})</div>`;
-  html+=done.length?`<div class="checklist-instance-grid">${done.map(cardHtml).join('')}</div>`:'<div class="note-empty">No completed checklists yet</div>';
+  html+=`<div class="section-label checklist-group-label">In Progress (${inProgress.length})</div>`;
+  html+=inProgress.length?`<div class="checklist-instance-grid">${inProgress.map(cardHtml).join('')}</div>`:'<div class="empty-list">No checklists in progress</div>';
+  html+=`<div class="section-label checklist-group-label">Done (${done.length})</div>`;
+  html+=done.length?`<div class="checklist-instance-grid">${done.map(cardHtml).join('')}</div>`:'<div class="empty-list">No completed checklists yet</div>';
   el.innerHTML=html;
 }
 export function renderSharePanel(inst,shares){
@@ -114,15 +114,9 @@ export async function ackShareComment(shareId){
   renderMyChecklists();
 }
 export function confirmUnshare(btnEl,shareId){
-  const row=btnEl.closest('.share-panel-row');
-  const existing=row.querySelector('.confirm-box');if(existing){existing.remove();return;}
-  const box=document.createElement('div');box.className='confirm-box';
-  box.innerHTML=`<p>Unshare this checklist from this person? They will lose access.</p>
-    <div class="confirm-actions">
-      <button class="btn btn-ghost" style="font-size:11px" onclick="this.closest('.confirm-box').remove()">Cancel</button>
-      <button class="btn btn-danger" style="font-size:11px" onclick="unshareChecklist('${escJs(shareId)}')">Yes, unshare</button>
-    </div>`;
-  row.appendChild(box);
+  showInlineConfirm(btnEl,'Unshare this checklist from this person? They will lose access.',
+    ()=>unshareChecklist(shareId),
+    {container:'.share-panel-row',confirmLabel:'Yes, unshare'});
 }
 export async function unshareChecklist(shareId){
   await sb.from('checklist_shares').delete().eq('id',shareId);
@@ -144,7 +138,7 @@ export function closeShareModal(){
 }
 export function renderShareModalMemberList(){
   const el=document.getElementById('shareModalMemberList');
-  if(!state.orgMembers.length){el.innerHTML='<div class="note-empty">No other org members found</div>';return;}
+  if(!state.orgMembers.length){el.innerHTML='<div class="empty-list">No other org members found</div>';return;}
   const shares=state.checklistShares.filter(s=>s.instance_id===state.shareModalInstanceId);
   el.innerHTML=state.orgMembers.map(m=>{
     const existing=shares.find(s=>s.shared_with===m.id);
@@ -169,14 +163,14 @@ export async function toggleShareMember(memberId,existingShareId){
 export function renderSharedWithMeList(){
   const el=document.getElementById('checklistSharedGroups');
   const mine=state.checklistShares.filter(s=>s.shared_with===state.currentUserId);
-  if(!mine.length){el.innerHTML='<div class="note-empty">Nothing has been shared with you yet</div>';return;}
+  if(!mine.length){el.innerHTML='<div class="empty-list">Nothing has been shared with you yet</div>';return;}
   el.innerHTML=`<div class="checklist-instance-grid">${mine.map(s=>{
     const inst=state.sharedWithMeInstances.find(i=>i.id===s.instance_id);
     if(!inst) return '';
     const items=inst.items||[];
     const total=items.length,doneCount=items.filter(i=>i.done).length;
     const pct=total?Math.round(doneCount/total*100):0;
-    return`<div class="checklist-instance-card">
+    return`<div class="card checklist-instance-card">
       <div class="ci-card-header-row">
         <div class="ci-card-title">${esc(inst.title)}</div>
         ${!s.viewer_seen_at?'<span class="ci-new-tag">new</span>':''}
