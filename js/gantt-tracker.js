@@ -11,6 +11,8 @@ import { today } from './daily-note.js';
 // Narrow, intentional circular import (same pattern as daily-note.js -> main.js): switchTab
 // is only invoked inside jumpToTimeline()'s function body, never at module top-level.
 import { switchTab } from './main.js';
+import { isFeatureVisible } from './feature-flags.js';
+import { syncUrlForCurrentState } from './router.js';
 // Second narrow, intentional circular import: tasks.js needs switchGanttView from this file
 // (for its jumpToTaskCard()), and this file needs renderTasksView for the Tasks sub-view.
 // Only invoked inside switchGanttView()'s function body, never at module top-level.
@@ -1303,7 +1305,8 @@ export function submitAgendaEntryForm(){
 // ══════════════════════════════════════════════════
 // VIEW SWITCHER
 // ══════════════════════════════════════════════════
-export function switchGanttView(view){
+export function switchGanttView(view, { syncUrl = 'push' } = {}){
+  if(view==='tasks' && !isFeatureVisible('tasks')) return false;
   state.ganttActiveView=view;
   document.getElementById('dtSubTabTimeline').classList.toggle('active',view==='timeline');
   document.getElementById('dtSubTabCalendar').classList.toggle('active',view==='calendar');
@@ -1314,6 +1317,8 @@ export function switchGanttView(view){
   if(view==='timeline') renderTimeline();
   else if(view==='calendar') renderCalendar();
   else renderTasksView();
+  if(syncUrl!=='skip') syncUrlForCurrentState(syncUrl);
+  return true;
 }
 
 // ══════════════════════════════════════════════════

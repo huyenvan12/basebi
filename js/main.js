@@ -40,6 +40,7 @@ import {
 import { loadTasks, initTasks } from './tasks.js';
 import { loadOnboardingSteps, shouldAutoStartTour, startTour, initOnboardingTour } from './onboarding-tour.js';
 import { loadOnboardingTooltips, setHintScreen, initOnboardingHints } from './onboarding-tooltips.js';
+import { syncUrlForCurrentState, hideAccessDenied, initRouter, navigate } from './router.js';
 
 // ══════════════════════════════════════════════════
 // TAB SWITCHING
@@ -58,8 +59,9 @@ function isTabAllowed(tab){
   return !key || isFeatureVisible(key);
 }
 
-export function switchTab(tab){
-  if(!isTabAllowed(tab)) return;
+export function switchTab(tab, { syncUrl = 'push' } = {}){
+  hideAccessDenied();
+  if(!isTabAllowed(tab)) return false;
   closeMobDrawer();
   state.currentTab = tab;
   document.getElementById('tabNotes').classList.toggle('active', tab==='notes');
@@ -119,18 +121,21 @@ export function switchTab(tab){
   if(tab==='admin') renderAdminHub();
   if(tab==='deliveryTracker'){
     document.getElementById('dtManageTypesBtn').style.display=state.currentUserRole==='admin'?'':'none';
-    switchGanttView(state.ganttActiveView);
+    switchGanttView(state.ganttActiveView, {syncUrl:'skip'});
     setHintScreen('delivery');
   }
   if(tab==='testprep') renderTestPrep();
+  if(syncUrl!=='skip') syncUrlForCurrentState(syncUrl);
+  return true;
 }
 
 // ══════════════════════════════════════════════════
 // TEAM SHARED — SUB-NAV (Shared Notes vs Checklists)
 // ══════════════════════════════════════════════════
-export function switchTeamSubTab(sub){
-  if(sub==='checklists'&&!isFeatureVisible('checklist')) return;
-  if(sub==='monitorlog'&&!isFeatureVisible('monitor_log')) return;
+export function switchTeamSubTab(sub, { syncUrl = 'push' } = {}){
+  if(sub==='notes'&&!isFeatureVisible('teamshared_notes')) return false;
+  if(sub==='checklists'&&!isFeatureVisible('checklist')) return false;
+  if(sub==='monitorlog'&&!isFeatureVisible('monitor_log')) return false;
   state.currentTeamSubTab=sub;
   document.getElementById('teamSubTabNotes').classList.toggle('active',sub==='notes');
   document.getElementById('teamSubTabChecklists').classList.toggle('active',sub==='checklists');
@@ -145,6 +150,8 @@ export function switchTeamSubTab(sub){
   if(sub==='checklists'){ renderTeamSubnav(); }
   if(sub==='monitorlog') renderMonitorLogList();
   setHintScreen(sub==='checklists' ? 'checklist' : null);
+  if(syncUrl!=='skip') syncUrlForCurrentState(syncUrl);
+  return true;
 }
 // Renders the admin-only inner pill toggle (Templates | My Checklists) and
 // makes sure non-admins land directly on My Checklists with no toggle shown.
@@ -463,6 +470,7 @@ async function initApp(){
     }
 
     applyNavGating();
+    initRouter();
     startFeatureVisibilityPolling();
     // switchTab() is never called for the default landing tab (Notes is already active in the
     // static HTML at boot), so the hint button needs its initial context set explicitly here.
@@ -519,7 +527,7 @@ function applyNavGating(){
 
   if(!isTabAllowed(state.currentTab)){
     const fallback=['notes','campaigns','graph','team','admin','deliveryTracker','testprep'].find(isTabAllowed);
-    if(fallback) switchTab(fallback);
+    if(fallback) switchTab(fallback, {syncUrl:'replace'});
   }
 }
 
@@ -571,6 +579,8 @@ function initMain(){
   // this line #mobActionBtn would render on mobile with no click handler until the user actually
   // switched tabs once.
   document.getElementById('mobActionBtn').onclick=()=>openNoteModal();
+  document.getElementById('routeDeniedGoNotesBtn').onclick=()=>navigate('/');
+
   document.getElementById('teamSubTabNotes').onclick=()=>switchTeamSubTab('notes');
   document.getElementById('teamSubTabChecklists').onclick=()=>switchTeamSubTab('checklists');
   document.getElementById('checklistTabTemplates').onclick=()=>switchChecklistSubView('templates');
@@ -610,9 +620,9 @@ function initMain(){
     document.getElementById('mobTabTeam').classList.toggle('expanded');
     document.getElementById('mobTeamSubnav').classList.toggle('open');
   };
-  document.getElementById('mobTeamSubTabNotes').onclick=()=>{switchTab('team');switchTeamSubTab('notes');closeMobDrawer();};
-  document.getElementById('mobTeamSubTabChecklists').onclick=()=>{switchTab('team');switchTeamSubTab('checklists');closeMobDrawer();};
-  document.getElementById('mobTeamSubTabMonitorLog').onclick=()=>{switchTab('team');switchTeamSubTab('monitorlog');closeMobDrawer();};
+  document.getElementById('mobTeamSubTabNotes').onclick=()=>{switchTab('team',{syncUrl:'skip'});switchTeamSubTab('notes');closeMobDrawer();};
+  document.getElementById('mobTeamSubTabChecklists').onclick=()=>{switchTab('team',{syncUrl:'skip'});switchTeamSubTab('checklists');closeMobDrawer();};
+  document.getElementById('mobTeamSubTabMonitorLog').onclick=()=>{switchTab('team',{syncUrl:'skip'});switchTeamSubTab('monitorlog');closeMobDrawer();};
   document.getElementById('mobTabGantt').onclick=()=>switchTab('deliveryTracker');
   document.getElementById('mobTabTestPrep').onclick=()=>switchTab('testprep');
   document.getElementById('mobAdminItem').onclick=()=>switchTab('admin');
