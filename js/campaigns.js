@@ -252,7 +252,7 @@ export function selectCamp(id){
       <div class="section-label-sub">Technical Note</div>
       ${camp.note
         ? `<div class="csp-note-text">${esc(camp.note)}</div>`
-        : `<div class="csp-empty">No note added</div>`}
+        : `<div class="empty-list">No note added</div>`}
     </div>
     <div class="csp-extra-section">
       <div class="section-label-sub" style="margin-bottom:8px">Extra Fields</div>
