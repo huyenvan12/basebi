@@ -434,8 +434,14 @@ const TP_SECTIONS = [
 ];
 function renderTpAccordionShell(){
   const el=document.getElementById('tpScroll');
+  // Desktop (>768px, matches basebi.css's @media (min-width:769px) chrome-hiding block) always
+  // renders every section expanded per this shell's own header comment above — the disclosure
+  // <summary> is CSS-hidden there, so a section that isn't forced open at render time becomes
+  // permanently unreachable (native <details> content stays hidden with no trigger left to open
+  // it). Only mobile actually uses defaultOpen/state.testPrepSectionOpen for real collapse.
+  const isDesktop = window.matchMedia('(min-width:769px)').matches;
   el.innerHTML = TP_SECTIONS.map(s=>{
-    const isOpen = Object.prototype.hasOwnProperty.call(state.testPrepSectionOpen,s.key) ? state.testPrepSectionOpen[s.key] : s.defaultOpen;
+    const isOpen = isDesktop ? true : (Object.prototype.hasOwnProperty.call(state.testPrepSectionOpen,s.key) ? state.testPrepSectionOpen[s.key] : s.defaultOpen);
     return `<details class="accordion-card tp-accordion-section" data-section="${s.key}" ${isOpen?'open':''} ontoggle="onTpSectionToggle('${s.key}',this.open)">
       <summary class="tp-accordion-summary">${esc(s.label)}</summary>
       <div class="tp-accordion-body">${s.bodyHtml}</div>
