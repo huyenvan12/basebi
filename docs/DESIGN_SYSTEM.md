@@ -143,6 +143,28 @@ Both tiers always set an explicit `background` — this fixes `.dt-legend-row` a
 
 ---
 
+## 11. Page shell
+
+Covers everything outside the content pattern itself (table/card-grid/list-detail/kanban/accordion internals stay module-specific and are NOT covered here) — outer padding, header-row layout, and width-constraint conventions.
+
+**Outer content-area padding**: standardize on `14px` for the horizontal/vertical inset between a pane's edge (or the L3a nav row above it) and where content starts. This retires the previously-competing `12px` (`.note-list-header` and its reused instances) and `20px` (Notes detail view) values — both migrate to `14px`.
+
+**Header row (section label + primary action)**: no single required pattern across all modules — four idioms coexist by design, matching each module's actual interaction model:
+- Label + button, same row (`.note-list-header`, Checklist family, Monitor Log) — for collection-style views with a clear "add new" action.
+- Label-only (Notes, Team Shared → Shared Notes) — creation lives in the topbar instead.
+- Label-less toolbar/controls row (Delivery Tracker) — intentional: Delivery Tracker is a toolbar-dense workspace, not a content collection, so pairing a label with every action isn't required. Confirmed as a deliberate divergence, not a gap to close.
+- Accordion `<summary>` (Test Prep Hub) — label is the disclosure trigger itself.
+
+Where a label is used, use `.section-label` (not `.note-list-title`, which is being retired module-by-module as each module's own Phase 4 PR runs — Checklist/Monitor Log/Admin Hub still reference `.note-list-title` until their turn; this is expected in-progress state, not a new bug).
+
+**Width constraints**: full-bleed/fluid is the default for content areas. Two documented exceptions use a `--reading-width` convention for content that reads better constrained (long-form report detail, a fixed-shape calendar grid) rather than being treated as unexplained one-offs:
+- Monitor Log report detail: capped, centered, for readability of report text.
+- Delivery Tracker Calendar grid: capped, centered, because its fixed 7-column shape doesn't benefit from stretching full-width.
+
+Each cap's specific pixel value stays independently chosen per its content's actual needs (a report's reading measure and a calendar grid's natural width are different design problems) rather than forced to share one literal number — but both must carry a `/* --reading-width exception: [reason] */` CSS comment at their declaration site so future readers don't mistake them for unmigrated leftovers.
+
+---
+
 ## Known bugs to fix alongside migration (not design decisions — just correct the token)
 
 These don't require a design choice; they're places where existing code already deviates from its own conventions:
