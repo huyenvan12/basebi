@@ -16,9 +16,14 @@ export async function getFeatureVisibility(featureKey){
 }
 
 export async function loadFeatureVisibility(){
-  const results=await Promise.all(FEATURE_KEYS.map(key=>getFeatureVisibility(key)));
-  state.featureVisibility={};
-  FEATURE_KEYS.forEach((key,i)=>{state.featureVisibility[key]=results[i];});
+  const{data,error}=await sb.rpc('get_all_feature_visibility',{p_user_id:state.currentUserId});
+  if(error){
+    console.error('get_all_feature_visibility failed',error);
+    return; // keep last-known-good state.featureVisibility; do NOT wipe it on a transient error
+  }
+  const next={};
+  (data||[]).forEach(row=>{next[row.feature_key]=row.visible?'active':'hidden';});
+  state.featureVisibility=next;
 }
 
 // fail-closed: an unknown/unfetched key is treated as hidden, never active
