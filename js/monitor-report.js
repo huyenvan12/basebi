@@ -216,7 +216,7 @@ export function renderMonitorReportDetail(){
         <div class="monitor-report-date">${esc(fmtMonitorReportDate(report.report_date))}</div>
         ${owner?'':'<span class="monitor-readonly-badge">View only</span>'}
       </div>
-      <table class="camp-table monitor-report-table">
+      <table class="data-table monitor-report-table">
         <thead><tr><th>Criteria</th><th>Value</th></tr></thead>
         <tbody>${rowsHtml}</tbody>
       </table>

@@ -3,7 +3,7 @@
 // ══════════════════════════════════════════════════
 import { SEED_CAMPS } from './constants.js';
 import { state } from './state.js';
-import { esc } from './ui-helpers.js';
+import { esc, showConfirmModal, showNotification } from './ui-helpers.js';
 import { sb } from './supabase-client.js';
 import { today } from './daily-note.js';
 
@@ -78,7 +78,7 @@ export function sortCamp(col){
   if(state.campSortCol===col) state.campSortDir=state.campSortDir==='asc'?'desc':'asc';
   else{ state.campSortCol=col; state.campSortDir='desc'; }
   // update header classes
-  document.querySelectorAll('table.camp-table th').forEach(th=>{
+  document.querySelectorAll('.camp-table-wrap .data-table th').forEach(th=>{
     th.classList.remove('sort-asc','sort-desc');
     if(th.dataset.col===state.campSortCol) th.classList.add(state.campSortDir==='asc'?'sort-asc':'sort-desc');
   });
@@ -97,23 +97,23 @@ export function renderCampTable(){
   const tbody = document.getElementById('campTableBody');
   // Add row always at top
   const addRow = `<tr class="camp-add-row" id="campAddRow">
-    <td><input class="camp-add-input" id="ca-date" type="date" value="${today()}" style="width:110px"></td>
-    <td><input class="camp-add-input mono" id="ca-cd" placeholder="CAMPAIGN_CD" style="width:110px"></td>
-    <td><input class="camp-add-input" id="ca-nm" placeholder="Campaign name…" style="width:150px"></td>
-    <td><input class="camp-add-input" id="ca-event" placeholder="Event name…" style="width:100px"></td>
-    <td><select class="camp-add-select" id="ca-type" style="width:75px"><option>BAU</option><option>Adhoc</option></select></td>
-    <td><select class="camp-add-select" id="ca-trigger" style="width:75px"><option>Batch</option><option>Event</option></select></td>
-    <td><select class="camp-add-select" id="ca-status" style="width:75px"><option>Active</option><option>Stop</option></select></td>
+    <td><input class="form-input-compact" id="ca-date" type="date" value="${today()}" style="width:110px"></td>
+    <td><input class="form-input-compact camp-add-input-mono" id="ca-cd" placeholder="CAMPAIGN_CD" style="width:110px"></td>
+    <td><input class="form-input-compact" id="ca-nm" placeholder="Campaign name…" style="width:150px"></td>
+    <td><input class="form-input-compact" id="ca-event" placeholder="Event name…" style="width:100px"></td>
+    <td><select class="form-input-compact" id="ca-type" style="width:75px"><option>BAU</option><option>Adhoc</option></select></td>
+    <td><select class="form-input-compact" id="ca-trigger" style="width:75px"><option>Batch</option><option>Event</option></select></td>
+    <td><select class="form-input-compact" id="ca-status" style="width:75px"><option>Active</option><option>Stop</option></select></td>
     <td style="white-space:nowrap">
-      <input class="camp-add-input" id="ca-note" placeholder="Note…" style="width:90px">
-      &nbsp;<button class="camp-add-save" onclick="saveCampRow()">Save</button>
-      <button class="camp-add-cancel" onclick="hideInlineCampRow()">×</button>
+      <input class="form-input-compact" id="ca-note" placeholder="Note…" style="width:90px">
+      &nbsp;<button class="btn btn-primary" style="font-size:10px;padding:4px 10px" onclick="saveCampRow()">Save</button>
+      <button class="icon-btn-sm" onclick="hideInlineCampRow()">×</button>
     </td>
   </tr>`;
 
   const dataRows = sorted.map(camp=>{
     const note = camp.note ? camp.note.slice(0,50).replace(/\n/g,' ') : '';
-    return `<tr class="${camp.id===state.activeCampId?'camp-row-active':''}" data-id="${camp.id}" onclick="selectCamp('${camp.id}')">
+    return `<tr class="${camp.id===state.activeCampId?'is-active':''}" data-id="${camp.id}" onclick="selectCamp('${camp.id}')">
       <td class="cc-date">${esc(camp.date||'')}</td>
       <td class="cc-cd">${esc(camp.campaign_cd||'')}</td>
       <td class="cc-nm">${esc(camp.campaign_nm||'')}</td>
@@ -124,27 +124,32 @@ export function renderCampTable(){
       <td class="cc-note ${note?'':'empty'}">${note?esc(note):'No note'}</td>
     </tr>`;
   }).join('');
+  const emptyRow = sorted.length ? '' : `<tr><td colspan="8" class="empty-list">No campaigns match your filters</td></tr>`;
 
-  tbody.innerHTML = addRow + dataRows;
+  tbody.innerHTML = addRow + dataRows + emptyRow;
   // restore add row visibility state
   if(state.campAddRowVisible){ const r=document.getElementById('campAddRow'); if(r) r.classList.add('visible'); }
 
   // mobile-web card view (<=768px, see basebi.css @media block) — mirrors dataRows above
   const cardsWrap = document.getElementById('campCardsWrap');
   if(cardsWrap){
-    cardsWrap.innerHTML = sorted.map(camp=>{
-      const note = camp.note ? camp.note.slice(0,80).replace(/\n/g,' ') : '';
-      return `<div class="mob-camp-card ${camp.id===state.activeCampId?'camp-row-active':''}" data-id="${camp.id}" onclick="selectCamp('${camp.id}')">
-        <div class="mob-camp-card-date">${esc(camp.date||'')}</div>
-        <div class="mob-camp-card-title-row">
-          <span class="mob-camp-card-cd">${esc(camp.campaign_cd||'')}</span>
-          <span class="mob-camp-card-nm">${esc(camp.campaign_nm||'')}</span>
-        </div>
-        <div class="mob-camp-card-event">${esc(camp.event_name||'')}</div>
-        <div class="mob-camp-card-badges">${campTypeBadge(camp.type||'BAU')}${campTrigBadge(camp.trigger_type||'Batch')}${campStatBadge(camp.status||'Active')}</div>
-        <div class="mob-camp-card-note ${note?'':'empty'}">${note?esc(note):'No note'}</div>
-      </div>`;
-    }).join('');
+    if(!sorted.length){
+      cardsWrap.innerHTML = `<div class="empty-list">No campaigns match your filters</div>`;
+    }else{
+      cardsWrap.innerHTML = sorted.map(camp=>{
+        const note = camp.note ? camp.note.slice(0,80).replace(/\n/g,' ') : '';
+        return `<div class="mob-camp-card card ${camp.id===state.activeCampId?'is-selected':''}" data-id="${camp.id}" onclick="selectCamp('${camp.id}')">
+          <div class="mob-camp-card-date">${esc(camp.date||'')}</div>
+          <div class="mob-camp-card-title-row">
+            <span class="mob-camp-card-cd">${esc(camp.campaign_cd||'')}</span>
+            <span class="mob-camp-card-nm">${esc(camp.campaign_nm||'')}</span>
+          </div>
+          <div class="mob-camp-card-event">${esc(camp.event_name||'')}</div>
+          <div class="mob-camp-card-badges">${campTypeBadge(camp.type||'BAU')}${campTrigBadge(camp.trigger_type||'Batch')}${campStatBadge(camp.status||'Active')}</div>
+          <div class="mob-camp-card-note ${note?'':'empty'}">${note?esc(note):'No note'}</div>
+        </div>`;
+      }).join('');
+    }
   }
 }
 
@@ -217,11 +222,11 @@ export function selectCamp(id){
   }
   state.activeCampId = id;
   // update row highlight without full re-render
-  document.querySelectorAll('table.camp-table tbody tr').forEach(tr=>{
-    tr.classList.remove('camp-row-active');
+  document.querySelectorAll('#campTableBody tr').forEach(tr=>{
+    tr.classList.remove('is-active');
   });
-  const activeRow = document.querySelector(`table.camp-table tbody tr[data-id="${id}"]`);
-  if(activeRow) activeRow.classList.add('camp-row-active');
+  const activeRow = document.querySelector(`#campTableBody tr[data-id="${id}"]`);
+  if(activeRow) activeRow.classList.add('is-active');
   const camp = state.campaigns.find(cc=>cc.id===id);
   if(!camp) return;
   const isOwner = camp.owner_id===state.currentUserId;
@@ -238,29 +243,29 @@ export function selectCamp(id){
     <div class="csp-extra-row">
       <span class="csp-extra-key">${esc(k)}</span>
       <span class="csp-extra-val">${esc(v)}</span>
-      ${isOwner?`<button class="csp-extra-del" onclick="deleteCampExtra('${id}','${esc(k)}')">×</button>`:''}
+      ${isOwner?`<button class="icon-btn-sm" onclick="deleteCampExtra('${id}','${esc(k)}')">×</button>`:''}
     </div>`).join('');
 
   document.getElementById('cspBody').innerHTML = `
-    ${camp.event_name?`<div class="csp-field"><div class="csp-field-label">Event Name</div><div class="csp-field-val">${esc(camp.event_name)}</div></div>`:''}
+    ${camp.event_name?`<div class="csp-field"><div class="section-label-sub">Event Name</div><div class="csp-field-val">${esc(camp.event_name)}</div></div>`:''}
     <div class="csp-field">
-      <div class="csp-field-label">Technical Note</div>
+      <div class="section-label-sub">Technical Note</div>
       ${camp.note
         ? `<div class="csp-note-text">${esc(camp.note)}</div>`
-        : `<div class="csp-empty">No note added</div>`}
+        : `<div class="empty-list">No note added</div>`}
     </div>
     <div class="csp-extra-section">
-      <div class="csp-field-label" style="margin-bottom:8px">Extra Fields</div>
+      <div class="section-label-sub" style="margin-bottom:8px">Extra Fields</div>
       ${extraRows}
       ${isOwner?`<div class="csp-add-extra">
-        <input class="csp-add-extra-input" id="extra-key-${id}" placeholder="Field name…" style="max-width:90px">
-        <input class="csp-add-extra-input" id="extra-val-${id}" placeholder="Value…">
-        <button class="csp-add-extra-btn" onclick="addCampExtra('${id}')">+ Add</button>
+        <input class="form-input-compact" id="extra-key-${id}" placeholder="Field name…" style="max-width:90px">
+        <input class="form-input-compact" id="extra-val-${id}" placeholder="Value…">
+        <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px" onclick="addCampExtra('${id}')">+ Add</button>
       </div>`:''}
     </div>`;
 
-  document.querySelector('.csp-edit-btn').style.display = isOwner?'':'none';
-  document.querySelector('.csp-del-btn').style.display = isOwner?'':'none';
+  document.getElementById('cspEditBtn').style.display = isOwner?'':'none';
+  document.getElementById('cspDelBtn').style.display = isOwner?'':'none';
 
   document.getElementById('campSidePanel').classList.add('open');
   document.getElementById('campResizer').classList.add('visible');
@@ -336,11 +341,21 @@ export function saveCampaign(){
 export function confirmDeleteCamp(){
   if(!state.activeCampId) return;
   const camp=state.campaigns.find(c=>c.id===state.activeCampId); if(!camp) return;
-  if(!confirm('Delete campaign "'+camp.campaign_cd+' — '+camp.campaign_nm+'"? This cannot be undone.')) return;
-  deleteCampDB(state.activeCampId); state.campaigns=state.campaigns.filter(c=>c.id!==state.activeCampId);
-  state.activeCampId=null;
-  document.getElementById('campSidePanel').classList.remove('open');
-  renderCampTable();
+  showConfirmModal(
+    `Delete campaign "${camp.campaign_cd} — ${camp.campaign_nm}"? This cannot be undone.`,
+    async()=>{
+      try{
+        await deleteCampDB(state.activeCampId);
+        state.campaigns=state.campaigns.filter(c=>c.id!==state.activeCampId);
+        state.activeCampId=null;
+        document.getElementById('campSidePanel').classList.remove('open');
+        renderCampTable();
+      }catch(err){
+        showNotification('Could not delete campaign: '+(err.message||err));
+      }
+    },
+    {confirmLabel:'Yes, delete'}
+  );
 }
 
 // ══════════════════════════════════════════════════
@@ -371,14 +386,14 @@ export function initCampaigns(){
 
   ['cf-cd','cf-nm','cf-event'].forEach(id=>document.getElementById(id).addEventListener('input',renderCampTable));
   ['cf-type','cf-trigger','cf-status','cf-month','cf-year'].forEach(id=>document.getElementById(id).addEventListener('change',renderCampTable));
-  document.querySelectorAll('table.camp-table th[data-col]').forEach(th=>{
+  document.querySelectorAll('.camp-table-wrap .data-table th[data-col]').forEach(th=>{
     th.addEventListener('click',()=>sortCamp(th.dataset.col));
   });
-  document.querySelector('.camp-clear-btn').onclick=clearCampFilters;
+  document.getElementById('campClearBtn').onclick=clearCampFilters;
   document.getElementById('campResizer').addEventListener('mousedown',startCampResize);
-  document.querySelector('.csp-close-btn').onclick=closeCampPanel;
-  document.querySelector('.csp-edit-btn').onclick=openCampEditModal;
-  document.querySelector('.csp-del-btn').onclick=confirmDeleteCamp;
+  document.getElementById('cspCloseBtn').onclick=closeCampPanel;
+  document.getElementById('cspEditBtn').onclick=openCampEditModal;
+  document.getElementById('cspDelBtn').onclick=confirmDeleteCamp;
 
   document.addEventListener('mousemove',e=>{
     if(!campResizing)return;

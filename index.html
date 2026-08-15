@@ -261,33 +261,33 @@
     <!-- FILTER BAR -->
     <div class="camp-filter-bar">
       <span class="camp-filter-label">Filter</span>
-      <input class="camp-filter-input" id="cf-cd" placeholder="CAMPAIGN_CD…" autocomplete="off">
-      <input class="camp-filter-input" id="cf-nm" placeholder="CAMPAIGN_NM…" autocomplete="off">
-      <input class="camp-filter-input" id="cf-event" placeholder="EVENT_NAME…" style="width:100px" autocomplete="off">
-      <select class="camp-filter-select" id="cf-type">
+      <input class="form-input-compact" id="cf-cd" placeholder="CAMPAIGN_CD…" style="width:110px" autocomplete="off">
+      <input class="form-input-compact" id="cf-nm" placeholder="CAMPAIGN_NM…" style="width:110px" autocomplete="off">
+      <input class="form-input-compact" id="cf-event" placeholder="EVENT_NAME…" style="width:100px" autocomplete="off">
+      <select class="form-input-compact" id="cf-type">
         <option value="">All types</option>
         <option value="BAU">BAU</option>
         <option value="Adhoc">Adhoc</option>
       </select>
-      <select class="camp-filter-select" id="cf-trigger">
+      <select class="form-input-compact" id="cf-trigger">
         <option value="">All triggers</option>
         <option value="Batch">Batch</option>
         <option value="Event">Event</option>
       </select>
-      <select class="camp-filter-select" id="cf-status">
+      <select class="form-input-compact" id="cf-status">
         <option value="">All status</option>
         <option value="Active">Active</option>
         <option value="Stop">Stop</option>
       </select>
       <div class="camp-filter-divider"></div>
-      <select class="camp-filter-select" id="cf-month" style="width:80px">
+      <select class="form-input-compact" id="cf-month" style="width:80px">
         <option value="">All months</option>
         <option value="01">Jan</option><option value="02">Feb</option><option value="03">Mar</option>
         <option value="04">Apr</option><option value="05">May</option><option value="06">Jun</option>
         <option value="07">Jul</option><option value="08">Aug</option><option value="09">Sep</option>
         <option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option>
       </select>
-      <select class="camp-filter-select" id="cf-year" style="width:72px">
+      <select class="form-input-compact" id="cf-year" style="width:72px">
         <option value="">All years</option>
         <option value="2024">2024</option>
         <option value="2025">2025</option>
@@ -295,13 +295,13 @@
       </select>
       <div class="camp-filter-divider"></div>
       <span class="camp-record-count" id="campCount">0 campaigns</span>
-      <button class="camp-clear-btn">✕ Clear</button>
+      <button class="btn btn-ghost" id="campClearBtn" style="font-size:10px;padding:2px 8px">✕ Clear</button>
     </div>
 
     <!-- TABLE + SIDE PANEL -->
     <div class="camp-table-area">
       <div class="camp-table-wrap">
-        <table class="camp-table">
+        <table class="data-table">
           <thead>
             <tr>
               <th data-col="date">DATE</th>
@@ -317,7 +317,7 @@
           <tbody id="campTableBody"></tbody>
         </table>
       </div>
-      <!-- mobile-web card view (<=768px) — same data/render source as .camp-table, see renderCampTable() -->
+      <!-- mobile-web card view (<=768px) — same data/render source as .data-table, see renderCampTable() -->
       <div class="mob-card-list" id="campCardsWrap"></div>
 
       <!-- SIDE PANEL -->
@@ -326,15 +326,15 @@
         <div class="csp-header">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px">
             <div class="csp-cd" id="cspCd"></div>
-            <button class="csp-close-btn" onclick="closeCampPanel()" title="Close" aria-label="Back">×</button>
+            <button class="icon-btn csp-close-btn" id="cspCloseBtn" onclick="closeCampPanel()" title="Close" aria-label="Back">×</button>
           </div>
           <div class="csp-nm" id="cspNm"></div>
           <div class="csp-badges" id="cspBadges"></div>
         </div>
         <div class="csp-body" id="cspBody"></div>
         <div class="csp-footer">
-          <button class="csp-edit-btn" onclick="openCampEditModal()">✎ Edit</button>
-          <button class="csp-del-btn" onclick="confirmDeleteCamp()">✕ Delete</button>
+          <button class="btn btn-ghost" id="cspEditBtn" onclick="openCampEditModal()">✎ Edit</button>
+          <button class="btn btn-danger" id="cspDelBtn" onclick="confirmDeleteCamp()">✕ Delete</button>
         </div>
       </div>
     </div>
@@ -471,7 +471,7 @@
             <span class="note-list-title">📈 Monitor Log</span>
             <button class="btn btn-primary" onclick="createMonitorReportFromTemplate()">+ New from template</button>
           </div>
-          <table class="camp-table monitor-log-list-table">
+          <table class="data-table monitor-log-list-table">
             <thead><tr><th>Report Date</th><th>Created By</th><th></th></tr></thead>
             <tbody id="monitorLogListBody"></tbody>
           </table>
