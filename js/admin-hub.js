@@ -4,7 +4,7 @@
 // get_feature_visibility() — this is a permanent permission, not a rollout feature.
 // ══════════════════════════════════════════════════
 import { state } from './state.js';
-import { esc, escJs } from './ui-helpers.js';
+import { esc, escJs, showNotification } from './ui-helpers.js';
 import { sb } from './supabase-client.js';
 
 // ══════════════════════════════════════════════════
@@ -41,10 +41,10 @@ const STATUS_LABEL={off:'Off',beta:'Beta',on:'On'};
 export function renderAdminHub(){
   const el=document.getElementById('adminFlagGrid');
   if(!el) return;
-  if(!state.featureFlags.length){el.innerHTML='<div class="note-empty">No feature flags found</div>';return;}
+  if(!state.featureFlags.length){el.innerHTML='<div class="empty-list">No feature flags found</div>';return;}
   el.innerHTML=state.featureFlags.map(f=>{
     const expanded=state.expandedFlagId===f.id;
-    return`<div class="checklist-template-card admin-flag-card">
+    return`<div class="checklist-template-card card">
       <div class="tpl-card-header">
         <span class="tpl-card-title">${esc(f.label||f.feature_key)}</span>
         <span class="admin-flag-status admin-flag-status-${esc(f.status)}">${STATUS_LABEL[f.status]||esc(f.status)}</span>
@@ -80,7 +80,7 @@ function renderTesterPanel(f){
       ${testers.length?testers.map(t=>`
         <span class="admin-flag-tester-chip">${esc(t.display_name)}
           <button class="admin-flag-tester-remove" onclick="removeFlagTester('${escJs(f.id)}','${escJs(t.id)}')" title="Remove tester">✕</button>
-        </span>`).join(''):'<span class="note-empty" style="padding:0">No one has early access yet</span>'}
+        </span>`).join(''):'<span class="empty-list-sm">No one has early access yet</span>'}
     </div>
     ${candidates.length?`<select class="form-input" onchange="if(this.value){addFlagTester('${escJs(f.id)}',this.value);this.value='';}">
       <option value="">+ Grant access…</option>
@@ -98,7 +98,7 @@ export async function updateFlagStatus(id,status){
     const f=state.featureFlags.find(f=>f.id===id);
     if(f) f.status=status;
     renderAdminHub();
-  }catch(err){alert('Could not update flag status: '+(err.message||err));}
+  }catch(err){showNotification('Could not update flag status: '+(err.message||err),'error');}
 }
 export async function toggleFlagTesterPanel(id){
   if(state.expandedFlagId===id){state.expandedFlagId=null;renderAdminHub();return;}
@@ -111,14 +111,14 @@ export async function addFlagTester(featureId,userId){
     await addFeatureFlagTesterDB(featureId,userId);
     state.featureFlagTesters[featureId]=await loadFeatureFlagTestersDB(featureId);
     renderAdminHub();
-  }catch(err){alert('Could not add tester: '+(err.message||err));}
+  }catch(err){showNotification('Could not add tester: '+(err.message||err),'error');}
 }
 export async function removeFlagTester(featureId,userId){
   try{
     await removeFeatureFlagTesterDB(featureId,userId);
     state.featureFlagTesters[featureId]=(state.featureFlagTesters[featureId]||[]).filter(t=>t.id!==userId);
     renderAdminHub();
-  }catch(err){alert('Could not remove tester: '+(err.message||err));}
+  }catch(err){showNotification('Could not remove tester: '+(err.message||err),'error');}
 }
 
 export function initAdminHub(){
