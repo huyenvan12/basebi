@@ -84,6 +84,28 @@ export function hideConfirmModal(){
 }
 
 // ══════════════════════════════════════════════════
+// SHARED INLINE CONFIRM — .confirm-box (basebi.css), non-destructive/lightweight tier.
+// Builds a toggleable confirm box anchored near the triggering element (opts.container
+// is a closest()-selector for where it should append; defaults to the anchor's parent).
+// For destructive confirms use showConfirmModal above instead.
+// ══════════════════════════════════════════════════
+export function showInlineConfirm(anchorEl,message,onConfirm,opts={}){
+  const container=opts.container?anchorEl.closest(opts.container):anchorEl.parentElement;
+  if(!container) return;
+  const existing=container.querySelector('.confirm-box');
+  if(existing){existing.remove();return;}
+  const box=document.createElement('div');box.className='confirm-box';
+  box.innerHTML=`<p>${message}</p>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" style="font-size:11px">${opts.cancelLabel||'Cancel'}</button>
+      <button class="btn btn-danger" style="font-size:11px">${opts.confirmLabel||'Yes'}</button>
+    </div>`;
+  box.querySelector('.btn-ghost').onclick=()=>box.remove();
+  box.querySelector('.btn-danger').onclick=async()=>{ box.remove(); await onConfirm(); };
+  container.appendChild(box);
+}
+
+// ══════════════════════════════════════════════════
 // SHORTCUTS MODAL
 // ══════════════════════════════════════════════════
 export function openShortcutsModal(){ document.getElementById('shortcutsOverlay').classList.add('open'); }
