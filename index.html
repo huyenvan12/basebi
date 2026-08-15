@@ -139,9 +139,11 @@
      (and any live L2 sub-nav), so the nav bar stays clickable for navigating elsewhere.
      top is set dynamically by showAccessDenied() in js/router.js. -->
 <div id="routeAccessDeniedScreen" style="display:none">
-  <div class="route-denied-card">
-    <div class="route-denied-msg">You don't have access to this page.</div>
-    <button class="route-denied-btn" id="routeDeniedGoNotesBtn">Go to Notes</button>
+  <div class="access-denied-inner">
+    <div class="access-denied-icon">🔒</div>
+    <p class="access-denied-title">You don't have access to this page</p>
+    <p class="access-denied-subtitle">Ask a team admin if you think this is a mistake.</p>
+    <button class="btn btn-primary access-denied-btn" id="routeDeniedGoNotesBtn">← Go to notes</button>
   </div>
 </div>
 
@@ -388,7 +390,7 @@
 
   <!-- TEAM SHARED VIEW -->
   <div class="team-view" id="teamView">
-    <div class="team-subnav">
+    <div class="team-subnav" data-role="subnav">
       <div class="subtab-l3a-group">
         <button class="subtab-l3a active" id="teamSubTabNotes" onclick="switchTeamSubTab('notes')">🌐 Shared Notes</button>
         <button class="subtab-l3a" id="teamSubTabChecklists" onclick="switchTeamSubTab('checklists')">✅ Checklists</button>
@@ -505,7 +507,7 @@
     <div class="note-list-header">
       <span class="section-label">🛠 Admin Hub — Feature Flags</span>
     </div>
-    <div class="team-subnav">
+    <div class="team-subnav" data-role="subnav">
       <div class="subtab-l3a-group">
         <button class="subtab-l3a active" id="adminHubTabTeam" onclick="switchAdminHubTab('team')">🧑‍🤝‍🧑 Team Features <span class="tab-count-badge" id="adminHubTeamCount">0</span></button>
         <button class="subtab-l3a" id="adminHubTabPersonal" onclick="switchAdminHubTab('personal')">👤 My Personal Features <span class="tab-count-badge" id="adminHubPersonalCount">0</span></button>
@@ -600,7 +602,7 @@
 
   <!-- DELIVERY TRACKER VIEW -->
   <div class="team-view" id="ganttView">
-    <div class="dt-view-switcher subtab-l3a-group">
+    <div class="dt-view-switcher subtab-l3a-group" data-role="subnav">
       <button class="subtab-l3a active" id="dtSubTabTimeline" onclick="switchGanttView('timeline')">📊 Timeline</button>
       <button class="subtab-l3a" id="dtSubTabCalendar" onclick="switchGanttView('calendar')">📅 Calendar</button>
       <button class="subtab-l3a" id="dtSubTabTasks" onclick="switchGanttView('tasks')">✅ Tasks</button>

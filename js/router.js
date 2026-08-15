@@ -53,9 +53,16 @@ export function syncUrlForCurrentState(mode){
 }
 
 export function showAccessDenied(){
-  const topbarH = document.querySelector('.topbar').getBoundingClientRect().height;
-  const subnav = document.querySelector('.team-view.active > .team-subnav');
-  const top = topbarH + (subnav ? subnav.getBoundingClientRect().height : 0);
+  const topbar = document.querySelector('.topbar');
+  // Matches any composite tab's sub-nav row via a shared [data-role="subnav"] marker —
+  // not a class name — so this doesn't need updating when a new composite tab is added
+  // with its own sub-nav wrapper class (see Delivery Tracker's dt-view-switcher, which
+  // has no team-subnav class of its own but still carries this marker).
+  const subnav = document.querySelector('.team-view.active > [data-role="subnav"]');
+  // Use the actual viewport-relative bottom edge of whichever element is the lower
+  // boundary, rather than summing heights — sidesteps margin/spacing between the
+  // topbar and subnav (e.g. .team-subnav's own margin-top) that a height-sum would miss.
+  const top = (subnav || topbar).getBoundingClientRect().bottom;
   const el = document.getElementById('routeAccessDeniedScreen');
   el.style.top = top + 'px';
   el.style.display = 'block';
