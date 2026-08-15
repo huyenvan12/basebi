@@ -96,6 +96,14 @@
   --success-dim:rgba(74,222,128,.15);
 }
 
+/* Base reset: form controls don't inherit font-family from their parent by
+   default in browsers, unlike every other element — this silently produced
+   OS-default-font mismatches wherever a new button/input/select/textarea
+   forgot to set font-family:inherit itself (see .admin-hub-popover-row).
+   Codified once here so the app's Inter/JetBrains Mono convention always
+   applies unless a rule explicitly overrides it with higher specificity. */
+button,input,select,textarea{font-family:inherit}
+
 /* ═══════════════════════════════════════════════════════════════════════
    DESIGN SYSTEM — SHARED
    New shared classes/tokens from docs/DESIGN_SYSTEM.md (Phase 3 infra PR).
