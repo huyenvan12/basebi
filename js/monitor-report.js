@@ -6,7 +6,7 @@
 // flag (isFeatureVisible('monitor_log')) — this module never re-checks the flag itself.
 // ══════════════════════════════════════════════════
 import { state } from './state.js';
-import { esc, authorName } from './ui-helpers.js';
+import { esc, authorName, showConfirmModal, showNotification } from './ui-helpers.js';
 import { sb } from './supabase-client.js';
 import { fallbackCopy } from './notes.js';
 
@@ -115,7 +115,7 @@ export function fmtMonitorReportDate(iso){
 export function renderMonitorLogList(){
   const tbody=document.getElementById('monitorLogListBody');
   if(!state.monitorReports.length){
-    tbody.innerHTML='<tr><td colspan="3" class="note-empty">No monitor reports yet</td></tr>';
+    tbody.innerHTML='<tr><td colspan="3" class="empty-list">No monitor reports yet</td></tr>';
     return;
   }
   tbody.innerHTML=state.monitorReports.map(r=>{
@@ -123,7 +123,7 @@ export function renderMonitorLogList(){
     // placeholder when not — so "View →" (the alignment anchor, always last/rightmost) never
     // shifts horizontally depending on the viewer's permissions for that row.
     const delBtn=canDeleteMonitorReport(r)
-      ?`<button class="monitor-delete-btn" title="Delete report" onclick="confirmDeleteMonitorReport('${r.id}','list')">${MONITOR_TRASH_SVG}</button>`
+      ?`<button class="monitor-delete-btn icon-btn" title="Delete report" onclick="confirmDeleteMonitorReport('${r.id}','list')">${MONITOR_TRASH_SVG}</button>`
       :`<span class="monitor-delete-btn-placeholder" aria-hidden="true"></span>`;
     return `<tr>
       <td>${esc(fmtMonitorReportDate(r.report_date))}</td>
@@ -186,7 +186,7 @@ export function renderMonitorReportDetail(){
     if(!lines.length){
       rowsHtml+=`<tr>
         <td class="monitor-criterion-cell">${esc(c.label)}</td>
-        <td class="monitor-value-cell"><span class="note-empty" style="font-size:11px">no lines</span></td>
+        <td class="monitor-value-cell"><span class="empty-list-sm">no lines</span></td>
       </tr>`;
     }else{
       lines.forEach((line,li)=>{
@@ -200,9 +200,9 @@ export function renderMonitorReportDetail(){
         const editedCls=isLineEdited(line)?' monitor-cell-edited':'';
         const editedTitle=isLineEdited(line)?' title="Edited"':'';
         rowsHtml+=`<td class="monitor-value-cell">
-            <input class="monitor-cell-input monitor-cat-input" value="${esc(line.category||'')}" ${dis} ${catHandlers}>
+            <input class="monitor-cell-input form-input-compact monitor-cat-input" value="${esc(line.category||'')}" ${dis} ${catHandlers}>
             <span class="monitor-val-wrap${editedCls}"${editedTitle}>
-              <input class="monitor-cell-input monitor-val-input" value="${esc(formatNumber(line.value)||'')}" ${dis} ${valHandlers}>
+              <input class="monitor-cell-input form-input-compact monitor-val-input" value="${esc(formatNumber(line.value)||'')}" ${dis} ${valHandlers}>
             </span>
           </td>`;
         rowsHtml+='</tr>';
@@ -338,42 +338,18 @@ function fmtMonitorReportTimestamp(iso){
 }
 export function confirmDeleteMonitorReport(id,context){
   const report=state.monitorReports.find(r=>r.id===id); if(!report) return;
-  const el=document.getElementById(context==='list'?'monitorLogListView':'monitorLogDetailView');
-  const existing=el.querySelector('.confirm-box'); if(existing) existing.remove();
-  const box=document.createElement('div'); box.className='confirm-box';
-  box.innerHTML=`<p>Delete report for <strong>${esc(fmtMonitorReportDate(report.report_date))}</strong>, created at <strong>${esc(fmtMonitorReportTimestamp(report.created_at))}</strong> by <strong>${esc(authorName(report.created_by))}</strong>? This cannot be undone.</p>
-    <div class="confirm-actions">
-      <button class="btn btn-ghost" style="font-size:11px" onclick="this.closest('.confirm-box').remove()">Cancel</button>
-      <button class="btn btn-danger" style="font-size:11px" onclick="deleteMonitorReport('${id}','${context}')">Yes, delete</button>
-    </div>`;
-  const anchor=context==='list'?el.querySelector('.note-list-header'):el.querySelector('.checklist-detail-topbar');
-  anchor.insertAdjacentElement('afterend',box);
+  const message=`Delete report for ${fmtMonitorReportDate(report.report_date)}, created at ${fmtMonitorReportTimestamp(report.created_at)} by ${authorName(report.created_by)}? This cannot be undone.`;
+  showConfirmModal(message,()=>deleteMonitorReport(id,context),{confirmLabel:'Yes, delete'});
 }
 export async function deleteMonitorReport(id,context){
-  const el=document.getElementById(context==='list'?'monitorLogListView':'monitorLogDetailView');
-  const box=el?.querySelector('.confirm-box');
-  const confirmBtn=box?.querySelector('.btn-danger');
-  if(confirmBtn){ confirmBtn.disabled=true; confirmBtn.textContent='Deleting…'; }
-
   const{error}=await sb.from('monitor_reports').delete().eq('id',id);
 
   if(error){
-    // Keep the dialog open on failure and surface an inline error instead of closing silently —
-    // matches confirm-box's existing <p>/<div class="confirm-actions"> structure.
     console.error(error);
-    if(box){
-      let errEl=box.querySelector('.confirm-error');
-      if(!errEl){
-        errEl=document.createElement('p'); errEl.className='confirm-error';
-        box.querySelector('.confirm-actions').insertAdjacentElement('beforebegin',errEl);
-      }
-      errEl.textContent="You don't have permission to delete this report.";
-    }
-    if(confirmBtn){ confirmBtn.disabled=false; confirmBtn.textContent='Yes, delete'; }
+    showNotification("You don't have permission to delete this report.",'error');
     return;
   }
 
-  box?.remove();                                     // dialog must unmount on success, in both contexts
   state.monitorReports=state.monitorReports.filter(r=>r.id!==id);
   if(context==='detail'){ backToMonitorLogList(); }
   else{ renderMonitorLogList(); }
