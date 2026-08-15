@@ -561,8 +561,9 @@
       <div class="section-label-sub" id="newFeatureScopeNote"></div>
       <div class="form-row">
         <label class="form-label">Feature key *</label>
-        <input class="form-input" id="nf-key" placeholder="e.g. new_dashboard (lowercase, snake_case)">
-        <div id="nf-key-error" class="form-hint" style="display:none;color:#f87171"></div>
+        <input class="form-input" id="nf-key" placeholder="e.g. new_dashboard (lowercase, snake_case)" onblur="normalizeNewFeatureKey()">
+        <div class="form-hint">Must exactly match the key used in the feature's gating code — copy-paste it rather than retyping from memory.</div>
+        <div id="nf-key-error" class="form-hint is-error" style="display:none"></div>
       </div>
       <div class="form-row">
         <label class="form-label">Label *</label>

@@ -306,6 +306,7 @@ const SCOPE_NOTE={
   team:'Team feature — visibility controlled by status + testers below.',
   personal:'Personal feature — hidden from everyone until you add testers, no status.',
 };
+const FEATURE_KEY_RE=/^[a-z][a-z0-9_]*$/;
 function showNewFeatureKeyError(msg){
   const el=document.getElementById('nf-key-error');
   el.textContent=msg; el.style.display='';
@@ -313,6 +314,17 @@ function showNewFeatureKeyError(msg){
 function hideNewFeatureKeyError(){
   const el=document.getElementById('nf-key-error');
   el.textContent=''; el.style.display='none';
+}
+export function normalizeNewFeatureKey(){
+  const el=document.getElementById('nf-key');
+  const normalized=el.value.trim().toLowerCase().replace(/[\s-]+/g,'_').replace(/[^a-z0-9_]/g,'');
+  el.value=normalized;
+  if(!normalized) return;
+  if(!FEATURE_KEY_RE.test(normalized)){
+    showNewFeatureKeyError('Feature key must start with a letter and contain only lowercase letters, numbers, and underscores.');
+  }else{
+    hideNewFeatureKeyError();
+  }
 }
 export function openNewFeatureModal(scope){
   state.adminHubNewFeatureScope=scope;
@@ -338,6 +350,10 @@ export async function saveNewFeatureModal(){
   const description=document.getElementById('nf-description').value.trim();
   if(!feature_key||!label){
     showNewFeatureKeyError('Feature key and label are required.');
+    return;
+  }
+  if(!FEATURE_KEY_RE.test(feature_key)){
+    showNewFeatureKeyError('Feature key must start with a letter and contain only lowercase letters, numbers, and underscores.');
     return;
   }
   hideNewFeatureKeyError();
@@ -372,6 +388,7 @@ export function initAdminHub(){
   window.openNewFeatureModal=openNewFeatureModal;
   window.closeNewFeatureModal=closeNewFeatureModal;
   window.saveNewFeatureModal=saveNewFeatureModal;
+  window.normalizeNewFeatureKey=normalizeNewFeatureKey;
 
   document.addEventListener('click',e=>{
     if(state.adminHubTesterPopoverFeatureId && !e.target.closest('#adminHubTesterPopover') && !e.target.closest('.admin-hub-tester-add-btn')){
