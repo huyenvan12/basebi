@@ -220,7 +220,7 @@ No gaps found — not applicable. Notes/Team-Shared/Graph View has no `<table>`-
 - **Explicitly named in spec:** `.ci-share-btn` (`basebi.css:556-557`, `checklist-share.js:57`) reimplements button styling standalone instead of composing `.btn-ghost`. Fix: migrate to `.btn.btn-ghost` (or a small size modifier).
 - **Known bug #6, module-wide impact:** `.btn-primary:hover{background:#4a7de0}` — every primary CTA in Checklist inherits this ("+ New Template", "+ New Checklist", "Save Template", "Create Checklist", "Use this template", "Mark Checklist Done").
 - Inline `style="font-size:11px"` used as an ad-hoc small-button hack (`checklist-templates.js:51-52`) instead of a documented size tier — flag for consistency, not an explicit spec rule.
-- `.modal-close` (×, `basebi.css:219`) has no defined box size/radius/hover-fill, used in all 3 Checklist modals. Fix: migrate to `.icon-btn` (shared/app-wide fix).
+- `.modal-close` now composes `.icon-btn` (`class="modal-close icon-btn"`) app-wide, restoring box size/radius/hover-fill — no gap. `.modal-close` retains only glyph color/typography and the JS event-binding hook; the modal-hover fill was overridden to `var(--surface2)` (`#e8eaf2` in `#noteModalOverlay`'s hardcoded light-mode case) since `.icon-btn`'s default hover fill shares the same token as `.modal`'s background.
 
 ### Toast / notification system
 

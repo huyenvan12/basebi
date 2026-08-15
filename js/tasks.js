@@ -261,7 +261,7 @@ export function renderTaskPopover(mode, opts){
   pop.innerHTML=`<div class="task-popover-inner">
     <div class="task-popover-title-row">
       <strong>Create task</strong>
-      <button type="button" class="modal-close" onclick="closeTaskPopover()">×</button>
+      <button type="button" class="modal-close icon-btn" onclick="closeTaskPopover()">×</button>
     </div>
     <label class="task-popover-label">Title</label>
     <input type="text" id="taskPopoverTitle" class="form-input-compact task-popover-input" value="${esc(title)}">
@@ -462,7 +462,7 @@ export function renderTaskModal(){
   inner.innerHTML=`
     <div class="modal-title">
       <span>Task</span>
-      <button type="button" class="modal-close" onclick="closeTaskModal()">×</button>
+      <button type="button" class="modal-close icon-btn" onclick="closeTaskModal()">×</button>
     </div>
     ${task.source_note_id?`<button type="button" class="task-modal-source-link" onclick="jumpToSourceNote('${escJs(task.source_note_id)}','${escJs(task.source_line_id||'')}')">↳ View source Daily Note line</button>`:''}
     ${ctx.openedFrom==='dailyNote'?`<button type="button" class="task-modal-source-link" onclick="jumpToTaskCard('${escJs(task.id)}')">View in Tasks tab →</button>`:''}
@@ -622,7 +622,7 @@ function renderTaskFollowUpModal(){
   inner.innerHTML=`
     <div class="modal-title">
       <span>Create follow-up task</span>
-      <button type="button" class="modal-close" onclick="closeTaskFollowUpModal()">×</button>
+      <button type="button" class="modal-close icon-btn" onclick="closeTaskFollowUpModal()">×</button>
     </div>
     <div class="form-row">
       <label class="form-label">Title</label>

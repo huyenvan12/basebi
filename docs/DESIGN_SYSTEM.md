@@ -71,6 +71,8 @@ Keep `.btn` / `.btn-primary` / `.btn-ghost` / `.btn-danger` as the base system. 
 
 This retires `.fmt-btn`, `.gear-btn`, `.mob-icon-btn`, and the various bare `background:none;border:none` ad-hoc icon buttons — each maps to one of the three classes above by context.
 
+**Implementation note (`.modal-close`):** modal close buttons use the composed class `class="modal-close icon-btn"` app-wide (all 22 instances, 19 static in `index.html` + 3 in `js/tasks.js` template literals) — `.modal-close` keeps only glyph color/typography (`color`, `font-size`, `line-height`) plus its role as the JS event-binding hook (`querySelector('.modal-close')`); `.icon-btn` supplies the 28×28px box/border/radius. Because every modal sits on `.modal{background:var(--surface)}`, the same token as `.icon-btn`'s default hover fill, `.modal-close:hover` overrides the hover fill to `var(--surface2)` (the codebase's established "hover fill one step up from a `--surface` background" token, per `.mob-icon-btn`/`.btn-ghost` precedent) — otherwise the hover state would be invisible against the modal background.
+
 ---
 
 ## 5. Toast / notification system
