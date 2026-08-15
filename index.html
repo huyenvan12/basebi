@@ -495,7 +495,97 @@
     <div class="note-list-header">
       <span class="section-label">🛠 Admin Hub — Feature Flags</span>
     </div>
-    <div class="admin-flag-grid" id="adminFlagGrid"></div>
+    <div class="team-subnav">
+      <div class="subtab-l3a-group">
+        <button class="subtab-l3a active" id="adminHubTabTeam" onclick="switchAdminHubTab('team')">🧑‍🤝‍🧑 Team Features <span class="tab-count-badge" id="adminHubTeamCount">0</span></button>
+        <button class="subtab-l3a" id="adminHubTabPersonal" onclick="switchAdminHubTab('personal')">👤 My Personal Features <span class="tab-count-badge" id="adminHubPersonalCount">0</span></button>
+      </div>
+    </div>
+
+    <!-- TEAM FEATURES SUBVIEW -->
+    <div class="team-subview active" id="adminHubTeamView" style="flex-direction:column">
+      <div class="admin-hub-toolbar">
+        <input class="form-input-compact" id="adminHubTeamSearch" placeholder="Search features…" oninput="onAdminHubSearchInput('team',this.value)">
+        <div class="admin-hub-status-filters" id="adminHubStatusFilters">
+          <button class="admin-hub-filter-chip active" data-status="" onclick="setAdminHubStatusFilter('')">All</button>
+          <button class="admin-hub-filter-chip" data-status="on" onclick="setAdminHubStatusFilter('on')">On</button>
+          <button class="admin-hub-filter-chip" data-status="beta" onclick="setAdminHubStatusFilter('beta')">Beta</button>
+          <button class="admin-hub-filter-chip" data-status="off" onclick="setAdminHubStatusFilter('off')">Off</button>
+        </div>
+        <button class="btn btn-primary admin-hub-new-btn" onclick="openNewFeatureModal('team')">+ New team feature</button>
+      </div>
+      <div class="admin-hub-table-wrap">
+        <table class="data-table">
+          <thead><tr>
+            <th data-col="label" onclick="sortAdminHub('team','label')">FEATURE</th>
+            <th data-col="status" onclick="sortAdminHub('team','status')">STATUS</th>
+            <th>TESTERS</th>
+            <th data-col="updated_at" onclick="sortAdminHub('team','updated_at')">LAST UPDATED</th>
+          </tr></thead>
+          <tbody id="adminHubTeamTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PERSONAL FEATURES SUBVIEW -->
+    <div class="team-subview" id="adminHubPersonalView" style="flex-direction:column">
+      <div class="admin-hub-toolbar">
+        <input class="form-input-compact" id="adminHubPersonalSearch" placeholder="Search features…" oninput="onAdminHubSearchInput('personal',this.value)">
+        <button class="btn btn-primary admin-hub-new-btn" onclick="openNewFeatureModal('personal')">+ New personal feature</button>
+      </div>
+      <div class="section-label-sub" style="padding:0 14px 8px">Not visible to anyone until you add them here, including other admins.</div>
+      <div class="admin-hub-table-wrap">
+        <table class="data-table">
+          <thead><tr>
+            <th data-col="label" onclick="sortAdminHub('personal','label')">FEATURE</th>
+            <th>VISIBLE TO</th>
+            <th data-col="updated_at" onclick="sortAdminHub('personal','updated_at')">LAST UPDATED</th>
+          </tr></thead>
+          <tbody id="adminHubPersonalTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN HUB: tester-add and status-change popovers (shared by both tabs) -->
+  <div class="popover" id="adminHubTesterPopover" style="display:none"></div>
+  <div class="popover" id="adminHubStatusPopover" style="display:none"></div>
+
+  <!-- ADMIN HUB: New Feature modal (team + personal, scope set by caller) -->
+  <div class="modal-overlay" id="newFeatureModalOverlay">
+    <div class="modal modal-sm">
+      <div class="modal-title">
+        <span id="newFeatureModalTitle">New Team Feature</span>
+        <button class="modal-close icon-btn" onclick="closeNewFeatureModal()">×</button>
+      </div>
+      <div class="section-label-sub" id="newFeatureScopeNote"></div>
+      <div class="form-row">
+        <label class="form-label">Feature key *</label>
+        <input class="form-input" id="nf-key" placeholder="e.g. new_dashboard (lowercase, snake_case)" onblur="normalizeNewFeatureKey()">
+        <div class="form-hint">Must exactly match the key used in the feature's gating code — copy-paste it rather than retyping from memory.</div>
+        <div id="nf-key-error" class="form-hint is-error" style="display:none"></div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Label *</label>
+        <input class="form-input" id="nf-label" placeholder="Human-readable name">
+      </div>
+      <div class="form-row">
+        <label class="form-label">Description</label>
+        <textarea class="form-input" id="nf-description" style="min-height:60px" placeholder="Optional…"></textarea>
+      </div>
+      <div class="form-row" id="nf-status-row">
+        <label class="form-label">Status</label>
+        <select class="form-input" id="nf-status">
+          <option value="off" selected>Off</option>
+          <option value="beta">Beta</option>
+          <option value="on">On</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeNewFeatureModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveNewFeatureModal()">Create feature</button>
+      </div>
+    </div>
   </div>
 
   <!-- DELIVERY TRACKER VIEW -->

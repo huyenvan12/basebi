@@ -48,8 +48,14 @@ export const state = {
 
   // admin hub state
   featureFlags: [],
-  expandedFlagId: null,
-  featureFlagTesters: {},                     // { [featureId]: [{id,display_name}] } — lazy-loaded per expanded flag
+  featureFlagTesters: {},                     // { [featureId]: [{id,display_name}] } — eager-loaded for all flags on render
+  adminHubTab: 'team',                        // 'team' | 'personal'
+  adminHubSearch: { team: '', personal: '' },
+  adminHubStatusFilter: '',                   // '' | 'on' | 'beta' | 'off' — team tab only
+  adminHubSort: { team: { col: 'label', dir: 'asc' }, personal: { col: 'label', dir: 'asc' } },
+  adminHubTesterPopoverFeatureId: null,
+  adminHubStatusPopoverFeatureId: null,
+  adminHubNewFeatureScope: null,              // 'team' | 'personal' while the New Feature modal is open
   checklistSharePanelOpen: {},                // { [instanceId]: bool } — mirrors checklistPhaseOpen pattern
   shareModalInstanceId: null,
   activeReviewShareId: null,

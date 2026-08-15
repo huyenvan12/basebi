@@ -27,7 +27,7 @@ export async function loadSharedWithMeInstances(ids){
 }
 export async function loadOrgMembers(){
   if(!state.currentUserOrgId) return [];
-  const{data,error}=await sb.from('profiles').select('id,display_name').eq('org_id',state.currentUserOrgId).neq('id',state.currentUserId);
+  const{data,error}=await sb.from('profiles').select('id,display_name,is_qa_seat').eq('org_id',state.currentUserOrgId).neq('id',state.currentUserId);
   if(error||!data) return [];
   return data;
 }
