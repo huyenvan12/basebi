@@ -474,8 +474,7 @@ export function renderTimelineHeader(){
   const weekRow=`<tr class="dt-head-week">${weekGroups.map(wg=>{
     const isCurrentWeek=wg.cols.some(c=>c.date===todayStr);
     const offsets=wg.cols.map((c,k)=>isSprintStartCol(c.date,cols[0].date)?k*TIMELINE_DAY_COL_WIDTH:null).filter(x=>x!==null);
-    const stripe=sprintStripeStyle(offsets);
-    return `<th colspan="${wg.cols.length}" class="dt-week-th${isCurrentWeek?' dt-week-th-today':''}"${stripe?` style="${stripe}"`:''}>${esc(wg.label)}</th>`;
+    return `<th colspan="${wg.cols.length}" class="dt-week-th${isCurrentWeek?' dt-week-th-today':''}">${sprintLineSpans(offsets)}${esc(wg.label)}</th>`;
   }).join('')}</tr>`;
 
   const dayRow=`<tr class="dt-head-day">${cols.map((c,i)=>{
@@ -507,12 +506,11 @@ export function renderTimelineHeader(){
     tr.querySelectorAll('th:not(.sticky-col)').forEach(th=>{th.style.top=top+'px';});
   });
 }
-// inline background for a multi-column cell: a 2px sprint-start line at each pixel offset,
-// matching the border-left that single day cells get via .dt-sprint-start
-function sprintStripeStyle(offsets){
-  if(!offsets.length) return '';
-  const c='rgba(91,141,238,.55)';
-  return 'background-image:'+offsets.map(x=>`linear-gradient(90deg,transparent ${x}px,${c} ${x}px,${c} ${x+2}px,transparent ${x+2}px)`).join(',');
+// crisp 2px sprint-start line(s) inside a multi-column cell (week row, Inactive divider),
+// absolutely positioned at each pixel offset — same look as .dt-sprint-start's border-left
+// on single day cells (a background gradient here blurred into a "double line" when zoomed)
+function sprintLineSpans(offsets){
+  return offsets.map(x=>`<span class="dt-sprint-line" style="left:${x}px"></span>`).join('');
 }
 // true when a sprint starts on this column (and it isn't the first visible column)
 function isSprintStartCol(dateStr,firstColDate){
@@ -573,8 +571,8 @@ export function renderTimelineBody(){
   if(inactive.length){
     const colCount=5+cols.length;
     const stickyTotal=TIMELINE_COL_ORDER.reduce((a,k)=>a+ganttColumnWidths[k],0);
-    const stripe=sprintStripeStyle(cols.map((c,i)=>i>0&&isSprintStartCol(c.date,cols[0].date)?stickyTotal+i*TIMELINE_DAY_COL_WIDTH:null).filter(x=>x!==null));
-    html+=`<tr class="dt-inactive-divider" onclick="toggleGanttInactive()"><td colspan="${colCount}"${stripe?` style="${stripe}"`:''}>${state.ganttInactiveExpanded?'▾':'▸'} Inactive (${inactive.length})</td></tr>`;
+    const lines=sprintLineSpans(cols.map((c,i)=>i>0&&isSprintStartCol(c.date,cols[0].date)?stickyTotal+i*TIMELINE_DAY_COL_WIDTH:null).filter(x=>x!==null));
+    html+=`<tr class="dt-inactive-divider" onclick="toggleGanttInactive()"><td colspan="${colCount}" style="position:relative">${lines}${state.ganttInactiveExpanded?'▾':'▸'} Inactive (${inactive.length})</td></tr>`;
     if(state.ganttInactiveExpanded){
       html+=inactive.map(t=>renderTicketRow(t,cols,dayMeta)).join('');
     }

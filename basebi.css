@@ -1678,6 +1678,7 @@ body.is-native-app .search-screen{padding-top:calc(50px + env(safe-area-inset-to
 .dt-sprint-th-editable{cursor:pointer}
 .dt-sprint-th-editable:hover .dt-sprint-name{text-decoration:underline}
 .dt-timeline-table .dt-sprint-start{border-left:2px solid rgba(91,141,238,.55)}
+.dt-sprint-line{position:absolute;top:0;bottom:0;width:2px;background:rgba(91,141,238,.55);pointer-events:none}
 .dt-entry-info{display:flex;flex-direction:column;gap:3px;padding:6px 8px 5px;max-width:250px}
 .dt-entry-info-type{display:flex;align-items:center;gap:7px;color:var(--text);font-size:12px}
 .dt-entry-info-type b{font-family:'JetBrains Mono',monospace}
