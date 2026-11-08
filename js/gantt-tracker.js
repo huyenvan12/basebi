@@ -965,9 +965,13 @@ function renderMarkDayModal(){
 
   const holBox=document.getElementById('dtMarkDayHoliday');
   const onlyHolidays=!workDates.length;
+  // personal marks left on holiday dates (e.g. AL marked before the holiday was added) —
+  // listed here so they can still be cleared from the holiday view
+  const leftover=holidays.flatMap(d=>marksForDate(d));
   if(onlyHolidays&&holidays.length){
     const hol=holidayFor(holidays[0]);
-    holBox.innerHTML=`<div class="dt-markday-holiday"><span class="dt-mark-pill dt-mark-pill-off">HOL</span><div><b>${esc(hol.name)}</b><div class="dt-markday-holiday-sub">Team-wide public holiday, managed by admin. Personal marks aren't needed on this day.</div></div></div>`;
+    const leftoverNote=leftover.length?`<div class="dt-markday-holiday-left">You still have ${leftover.map(m=>`<span class="dt-mark-pill ${m.day_type==='wfh'?'dt-mark-pill-wfh':m.day_type==='read_day'?'dt-mark-pill-rd':'dt-mark-pill-off'}">${esc(DAY_TYPES[m.day_type||'al'].code)}</span>`).join(' ')} marked here from before — use <b>Clear all marks</b> to remove ${leftover.length===1?'it':'them'}.</div>`:'';
+    holBox.innerHTML=`<div class="dt-markday-holiday"><span class="dt-mark-pill dt-mark-pill-off">HOL</span><div><b>${esc(hol.name)}</b><div class="dt-markday-holiday-sub">Team-wide public holiday, managed by admin. Personal marks aren't needed on this day.</div>${leftoverNote}</div></div>`;
     holBox.style.display='';
   }else{ holBox.innerHTML=''; holBox.style.display='none'; }
 
@@ -989,8 +993,8 @@ function renderMarkDayModal(){
   typesEl.style.display=onlyHolidays?'none':'';
   typesEl.innerHTML=onlyHolidays?'':`<div class="dt-markday-group">TIME OFF</div>${['al','half_am','half_pm'].map(row).join('')}<div class="dt-markday-group">WORK MODE · tasks assign as usual</div>${['wfh','read_day'].map(row).join('')}`;
 
-  const hasExisting=workDates.some(d=>marksForDate(d).length);
-  document.getElementById('dtAlDeleteBtn').style.display=hasExisting&&!onlyHolidays?'':'none';
+  const hasExisting=dates.some(d=>marksForDate(d).length);
+  document.getElementById('dtAlDeleteBtn').style.display=hasExisting?'':'none';
   document.getElementById('dtMarkDaySaveBtn').style.display=onlyHolidays?'none':'';
 }
 export function toggleMarkDayType(type){

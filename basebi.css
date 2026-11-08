@@ -1700,6 +1700,8 @@ body.is-native-app .search-screen{padding-top:calc(50px + env(safe-area-inset-to
 .dt-markday-holiday{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:8px;background:var(--dt-off-tint);border:1px solid var(--al-color);font-size:12.5px}
 .dt-markday-holiday .dt-mark-pill{font-size:9.5px;line-height:16px}
 .dt-markday-holiday-sub{font-size:11px;color:var(--text-muted);margin-top:3px;line-height:1.5}
+.dt-markday-holiday-left{font-size:11px;color:var(--text);margin-top:8px;line-height:1.7}
+.dt-markday-holiday-left .dt-mark-pill{font-size:9px}
 .dt-sprint-modal{width:640px}
 .dt-sprint-modal-sub{font-size:11px;font-weight:400;color:var(--text-muted);margin-left:8px}
 .dt-sprint-list{border:1px solid var(--border);border-radius:8px;overflow:hidden}
