@@ -1072,7 +1072,7 @@ table.monitor-report-table{table-layout:fixed;width:100%;min-width:0}
 .dt-timeline-table thead tr.dt-head-month th:not(.sticky-col){height:26px;box-sizing:border-box}
 .dt-timeline-table thead tr.dt-head-sprint th{height:30px;box-sizing:border-box}
 .dt-timeline-table thead tr.dt-head-week th{height:26px;box-sizing:border-box}
-.dt-timeline-table thead tr.dt-head-day th.dt-day-th{height:62px;vertical-align:top;box-sizing:border-box}
+.dt-timeline-table thead tr.dt-head-day th.dt-day-th{height:56px;vertical-align:top;box-sizing:border-box;padding:4px 0 0!important}
 .dt-mark-more{font-size:8.5px;font-weight:700;line-height:11px;color:var(--text-muted)}
 .dt-mark-pill{display:inline-block;font-size:8px;font-weight:700;letter-spacing:.3px;line-height:12px;padding:0 4px;border-radius:10px;white-space:nowrap}
 .dt-mark-pill-off{color:var(--al-color);background:var(--dt-off-tint)}
