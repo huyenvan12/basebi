@@ -340,11 +340,15 @@ function saveColumnWidths(){
 // VISIBLE columns only, so hidden columns simply don't exist in the rendered table.
 const TIMELINE_COL_LABELS={project:'Project',jira:'Jira',scope:'Mon. Scope',status:'Status',note:'Note'};
 const TIMELINE_HIDDEN_COLS_KEY='gantt-timeline-hidden-cols';
+// default view: Project + Status only (users can show the rest from the Columns menu)
+const TIMELINE_DEFAULT_HIDDEN_COLS=['jira','scope','note'];
 function loadHiddenCols(){
   try{
-    const raw=JSON.parse(localStorage.getItem(TIMELINE_HIDDEN_COLS_KEY)||'[]');
+    const stored=localStorage.getItem(TIMELINE_HIDDEN_COLS_KEY);
+    if(stored===null) return [...TIMELINE_DEFAULT_HIDDEN_COLS];
+    const raw=JSON.parse(stored||'[]');
     return Array.isArray(raw)?raw.filter(k=>k!=='project'&&TIMELINE_COL_ORDER.includes(k)):[];
-  }catch(e){return [];}
+  }catch(e){return [...TIMELINE_DEFAULT_HIDDEN_COLS];}
 }
 let ganttHiddenCols=loadHiddenCols();
 function saveHiddenCols(){
@@ -1479,7 +1483,7 @@ export function toggleTimelineColumn(key){
   afterColumnChange();
 }
 export function resetTimelineColumns(){
-  ganttHiddenCols=[];
+  ganttHiddenCols=[...TIMELINE_DEFAULT_HIDDEN_COLS];
   afterColumnChange();
 }
 
@@ -1624,12 +1628,13 @@ export async function saveTaskTypes(){
 // with the date, a soft hatch + one short word for days off (AL / ½AM / ½PM / holiday name),
 // small dots for WFH / RD, then up to CAL_MAX_LANES soft ticket bars.
 // ══════════════════════════════════════════════════
-// Cell size adapts to the window: the month should fit the visible area without scrolling,
-// with square weekday cells between CAL_MIN_CELL and CAL_MAX_CELL (weekend columns are 60% of
-// that). Below the minimum the pane scrolls vertically.
+// Cell size adapts to the window: square weekday cells sized so at least CAL_MIN_VISIBLE_ROWS
+// week rows fit the visible height (the rest of the month scrolls), bounded by the width and
+// by CAL_MIN_CELL..CAL_MAX_CELL; weekend columns are 60% of a weekday column.
 const CAL_MIN_CELL=96;
 const CAL_MAX_CELL=160;
 const CAL_WEEKEND_RATIO=.6;
+const CAL_MIN_VISIBLE_ROWS=3;
 let CAL_WEEKDAY_W=140;
 let CAL_WEEKEND_W=84;
 let CAL_MAX_LANES=3;
@@ -1843,7 +1848,7 @@ function fitCalendarCellSize(rows,withWeekends){
     const gridTop=grid.getBoundingClientRect().top-pane.getBoundingClientRect().top+pane.scrollTop;
     const availH=pane.clientHeight-gridTop-30-parseFloat(cs.paddingBottom)-6;
     const byW=availW/(5+(withWeekends?2*CAL_WEEKEND_RATIO:0));
-    const byH=rows?availH/rows:byW;
+    const byH=availH/Math.max(1,Math.min(rows||CAL_MIN_VISIBLE_ROWS,CAL_MIN_VISIBLE_ROWS));
     size=Math.floor(Math.max(CAL_MIN_CELL,Math.min(CAL_MAX_CELL,byW,byH)));
   }
   CAL_WEEKDAY_W=size;
