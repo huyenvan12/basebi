@@ -469,9 +469,13 @@ export function renderTimelineHeader(){
 
   // "current week" highlight — only when today's date actually falls within one of the
   // currently visible week groups; never forces navigation to jump there
+  // the week row sits between the sprint row and the day row, so the sprint-start line is
+  // painted inside its (multi-day) cells too — otherwise the blue line breaks at this row
   const weekRow=`<tr class="dt-head-week">${weekGroups.map(wg=>{
     const isCurrentWeek=wg.cols.some(c=>c.date===todayStr);
-    return `<th colspan="${wg.cols.length}" class="dt-week-th${isCurrentWeek?' dt-week-th-today':''}">${esc(wg.label)}</th>`;
+    const offsets=wg.cols.map((c,k)=>isSprintStartCol(c.date,cols[0].date)?k*TIMELINE_DAY_COL_WIDTH:null).filter(x=>x!==null);
+    const stripe=sprintStripeStyle(offsets);
+    return `<th colspan="${wg.cols.length}" class="dt-week-th${isCurrentWeek?' dt-week-th-today':''}"${stripe?` style="${stripe}"`:''}>${esc(wg.label)}</th>`;
   }).join('')}</tr>`;
 
   const dayRow=`<tr class="dt-head-day">${cols.map((c,i)=>{
@@ -481,13 +485,16 @@ export function renderTimelineHeader(){
     const off=timeOffKind(c.date);
     const offClass=off==='full'?' dt-day-th-al':off==='am'?' dt-day-th-half-am':off==='pm'?' dt-day-th-half-pm':'';
     const tip=specialDayTooltip(c.date);
-    const pills=[];
+    let pills=[];
     if(holidayFor(c.date)) pills.push('<span class="dt-mark-pill dt-mark-pill-off">HOL</span>');
     marksForDate(c.date).forEach(m=>{
       const t=m.day_type||'al';
       const cls=t==='wfh'?'dt-mark-pill-wfh':t==='read_day'?'dt-mark-pill-rd':'dt-mark-pill-off';
       pills.push(`<span class="dt-mark-pill ${cls}">${esc(DAY_TYPES[t].code)}</span>`);
     });
+    // the day row has a fixed height (room for 2 pills) so the header never grows when a
+    // marked day scrolls into view; a 3rd mark collapses to "+N" (full list in the tooltip)
+    if(pills.length>2) pills=[pills[0],`<span class="dt-mark-more">+${pills.length-1}</span>`];
     const sprintStart=i>0&&isSprintStartCol(c.date,cols[0].date);
     return `<th class="dt-day-th${isToday?' dt-day-th-today':''}${offClass}${sprintStart?' dt-sprint-start':''}" data-date="${c.date}"${tip?` title="${esc(tip)}"`:''}>${dow}<br>${String(d.getDate()).padStart(2,'0')}${pills.length?`<span class="dt-mark-pills">${pills.join('')}</span>`:''}</th>`;
   }).join('')}</tr>`;
@@ -499,6 +506,13 @@ export function renderTimelineHeader(){
     const top=tr.offsetTop;
     tr.querySelectorAll('th:not(.sticky-col)').forEach(th=>{th.style.top=top+'px';});
   });
+}
+// inline background for a multi-column cell: a 2px sprint-start line at each pixel offset,
+// matching the border-left that single day cells get via .dt-sprint-start
+function sprintStripeStyle(offsets){
+  if(!offsets.length) return '';
+  const c='rgba(91,141,238,.55)';
+  return 'background-image:'+offsets.map(x=>`linear-gradient(90deg,transparent ${x}px,${c} ${x}px,${c} ${x+2}px,transparent ${x+2}px)`).join(',');
 }
 // true when a sprint starts on this column (and it isn't the first visible column)
 function isSprintStartCol(dateStr,firstColDate){
@@ -558,7 +572,9 @@ export function renderTimelineBody(){
   let html=active.map(t=>renderTicketRow(t,cols,dayMeta)).join('');
   if(inactive.length){
     const colCount=5+cols.length;
-    html+=`<tr class="dt-inactive-divider" onclick="toggleGanttInactive()"><td colspan="${colCount}">${state.ganttInactiveExpanded?'▾':'▸'} Inactive (${inactive.length})</td></tr>`;
+    const stickyTotal=TIMELINE_COL_ORDER.reduce((a,k)=>a+ganttColumnWidths[k],0);
+    const stripe=sprintStripeStyle(cols.map((c,i)=>i>0&&isSprintStartCol(c.date,cols[0].date)?stickyTotal+i*TIMELINE_DAY_COL_WIDTH:null).filter(x=>x!==null));
+    html+=`<tr class="dt-inactive-divider" onclick="toggleGanttInactive()"><td colspan="${colCount}"${stripe?` style="${stripe}"`:''}>${state.ganttInactiveExpanded?'▾':'▸'} Inactive (${inactive.length})</td></tr>`;
     if(state.ganttInactiveExpanded){
       html+=inactive.map(t=>renderTicketRow(t,cols,dayMeta)).join('');
     }
