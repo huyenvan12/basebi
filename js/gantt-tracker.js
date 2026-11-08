@@ -471,7 +471,7 @@ export function renderTimelineLegend(){
   if(!open){
     el.classList.add('dt-legend-collapsed');
     el.innerHTML=`<div class="dt-legend-head">${toggle}<div class="dt-legend-mini-list">${
-      state.ganttTaskTypes.map(tt=>`<span class="dt-legend-mini" title="${esc(tt.code)} — ${esc(tt.label)}"><span class="dt-legend-swatch" style="background:${esc(tt.color)}"></span>${esc(tt.code)}</span>`).join('')
+      state.ganttTaskTypes.map(tt=>`<span class="dt-legend-cell" style="background:${esc(tt.color)}" title="${esc(tt.code)} — ${esc(tt.label)}">${esc(tt.code)}</span>`).join('')
     }<span class="dt-legend-mini-sep"></span>${
       special.map(([cls,code,label])=>`<span class="dt-mark-pill ${cls}" title="${esc(label)}">${esc(code)}</span>`).join('')
     }</div></div>`;
@@ -480,7 +480,7 @@ export function renderTimelineLegend(){
   el.classList.remove('dt-legend-collapsed');
   el.innerHTML=`<div class="dt-legend-head">${toggle}<span class="dt-legend-hint">Collapse to show codes only — hover a code for its name</span></div><div class="dt-legend-grid">${
     state.ganttTaskTypes.map(tt=>
-      `<span class="dt-legend-chip"><span class="dt-legend-swatch" style="background:${esc(tt.color)}"></span><span><b>${esc(tt.code)}</b> — ${esc(tt.label)}</span></span>`
+      `<span class="dt-legend-chip"><span class="dt-legend-cell" style="background:${esc(tt.color)}">${esc(tt.code)}</span><span>${esc(tt.label)}</span></span>`
     ).join('')
   }</div><div class="dt-legend-special"><span class="dt-legend-special-label">SPECIAL DAYS</span>${
     special.map(([cls,code,label])=>`<span class="dt-legend-chip"><span class="dt-mark-pill ${cls}">${esc(code)}</span>${esc(label)}</span>`).join('')
@@ -1635,6 +1635,16 @@ const CAL_MIN_CELL=96;
 const CAL_MAX_CELL=160;
 const CAL_WEEKEND_RATIO=.6;
 const CAL_MIN_VISIBLE_ROWS=3;
+// "Fit month" zoom: shrink cells (down to CAL_FIT_MIN_CELL) so every week of the month is
+// visible at once; remembered per browser. Off = default 3-visible-weeks sizing.
+const CAL_FIT_MIN_CELL=64;
+const CAL_TOOLBAR_MIN_W=860;
+const CAL_FIT_KEY='gantt-cal-fit-month';
+function calFitMonth(){ try{ return localStorage.getItem(CAL_FIT_KEY)==='1'; }catch(e){ return false; } }
+export function toggleCalendarFit(){
+  try{ localStorage.setItem(CAL_FIT_KEY,calFitMonth()?'0':'1'); }catch(e){/* ignore */}
+  renderCalendar();
+}
 let CAL_WEEKDAY_W=140;
 let CAL_WEEKEND_W=84;
 let CAL_MAX_LANES=3;
@@ -1755,6 +1765,16 @@ export function renderCalendarControls(){
   if(chk) chk.checked=state.ganttCalendarShowInactive;
   const we=document.getElementById('dtCalShowWeekends');
   if(we) we.checked=calShowWeekends();
+  const fitBtn=document.getElementById('dtCalFitBtn');
+  if(fitBtn){
+    const on=calFitMonth();
+    fitBtn.classList.toggle('active',on);
+    fitBtn.setAttribute('aria-pressed',String(on));
+    fitBtn.title=on?'Back to larger cells (scroll for the rest of the month)':'Fit the whole month on screen';
+    fitBtn.querySelector('.dt-cal-fit-in').style.display=on?'none':'';
+    fitBtn.querySelector('.dt-cal-fit-out').style.display=on?'':'none';
+    fitBtn.querySelector('.dt-cal-fit-label').textContent=on?'Larger':'Fit month';
+  }
 }
 
 function calDayCell(dateStr,month,todayStr){
@@ -1788,7 +1808,9 @@ export function renderCalendarGrid(){
   const gridWidth=weeks.length?calSpanWidth(weeks[0].days,0,weeks[0].days.length-1):5*CAL_WEEKDAY_W;
   grid.style.width=(gridWidth+2)+'px';
   const toolbar=document.querySelector('#dtCalendarSubview .dt-cal-toolbar');
-  if(toolbar) toolbar.style.maxWidth=(gridWidth+2)+'px';
+  // never narrower than its own one-line content — a wrapped toolbar would push the grid down
+  // after the cell size was already computed
+  if(toolbar) toolbar.style.maxWidth=Math.max(gridWidth+2,CAL_TOOLBAR_MIN_W)+'px';
 
   const dows=weeks.length?weeks[0].days:[];
   const head=`<div class="dt-cal-dow-row">${dows.map(dstr=>`<div class="dt-cal-dow${isWeekday(dstr)?'':' dt-cal-dow-weekend'}" style="width:${calColWidth(dstr)}px">${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][parseISO(dstr).getDay()]}</div>`).join('')}</div>`;
@@ -1848,8 +1870,9 @@ function fitCalendarCellSize(rows,withWeekends){
     const gridTop=grid.getBoundingClientRect().top-pane.getBoundingClientRect().top+pane.scrollTop;
     const availH=pane.clientHeight-gridTop-30-parseFloat(cs.paddingBottom)-6;
     const byW=availW/(5+(withWeekends?2*CAL_WEEKEND_RATIO:0));
-    const byH=availH/Math.max(1,Math.min(rows||CAL_MIN_VISIBLE_ROWS,CAL_MIN_VISIBLE_ROWS));
-    size=Math.floor(Math.max(CAL_MIN_CELL,Math.min(CAL_MAX_CELL,byW,byH)));
+    const fit=calFitMonth();
+    const byH=fit?availH/Math.max(1,rows||5):availH/Math.max(1,Math.min(rows||CAL_MIN_VISIBLE_ROWS,CAL_MIN_VISIBLE_ROWS));
+    size=Math.floor(Math.max(fit?CAL_FIT_MIN_CELL:CAL_MIN_CELL,Math.min(CAL_MAX_CELL,byW,byH)));
   }
   CAL_WEEKDAY_W=size;
   CAL_WEEKEND_W=Math.round(size*CAL_WEEKEND_RATIO);
@@ -2197,6 +2220,7 @@ export function initGanttTracker(){
   document.getElementById('dtCalShowInactive').onchange=toggleCalendarShowInactive;
   document.getElementById('dtCalShowWeekends').onchange=toggleCalendarWeekends;
   document.getElementById('dtCalTodayBtn').onclick=calendarToday;
+  document.getElementById('dtCalFitBtn').onclick=toggleCalendarFit;
   document.getElementById('dtAgendaAddBtn').onclick=()=>openAgendaEntryForm();
 
   // drag-to-fill: mousedown/mouseup delegated on the table, mouseover delegated (native
