@@ -643,11 +643,20 @@
 
     <!-- CALENDAR SUB-VIEW -->
     <div class="dt-subview" id="dtCalendarSubview">
-      <div class="dt-controls-row">
-        <button class="btn btn-ghost" id="dtCalPrevBtn">‹ Prev</button>
-        <span id="dtCalMonthLabel"></span>
-        <button class="btn btn-ghost" id="dtCalNextBtn">Next ›</button>
-        <label class="checkbox-row"><input type="checkbox" id="dtCalShowInactive"> Show Inactive tickets</label>
+      <div class="dt-controls-row dt-toolbar dt-cal-toolbar">
+        <div class="dt-toolbar-group">
+          <div class="dt-nav-group">
+            <button class="dt-nav-btn" id="dtCalPrevBtn" aria-label="Previous month" title="Previous month"><svg class="dt-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg></button>
+            <button class="dt-nav-btn dt-nav-today" id="dtCalTodayBtn" title="Jump to this month">Today</button>
+            <button class="dt-nav-btn" id="dtCalNextBtn" aria-label="Next month" title="Next month"><svg class="dt-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></button>
+          </div>
+          <span class="dt-cal-month-label" id="dtCalMonthLabel"></span>
+        </div>
+        <div class="dt-toolbar-group">
+          <button class="btn btn-ghost dt-btn-with-icon" id="dtCalFitBtn" aria-pressed="false"><svg class="dt-btn-icon dt-cal-fit-in" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 10 7-7" /><path d="M20 10h-6V4" /><path d="m3 21 7-7" /><path d="M4 14h6v6" /></svg><svg class="dt-btn-icon dt-cal-fit-out" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6" /><path d="m21 3-7 7" /><path d="m3 21 7-7" /><path d="M9 21H3v-6" /></svg><span class="dt-cal-fit-label">Fit month</span></button>
+          <label class="checkbox-row"><input type="checkbox" id="dtCalShowWeekends"> Show weekends</label>
+          <label class="checkbox-row"><input type="checkbox" id="dtCalShowInactive"> Show inactive tickets</label>
+        </div>
       </div>
       <div class="dt-calendar-grid" id="dtCalendarGrid"></div>
     </div>
