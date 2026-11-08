@@ -89,17 +89,44 @@ export async function loadLeaveDays(){
   if(error){console.error('loadLeaveDays failed',error);return [];}
   return data||[];
 }
-export async function insertLeaveDayDB(leaveDate,reason){
-  const{data,error}=await sb.from('delivery_leave_days').insert({leave_date:leaveDate,reason:reason||null}).select().single();
+export async function insertSpecialDaysDB(rows){
+  if(!rows.length) return [];
+  const{data,error}=await sb.from('delivery_leave_days').insert(rows).select();
   if(error) throw error;
-  return data;
+  return data||[];
 }
-export async function updateLeaveDayDB(id,reason){
+export async function updateSpecialDayReasonDB(id,reason){
   const{error}=await sb.from('delivery_leave_days').update({reason:reason||null}).eq('id',id);
   if(error) throw error;
 }
-export async function deleteLeaveDayDB(id){
-  const{error}=await sb.from('delivery_leave_days').delete().eq('id',id);
+export async function deleteSpecialDaysDB(ids){
+  if(!ids.length) return;
+  const{error}=await sb.from('delivery_leave_days').delete().in('id',ids);
+  if(error) throw error;
+}
+// team-wide, admin-managed (RLS: members read, admins write)
+export async function loadHolidays(){
+  const{data,error}=await sb.from('public_holidays').select('*').order('holiday_date',{ascending:true});
+  if(error){console.error('loadHolidays failed',error);return [];}
+  return data||[];
+}
+export async function loadSprints(){
+  const{data,error}=await sb.from('sprints').select('*').order('start_date',{ascending:true});
+  if(error){console.error('loadSprints failed',error);return [];}
+  return data||[];
+}
+export async function insertSprintDB(fields){
+  const{data,error}=await sb.from('sprints').insert(fields).select().single();
+  if(error) throw error;
+  return data;
+}
+export async function updateSprintDB(id,fields){
+  const{data,error}=await sb.from('sprints').update(fields).eq('id',id).select().single();
+  if(error) throw error;
+  return data;
+}
+export async function deleteSprintDB(id){
+  const{error}=await sb.from('sprints').delete().eq('id',id);
   if(error) throw error;
 }
 
@@ -206,6 +233,67 @@ export function countWeekdaysInclusive(startDateStr,endDateStr){
 }
 
 // ══════════════════════════════════════════════════
+// SPECIAL DAYS — personal marks (delivery_leave_days.day_type, one row per date+type) layered
+// with team-wide public holidays. Combination rules are enforced by a DB trigger too
+// (check_delivery_day_combination); the Mark day modal mirrors them so users never hit it.
+// ══════════════════════════════════════════════════
+export const DAY_TYPES={
+  al:      {code:'AL',  label:'Annual leave',        hint:'Whole day off',                 group:'off',  ph:'Reason (optional) — e.g. Family trip'},
+  half_am: {code:'½AM', label:'Half day — morning',  hint:'Left half of the column',       group:'off',  ph:'Reason (optional)'},
+  half_pm: {code:'½PM', label:'Half day — afternoon',hint:'Right half of the column',      group:'off',  ph:'Reason (optional)'},
+  wfh:     {code:'WFH', label:'Work from home',      hint:'Header badge only — assign tasks as usual', group:'work', ph:'Note (optional)'},
+  read_day:{code:'RD',  label:'BRD read day',        hint:'Header badge only — assign tasks as usual', group:'work', ph:'Which BRD? (optional)'}
+};
+const DAY_TYPE_ORDER=['al','half_am','half_pm','wfh','read_day'];
+export function marksForDate(dateStr){
+  return state.ganttLeaveDays.filter(l=>l.leave_date===dateStr)
+    .sort((a,b)=>DAY_TYPE_ORDER.indexOf(a.day_type||'al')-DAY_TYPE_ORDER.indexOf(b.day_type||'al'));
+}
+export function holidayFor(dateStr){
+  return state.ganttHolidays.find(h=>h.holiday_date===dateStr)||null;
+}
+// 'full' (AL or public holiday) | 'am' | 'pm' | null — drives the hatched time-off overlay
+export function timeOffKind(dateStr){
+  if(holidayFor(dateStr)) return 'full';
+  const types=marksForDate(dateStr).map(m=>m.day_type||'al');
+  if(types.includes('al')) return 'full';
+  if(types.includes('half_am')) return 'am';
+  if(types.includes('half_pm')) return 'pm';
+  return null;
+}
+function specialDayTooltip(dateStr){
+  const parts=[];
+  const hol=holidayFor(dateStr);
+  if(hol) parts.push(`Public holiday: ${hol.name}`);
+  marksForDate(dateStr).forEach(m=>{
+    const t=DAY_TYPES[m.day_type||'al'];
+    parts.push(t.code+(m.reason?` — ${m.reason}`:''));
+  });
+  return parts.join('\n');
+}
+// first full day off (AL / holiday) in a range — used to confirm before assigning work there
+function findFullDayOffInRange(startDate,endDate){
+  let cur=startDate;
+  while(cur<=endDate){
+    if(isWeekday(cur)&&timeOffKind(cur)==='full') return cur;
+    cur=addDays(cur,1);
+  }
+  return null;
+}
+
+// ══════════════════════════════════════════════════
+// SPRINTS — team-wide, admin-managed; rendered as the 2nd timeline header row.
+// ══════════════════════════════════════════════════
+function sprintForDate(dateStr){
+  return state.ganttSprints.find(sp=>dateStr>=sp.start_date&&dateStr<=sp.end_date)||null;
+}
+function sprintWeeksLabel(sp){
+  const n=countWeekdaysInclusive(sp.start_date,sp.end_date);
+  const w=Math.round(n/5);
+  return w>=1?`${w}w`:`${n}d`;
+}
+
+// ══════════════════════════════════════════════════
 // COLOR — deterministic hash of ticket id into a fixed palette. Never persisted.
 // ══════════════════════════════════════════════════
 const TICKET_PALETTE=['#4f6fd9','#df8a4e','#5aa06c','#b0698f','#c9a24a','#d9695f','#7d838c','#91008D','#3fa7a0','#8a8f98'];
@@ -309,9 +397,16 @@ export function isTicketActive(t){ return !INACTIVE_STATUSES.includes(t.status);
 export function renderTimelineLegend(){
   const el=document.getElementById('dtLegendRow');
   if(!el) return;
+  const special=[
+    ['dt-mark-pill-off','AL','Annual leave'],['dt-mark-pill-off','½AM / ½PM','Half day'],
+    ['dt-mark-pill-off','HOL','Public holiday'],['dt-mark-pill-wfh','WFH','Work from home'],
+    ['dt-mark-pill-rd','RD','BRD read day']
+  ];
   el.innerHTML=state.ganttTaskTypes.map(tt=>
     `<span class="dt-legend-chip"><span class="dt-legend-swatch" style="background:${esc(tt.color)}"></span><span><b>${esc(tt.code)}</b> — ${esc(tt.label)}</span></span>`
-  ).join('');
+  ).join('')+`<div class="dt-legend-special"><span class="dt-legend-special-label">SPECIAL DAYS</span>${
+    special.map(([cls,code,label])=>`<span class="dt-legend-chip"><span class="dt-mark-pill ${cls}">${esc(code)}</span>${esc(label)}</span>`).join('')
+  }</div>`;
 }
 
 // table-layout:fixed (basebi.css) makes the browser honor these exactly, taken only from
@@ -342,49 +437,92 @@ export function renderTimelineHeader(){
 
   renderTimelineColgroup(cols.length);
 
-  const stickyTh=(key,label)=>`<th class="sticky-col" data-col="${key}" style="left:${timelineColLeft(key)}px;width:${ganttColumnWidths[key]}px" rowspan="3">${esc(label)}<span class="dt-col-resize-handle" data-col="${key}" title="Drag to resize"></span></th>`;
+  const stickyTh=(key,label)=>`<th class="sticky-col" data-col="${key}" style="left:${timelineColLeft(key)}px;width:${ganttColumnWidths[key]}px" rowspan="4">${esc(label)}<span class="dt-col-resize-handle" data-col="${key}" title="Drag to resize"></span></th>`;
 
-  const monthRow=`<tr>${stickyTh('project','Project')}${stickyTh('jira','Jira')}${stickyTh('scope','Mon. Scope')}${stickyTh('status','Status')}${stickyTh('note','Note')}${
+  const monthRow=`<tr class="dt-head-month">${stickyTh('project','Project')}${stickyTh('jira','Jira')}${stickyTh('scope','Mon. Scope')}${stickyTh('status','Status')}${stickyTh('note','Note')}${
     monthGroups.map(mg=>`<th colspan="${mg.weekGroups.reduce((n,wg)=>n+wg.cols.length,0)}" class="dt-month-th">${esc(mg.monthLabel)}</th>`).join('')
   }</tr>`;
 
+  // SPRINT row — consecutive visible columns covered by the same sprint (or by no sprint) are
+  // merged into one cell. ‹ / › mark a sprint that continues outside the visible range.
+  const segs=[];
+  cols.forEach(c=>{
+    const sp=sprintForDate(c.date);
+    const id=sp?sp.id:null;
+    const last=segs[segs.length-1];
+    if(last&&last.id===id) last.n++;
+    else segs.push({id,sp,n:1});
+  });
+  const isAdmin=state.currentUserRole==='admin';
+  const firstCol=cols[0]?cols[0].date:null, lastCol=cols.length?cols[cols.length-1].date:null;
+  const sprintRow=`<tr class="dt-head-sprint">${segs.map(sg=>{
+    if(!sg.sp) return `<th colspan="${sg.n}" class="dt-sprint-th dt-sprint-th-empty"></th>`;
+    const sp=sg.sp;
+    const isCurrent=todayStr>=sp.start_date&&todayStr<=sp.end_date;
+    const before=sp.start_date<firstCol, after=sp.end_date>lastCol;
+    const startsHere=!before&&sp.start_date!==firstCol;
+    const range=`${fmtDM(sp.start_date)} – ${fmtDM(sp.end_date)}`;
+    const title=`${sp.name}: ${range}${sp.goal?`\nGoal: ${sp.goal}`:''}${isAdmin?'\nClick to edit':''}`;
+    const sub=sg.n>=4?`<span class="dt-sprint-sub">${esc(range)} · ${esc(sprintWeeksLabel(sp))}${isCurrent?' · current':''}</span>`:'';
+    return `<th colspan="${sg.n}" class="dt-sprint-th${isCurrent?' dt-sprint-th-current':''}${startsHere?' dt-sprint-start':''}${isAdmin?' dt-sprint-th-editable':''}" data-sprint-id="${esc(sp.id)}" title="${esc(title)}"><span class="dt-sprint-name">${before?'‹ ':''}${esc(sp.name)}${after?' ›':''}</span>${sub}</th>`;
+  }).join('')}</tr>`;
+
   // "current week" highlight — only when today's date actually falls within one of the
   // currently visible week groups; never forces navigation to jump there
-  const weekRow=`<tr>${weekGroups.map(wg=>{
+  const weekRow=`<tr class="dt-head-week">${weekGroups.map(wg=>{
     const isCurrentWeek=wg.cols.some(c=>c.date===todayStr);
     return `<th colspan="${wg.cols.length}" class="dt-week-th${isCurrentWeek?' dt-week-th-today':''}">${esc(wg.label)}</th>`;
   }).join('')}</tr>`;
 
-  const dayRow=`<tr>${cols.map(c=>{
+  const dayRow=`<tr class="dt-head-day">${cols.map((c,i)=>{
     const d=parseISO(c.date);
     const dow=['Su','Mo','Tu','We','Th','Fr','Sa'][c.weekday];
     const isToday=c.date===todayStr;
-    const leave=state.ganttLeaveDays.find(l=>l.leave_date===c.date);
-    const alClass=leave?' dt-day-th-al':'';
-    const alTitle=leave&&leave.reason?` title="${esc(leave.reason)}"`:'';
-    const alLabel=leave?'<span class="dt-al-label">AL</span>':'';
-    return `<th class="dt-day-th${isToday?' dt-day-th-today':''}${alClass}" data-date="${c.date}"${alTitle}>${dow}<br>${String(d.getDate()).padStart(2,'0')}${alLabel}</th>`;
+    const off=timeOffKind(c.date);
+    const offClass=off==='full'?' dt-day-th-al':off==='am'?' dt-day-th-half-am':off==='pm'?' dt-day-th-half-pm':'';
+    const tip=specialDayTooltip(c.date);
+    const pills=[];
+    if(holidayFor(c.date)) pills.push('<span class="dt-mark-pill dt-mark-pill-off">HOL</span>');
+    marksForDate(c.date).forEach(m=>{
+      const t=m.day_type||'al';
+      const cls=t==='wfh'?'dt-mark-pill-wfh':t==='read_day'?'dt-mark-pill-rd':'dt-mark-pill-off';
+      pills.push(`<span class="dt-mark-pill ${cls}">${esc(DAY_TYPES[t].code)}</span>`);
+    });
+    const sprintStart=i>0&&isSprintStartCol(c.date,cols[0].date);
+    return `<th class="dt-day-th${isToday?' dt-day-th-today':''}${offClass}${sprintStart?' dt-sprint-start':''}" data-date="${c.date}"${tip?` title="${esc(tip)}"`:''}>${dow}<br>${String(d.getDate()).padStart(2,'0')}${pills.length?`<span class="dt-mark-pills">${pills.join('')}</span>`:''}</th>`;
   }).join('')}</tr>`;
 
-  head.innerHTML=monthRow+weekRow+dayRow;
+  head.innerHTML=monthRow+sprintRow+weekRow+dayRow;
+  // stack the sticky header rows: each row sticks just below the rows above it (all rows
+  // used to share top:0, which only worked while nothing scrolled vertically)
+  head.querySelectorAll('tr').forEach(tr=>{
+    const top=tr.offsetTop;
+    tr.querySelectorAll('th:not(.sticky-col)').forEach(th=>{th.style.top=top+'px';});
+  });
+}
+// true when a sprint starts on this column (and it isn't the first visible column)
+function isSprintStartCol(dateStr,firstColDate){
+  if(dateStr===firstColDate) return false;
+  return state.ganttSprints.some(sp=>sp.start_date===dateStr||(sp.start_date<dateStr&&sp.start_date>addDays(dateStr,-3)&&!isWeekday(sp.start_date)));
 }
 
-function renderTicketRow(ticket,cols){
+function renderTicketRow(ticket,cols,dayMeta){
   const color=ticketColor(ticket);
   const entries=state.ganttEntries.filter(e=>e.ticket_id===ticket.id);
   const todayStr=today();
-  const dayCells=cols.map(c=>{
+  const dayCells=cols.map((c,i)=>{
     const entry=entries.find(e=>c.date>=e.start_date&&c.date<=e.end_date);
     let inner='',style='';
     if(entry){
       const tt=state.ganttTaskTypes.find(t=>t.id===entry.task_type_id);
-      if(tt){style=`background:${esc(tt.color)}`;inner=`<span class="dt-day-code">${esc(tt.code)}</span>`;}
+      // background-color (not the background shorthand) so the time-off hatch overlay and
+      // other class-driven background layers aren't wiped out by this inline style
+      if(tt){style=`background-color:${esc(tt.color)}`;inner=`<span class="dt-day-code">${esc(tt.code)}</span>`;}
     }
     // today-column tint is a distinct CSS class (not the drag-fill dt-day-selecting state) so
     // it never visually collides with hover/selecting during drag-to-fill
     const todayClass=c.date===todayStr?' dt-day-cell-today':'';
-    const alClass=state.ganttLeaveDays.some(l=>l.leave_date===c.date)?' dt-day-cell-al':'';
-    return `<td class="dt-day-cell${todayClass}${alClass}" data-ticket-id="${esc(ticket.id)}" data-date="${c.date}" style="${style}">${inner}</td>`;
+    return `<td class="dt-day-cell${todayClass}${dayMeta[i]}" data-ticket-id="${esc(ticket.id)}" data-date="${c.date}" style="${style}">${inner}</td>`;
   }).join('');
 
   const jiraCell=ticket.jira_url
@@ -411,12 +549,18 @@ export function renderTimelineBody(){
   const active=state.ganttTickets.filter(isTicketActive);
   const inactive=state.ganttTickets.filter(t=>!isTicketActive(t));
 
-  let html=active.map(t=>renderTicketRow(t,cols)).join('');
+  // per-column classes shared by every row: time-off overlay + sprint start line
+  const dayMeta=cols.map((c,i)=>{
+    const off=timeOffKind(c.date);
+    const offClass=off==='full'?' dt-day-cell-al':off==='am'?' dt-day-cell-half-am':off==='pm'?' dt-day-cell-half-pm':'';
+    return offClass+(i>0&&isSprintStartCol(c.date,cols[0].date)?' dt-sprint-start':'');
+  });
+  let html=active.map(t=>renderTicketRow(t,cols,dayMeta)).join('');
   if(inactive.length){
     const colCount=5+cols.length;
     html+=`<tr class="dt-inactive-divider" onclick="toggleGanttInactive()"><td colspan="${colCount}">${state.ganttInactiveExpanded?'▾':'▸'} Inactive (${inactive.length})</td></tr>`;
     if(state.ganttInactiveExpanded){
-      html+=inactive.map(t=>renderTicketRow(t,cols)).join('');
+      html+=inactive.map(t=>renderTicketRow(t,cols,dayMeta)).join('');
     }
   }
   body.innerHTML=html||`<tr><td colspan="${5+cols.length}" class="empty-list">No tickets yet</td></tr>`;
@@ -569,9 +713,6 @@ export function closeTypePicker(){
   const pop=document.getElementById('dtTypePickerPopover');
   if(pop){pop.style.display='none';pop.innerHTML='';}
 }
-function findAlDayInRange(startDate,endDate){
-  return state.ganttLeaveDays.find(l=>l.leave_date>=startDate&&l.leave_date<=endDate);
-}
 export async function selectTaskType(taskTypeId){
   const pending=state.ganttPendingEntryWrite;
   closeTypePicker();
@@ -585,10 +726,14 @@ export async function selectTaskType(taskTypeId){
       await commitEntryWrite(pending,taskTypeId);
     }
   };
-  const alHit=findAlDayInRange(pending.startDate,pending.endDate);
-  if(alHit){
-    const msg=`This day (${fmtDM(alHit.leave_date)}) is marked as your AL (reason: ${alHit.reason||'no note'}). Still assign a task to this day?`;
-    openConfirmModal(msg,proceed,{title:'Assign to AL day?',confirmLabel:'Assign anyway',onCancel:()=>{state.ganttPendingEntryWrite=null;}});
+  // only FULL days off (AL / public holiday) ask first; half days, WFH and RD assign as usual
+  const offDate=findFullDayOffInRange(pending.startDate,pending.endDate);
+  if(offDate){
+    const hol=holidayFor(offDate);
+    const al=marksForDate(offDate).find(m=>(m.day_type||'al')==='al');
+    const what=hol?`a public holiday (${hol.name})`:`marked as your AL (reason: ${(al&&al.reason)||'no note'})`;
+    const msg=`This day (${fmtDM(offDate)}) is ${what}. Still assign a task to this day?`;
+    openConfirmModal(msg,proceed,{title:hol?'Assign to a holiday?':'Assign to AL day?',confirmLabel:'Assign anyway',onCancel:()=>{state.ganttPendingEntryWrite=null;}});
   }else{
     await proceed();
   }
@@ -630,14 +775,23 @@ export function openEntryManagePopover(entry,x,y){
   const pop=document.getElementById('dtTypePickerPopover');
   if(!pop) return;
   const tt=state.ganttTaskTypes.find(t=>t.id===entry.task_type_id);
+  const ticket=state.ganttTickets.find(t=>t.id===entry.ticket_id);
+  const days=countWeekdaysInclusive(entry.start_date,entry.end_date);
+  const range=entry.start_date===entry.end_date?fmtDM(entry.start_date):`${fmtDM(entry.start_date)} – ${fmtDM(entry.end_date)}`;
+  const meta=[ticket?ticket.project_name:null,range,`${days} ${days===1?'day':'days'}`].filter(Boolean).join(' · ');
   pop.innerHTML=`
+    <div class="dt-entry-info">
+      <div class="dt-entry-info-type"><span class="dt-legend-swatch" style="background:${tt?esc(tt.color):'#888'}"></span><b>${esc(tt?tt.code:'?')}</b><span>${esc(tt?tt.label:'Unknown type')}</span></div>
+      <div class="dt-entry-info-meta">${esc(meta)}</div>
+    </div>
+    <div class="dt-type-picker-sep"></div>
     <div class="dt-type-picker-row" onclick="event.stopPropagation();changeEntryType()"><span class="dt-legend-swatch" style="background:${tt?esc(tt.color):'#888'}"></span>Change type →</div>
     <div class="dt-type-picker-sep"></div>
     <div class="dt-type-picker-row dt-type-picker-clear" onclick="event.stopPropagation();removeSingleEntry()"><span class="dt-type-picker-clear-icon">✕</span>Remove</div>
   `;
   pop.style.display='block';
   const vw=window.innerWidth,vh=window.innerHeight;
-  const w=220,h=90;
+  const w=Math.max(220,pop.offsetWidth),h=Math.max(140,pop.offsetHeight);
   pop.style.left=Math.min(x,vw-w-8)+'px';
   pop.style.top=Math.min(y,vh-h-8)+'px';
 }
@@ -723,72 +877,335 @@ export function closeConfirmModal(){
 }
 
 // ══════════════════════════════════════════════════
-// PERSONAL AL (ANNUAL LEAVE) MARKING — personal-only (RLS-scoped), Timeline-only.
+// MARK DAY — personal special days (AL, ½AM, ½PM, WFH, RD), personal-only (RLS-scoped),
+// Timeline-only. Toggle "Mark day" mode, then click a date header; Shift-click (or the Until
+// field) marks a range. Public holidays are a team-wide layer and can't be marked over.
 // ══════════════════════════════════════════════════
 export function toggleAlMarkingMode(){
   state.ganttAlMarkingMode=!state.ganttAlMarkingMode;
+  if(!state.ganttAlMarkingMode) state.ganttMarkDayAnchor=null;
   document.getElementById('dtMarkAlBtn').classList.toggle('dt-al-mode-active',state.ganttAlMarkingMode);
   // UX cue (unrelated to the button's own active state): tints the grid and swaps the
-  // day-cell cursor so it's obvious a click marks leave rather than opening a ticket.
+  // day-cell cursor so it's obvious a click marks a day rather than opening a ticket.
   document.getElementById('dtTimelineWrap').classList.toggle('al-mode-active',state.ganttAlMarkingMode);
 }
-let alSaveInFlight=false;
-function setAlModalButtonsDisabled(disabled){
-  document.getElementById('dtAlModalOverlay').querySelectorAll('button').forEach(b=>b.disabled=disabled);
+let markDaySaveInFlight=false;
+let markDraft=null; // {from, until, selected:{type:true}, notes:{type:text}}
+function fmtDayLong(dateStr){
+  const d=parseISO(dateStr);
+  return `${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()]} ${fmtDM(dateStr)}/${d.getFullYear()}`;
 }
-export function openAlReasonModal(dateStr){
-  if(alSaveInFlight) return; // ignore reopen while a save/delete for any AL day is still in flight
-  const existing=state.ganttLeaveDays.find(l=>l.leave_date===dateStr);
-  state.ganttAlEditingContext={date:dateStr,existingId:existing?existing.id:null};
-  document.getElementById('dtAlModalTitle').textContent=fmtDM(dateStr)+' — Mark Leave';
-  document.getElementById('dtAlReasonInput').value=existing?(existing.reason||''):'';
-  document.getElementById('dtAlDeleteBtn').style.display=existing?'':'none';
+function weekdaysBetween(from,until){
+  const out=[];let cur=from;
+  while(cur<=until){ if(isWeekday(cur)) out.push(cur); cur=addDays(cur,1); }
+  return out;
+}
+// mirrors the DB trigger: AL is exclusive; ½AM and ½PM never together (use AL)
+function markTypeBlockedReason(type,selected){
+  const others=Object.keys(selected).filter(k=>selected[k]&&k!==type);
+  if(type!=='al'&&selected.al) return 'Off — AL already covers the whole day';
+  if(type==='al'&&others.length) return 'Clear the other marks to use AL';
+  if(type==='half_am'&&selected.half_pm) return 'Pick AL instead of both halves';
+  if(type==='half_pm'&&selected.half_am) return 'Pick AL instead of both halves';
+  return '';
+}
+function setMarkDayButtonsDisabled(disabled){
+  document.getElementById('dtAlModalOverlay').querySelectorAll('button,input').forEach(b=>b.disabled=disabled);
+}
+export function openMarkDayModal(fromDate,untilDate){
+  if(markDaySaveInFlight) return; // ignore reopen while a save/clear is still in flight
+  const from=fromDate<=untilDate?fromDate:untilDate, until=fromDate<=untilDate?untilDate:fromDate;
+  markDraft={from,until,selected:{},notes:{}};
+  if(from===until){
+    marksForDate(from).forEach(m=>{const t=m.day_type||'al';markDraft.selected[t]=true;markDraft.notes[t]=m.reason||'';});
+  }
+  state.ganttMarkDayContext={dates:weekdaysBetween(from,until)};
+  renderMarkDayModal();
   document.getElementById('dtAlModalOverlay').classList.add('open');
 }
-export function closeAlReasonModal(){
+export function setMarkDayUntil(value){
+  if(!markDraft||!value) return;
+  const until=value<markDraft.from?markDraft.from:value;
+  const keepSel=markDraft.from!==markDraft.until||until!==markDraft.from;
+  markDraft.until=until;
+  if(markDraft.from===until){ openMarkDayModal(markDraft.from,until); return; }
+  if(!keepSel){ markDraft.selected={}; markDraft.notes={}; }
+  state.ganttMarkDayContext={dates:weekdaysBetween(markDraft.from,until)};
+  renderMarkDayModal();
+}
+function renderMarkDayModal(){
+  const {from,until,selected,notes}=markDraft;
+  const dates=state.ganttMarkDayContext.dates;
+  const holidays=dates.filter(d=>holidayFor(d));
+  const workDates=dates.filter(d=>!holidayFor(d));
+  const isRange=from!==until;
+  document.getElementById('dtAlModalTitle').textContent='Mark day';
+  document.getElementById('dtMarkFromLabel').textContent=fmtDayLong(from);
+  const untilEl=document.getElementById('dtMarkUntilInput');
+  untilEl.min=from; untilEl.value=until;
+  const info=[];
+  info.push(`${dates.length} ${dates.length===1?'weekday':'weekdays'}`);
+  if(isRange&&holidays.length) info.push(`${holidays.length} public ${holidays.length===1?'holiday':'holidays'} skipped`);
+  if(isRange&&workDates.some(d=>marksForDate(d).length)) info.push('existing marks on these days will be replaced');
+  document.getElementById('dtMarkDayRangeInfo').textContent=info.join(' · ');
+
+  const holBox=document.getElementById('dtMarkDayHoliday');
+  const onlyHolidays=!workDates.length;
+  if(onlyHolidays&&holidays.length){
+    const hol=holidayFor(holidays[0]);
+    holBox.innerHTML=`<div class="dt-markday-holiday"><span class="dt-mark-pill dt-mark-pill-off">HOL</span><div><b>${esc(hol.name)}</b><div class="dt-markday-holiday-sub">Team-wide public holiday, managed by admin. Personal marks aren't needed on this day.</div></div></div>`;
+    holBox.style.display='';
+  }else{ holBox.innerHTML=''; holBox.style.display='none'; }
+
+  const typesEl=document.getElementById('dtMarkDayTypes');
+  const row=(t)=>{
+    const def=DAY_TYPES[t], on=!!selected[t];
+    const reason=markTypeBlockedReason(t,selected);
+    const disabled=!on&&!!reason;
+    const pillCls=t==='wfh'?'dt-mark-pill-wfh':t==='read_day'?'dt-mark-pill-rd':'dt-mark-pill-off';
+    return `<div class="dt-markday-row${on?' dt-markday-row-on':''}${disabled?' dt-markday-row-disabled':''}">
+      <label class="dt-markday-label">
+        <input type="checkbox" ${on?'checked':''} ${disabled?'disabled':''} onchange="toggleMarkDayType('${t}')">
+        <span class="dt-mark-pill ${pillCls}">${esc(def.code)}</span>
+        <span class="dt-markday-text"><span class="dt-markday-name">${esc(def.label)}</span><span class="dt-markday-hint">${esc(disabled?reason:def.hint)}</span></span>
+      </label>
+      ${on?`<input class="form-input dt-markday-note" placeholder="${esc(def.ph)}" value="${esc(notes[t]||'')}" oninput="setMarkDayNote('${t}',this.value)">`:''}
+    </div>`;
+  };
+  typesEl.style.display=onlyHolidays?'none':'';
+  typesEl.innerHTML=onlyHolidays?'':`<div class="dt-markday-group">TIME OFF</div>${['al','half_am','half_pm'].map(row).join('')}<div class="dt-markday-group">WORK MODE · tasks assign as usual</div>${['wfh','read_day'].map(row).join('')}`;
+
+  const hasExisting=workDates.some(d=>marksForDate(d).length);
+  document.getElementById('dtAlDeleteBtn').style.display=hasExisting&&!onlyHolidays?'':'none';
+  document.getElementById('dtMarkDaySaveBtn').style.display=onlyHolidays?'none':'';
+}
+export function toggleMarkDayType(type){
+  if(!markDraft) return;
+  if(!markDraft.selected[type]&&markTypeBlockedReason(type,markDraft.selected)) return;
+  if(markDraft.selected[type]) delete markDraft.selected[type]; else markDraft.selected[type]=true;
+  renderMarkDayModal();
+}
+export function setMarkDayNote(type,value){
+  if(markDraft) markDraft.notes[type]=value;
+}
+export function closeMarkDayModal(){
   document.getElementById('dtAlModalOverlay').classList.remove('open');
-  state.ganttAlEditingContext=null;
+  state.ganttMarkDayContext=null;
+  markDraft=null;
 }
-export async function saveAlDay(){
-  const ctx=state.ganttAlEditingContext;
-  if(!ctx||alSaveInFlight) return;
-  const reason=document.getElementById('dtAlReasonInput').value.trim()||null;
-  alSaveInFlight=true;
-  setAlModalButtonsDisabled(true);
+// Applies the selected marks to every non-holiday weekday in the range: removes marks that
+// were unticked, updates notes on kept ones, inserts new ones. Deletes run first so the DB
+// combination trigger never sees a transient invalid mix (e.g. old ½AM + new AL).
+export async function saveMarkDay(){
+  if(!markDraft||markDaySaveInFlight) return;
+  const dates=state.ganttMarkDayContext.dates.filter(d=>!holidayFor(d));
+  const types=Object.keys(markDraft.selected).filter(k=>markDraft.selected[k]);
+  const note=(t)=>((markDraft.notes[t]||'').trim()||null);
+  const delIds=[],updates=[],inserts=[];
+  dates.forEach(d=>{
+    const existing=marksForDate(d);
+    existing.forEach(m=>{
+      const t=m.day_type||'al';
+      if(!types.includes(t)) delIds.push(m.id);
+      else if((m.reason||null)!==note(t)) updates.push({id:m.id,reason:note(t)});
+    });
+    types.forEach(t=>{ if(!existing.some(m=>(m.day_type||'al')===t)) inserts.push({leave_date:d,day_type:t,reason:note(t)}); });
+  });
+  markDaySaveInFlight=true;
+  setMarkDayButtonsDisabled(true);
   try{
-    if(ctx.existingId){
-      await updateLeaveDayDB(ctx.existingId,reason);
-      const row=state.ganttLeaveDays.find(l=>l.id===ctx.existingId);
-      if(row) row.reason=reason;
-    }else{
-      const row=await insertLeaveDayDB(ctx.date,reason);
-      state.ganttLeaveDays.push(row);
+    if(delIds.length){
+      await deleteSpecialDaysDB(delIds);
+      state.ganttLeaveDays=state.ganttLeaveDays.filter(l=>!delIds.includes(l.id));
     }
-    closeAlReasonModal();
+    for(const u of updates){
+      await updateSpecialDayReasonDB(u.id,u.reason);
+      const r=state.ganttLeaveDays.find(l=>l.id===u.id); if(r) r.reason=u.reason;
+    }
+    if(inserts.length){
+      const rows=await insertSpecialDaysDB(inserts);
+      state.ganttLeaveDays.push(...rows);
+    }
+    closeMarkDayModal();
     renderTimelineHeader();
     renderTimelineBody();
-  }catch(err){showNotification('Could not save AL day: '+(err.message||err),'error');}
+  }catch(err){showNotification('Could not save marks: '+(err.message||err),'error');}
   finally{
-    alSaveInFlight=false;
-    setAlModalButtonsDisabled(false);
+    markDaySaveInFlight=false;
+    setMarkDayButtonsDisabled(false);
   }
 }
-export async function deleteAlDay(){
-  const ctx=state.ganttAlEditingContext;
-  if(!ctx||!ctx.existingId||alSaveInFlight) return;
-  alSaveInFlight=true;
-  setAlModalButtonsDisabled(true);
+export async function clearMarkDay(){
+  if(!markDraft||markDaySaveInFlight) return;
+  const dates=state.ganttMarkDayContext.dates;
+  const ids=state.ganttLeaveDays.filter(l=>dates.includes(l.leave_date)).map(l=>l.id);
+  if(!ids.length){ closeMarkDayModal(); return; }
+  markDaySaveInFlight=true;
+  setMarkDayButtonsDisabled(true);
   try{
-    await deleteLeaveDayDB(ctx.existingId);
-    state.ganttLeaveDays=state.ganttLeaveDays.filter(l=>l.id!==ctx.existingId);
-    closeAlReasonModal();
+    await deleteSpecialDaysDB(ids);
+    state.ganttLeaveDays=state.ganttLeaveDays.filter(l=>!ids.includes(l.id));
+    closeMarkDayModal();
     renderTimelineHeader();
     renderTimelineBody();
-  }catch(err){showNotification('Could not remove AL day: '+(err.message||err),'error');}
+  }catch(err){showNotification('Could not clear marks: '+(err.message||err),'error');}
   finally{
-    alSaveInFlight=false;
-    setAlModalButtonsDisabled(false);
+    markDaySaveInFlight=false;
+    setMarkDayButtonsDisabled(false);
   }
+}
+
+// ══════════════════════════════════════════════════
+// SPRINTS MODAL — admin-only (RLS enforces too). List + inline editor; "+ Next sprint"
+// prefills from the latest sprint: starts the next business day, same length, name +1.
+// No two sprints may overlap (DB exclusion constraint sprints_no_overlap).
+// ══════════════════════════════════════════════════
+let sprintSaveInFlight=false;
+function sprintStatus(sp){
+  const t=today();
+  if(sp.end_date<t) return 'Done';
+  if(sp.start_date<=t) return 'Current';
+  return 'Upcoming';
+}
+function sprintEndForWeeks(from,weeks){
+  let end=addDays(from,weeks*7-1);
+  while(!isWeekday(end)) end=addDays(end,-1);
+  return end;
+}
+export function openSprintModal(editId){
+  if(state.currentUserRole!=='admin') return;
+  state.ganttSprintEditingId=editId||null;
+  renderSprintModal();
+  document.getElementById('dtSprintModalOverlay').classList.add('open');
+}
+export function closeSprintModal(){
+  document.getElementById('dtSprintModalOverlay').classList.remove('open');
+  state.ganttSprintEditingId=null;
+}
+function renderSprintModal(){
+  const list=document.getElementById('dtSprintList');
+  const sorted=[...state.ganttSprints].sort((a,b)=>a.start_date<b.start_date?-1:1);
+  list.innerHTML=sorted.length?sorted.map(sp=>{
+    const st=sprintStatus(sp);
+    const active=state.ganttSprintEditingId===sp.id;
+    return `<button type="button" class="dt-sprint-list-row${active?' active':''}" onclick="editSprint('${escJs(sp.id)}')">
+      <span class="dt-sprint-list-name">${esc(sp.name)}</span>
+      <span class="dt-sprint-list-date">${esc(fmtDM(sp.start_date))}</span>
+      <span class="dt-sprint-list-date">${esc(fmtDM(sp.end_date))}</span>
+      <span class="dt-sprint-list-len">${esc(sprintWeeksLabel(sp))}</span>
+      <span><span class="dt-sprint-status dt-sprint-status-${st.toLowerCase()}">${st}</span></span>
+    </button>`;
+  }).join(''):'<div class="empty-list" style="padding:14px">No sprints yet — click “+ Next sprint”.</div>';
+
+  const ed=document.getElementById('dtSprintEditor');
+  const id=state.ganttSprintEditingId;
+  if(!id){ ed.style.display='none'; return; }
+  ed.style.display='';
+  const sp=id==='new'?sprintDraft:state.ganttSprints.find(x=>x.id===id);
+  if(!sp){ ed.style.display='none'; return; }
+  document.getElementById('dtSprintEditorTitle').textContent=id==='new'?'NEW SPRINT':`EDIT ${sp.name.toUpperCase()}`;
+  document.getElementById('dtSprintName').value=sp.name||'';
+  document.getElementById('dtSprintFrom').value=sp.start_date||'';
+  document.getElementById('dtSprintTo').value=sp.end_date||'';
+  document.getElementById('dtSprintGoal').value=sp.goal||'';
+  document.getElementById('dtSprintDeleteBtn').style.display=id==='new'?'none':'';
+  document.getElementById('dtSprintError').style.display='none';
+  updateSprintCalc();
+}
+let sprintDraft=null;
+export function newSprintDraft(){
+  const sorted=[...state.ganttSprints].sort((a,b)=>a.end_date<b.end_date?-1:1);
+  const last=sorted[sorted.length-1];
+  let from,weeks=2,name=`Sprint ${state.ganttSprints.length+1}`;
+  if(last){
+    from=nextBusinessDay(last.end_date);
+    weeks=Math.max(1,Math.round(countWeekdaysInclusive(last.start_date,last.end_date)/5));
+    const m=String(last.name).match(/^(.*?)(\d+)\s*$/);
+    if(m) name=`${m[1]}${parseInt(m[2],10)+1}`;
+  }else{
+    from=mondayOf(today());
+  }
+  if(!isWeekday(from)) from=nextBusinessDay(from);
+  sprintDraft={name,start_date:from,end_date:sprintEndForWeeks(from,weeks),goal:''};
+  state.ganttSprintEditingId='new';
+  renderSprintModal();
+}
+export function editSprint(id){
+  state.ganttSprintEditingId=id;
+  renderSprintModal();
+}
+export function cancelSprintEdit(){
+  state.ganttSprintEditingId=null;
+  sprintDraft=null;
+  renderSprintModal();
+}
+export function setSprintLength(weeks){
+  const from=document.getElementById('dtSprintFrom').value;
+  if(!from) return;
+  document.getElementById('dtSprintTo').value=sprintEndForWeeks(from,weeks);
+  updateSprintCalc();
+}
+export function updateSprintCalc(){
+  const from=document.getElementById('dtSprintFrom').value, to=document.getElementById('dtSprintTo').value;
+  const el=document.getElementById('dtSprintCalc');
+  if(!from||!to||to<from){ el.textContent=''; return; }
+  const wd=countWeekdaysInclusive(from,to);
+  const hol=state.ganttHolidays.filter(h=>h.holiday_date>=from&&h.holiday_date<=to&&isWeekday(h.holiday_date)).length;
+  el.textContent=`${wd-hol} working days${hol?` · ${hol} ${hol===1?'holiday':'holidays'}`:''}`;
+}
+function showSprintError(msg){
+  const el=document.getElementById('dtSprintError');
+  el.textContent=msg; el.style.display='';
+}
+export async function saveSprint(){
+  if(sprintSaveInFlight) return;
+  const id=state.ganttSprintEditingId;
+  const fields={
+    name:document.getElementById('dtSprintName').value.trim(),
+    start_date:document.getElementById('dtSprintFrom').value,
+    end_date:document.getElementById('dtSprintTo').value,
+    goal:document.getElementById('dtSprintGoal').value.trim()||null
+  };
+  if(!fields.name) return showSprintError('Enter a sprint name.');
+  if(!fields.start_date||!fields.end_date) return showSprintError('Pick both From and To dates.');
+  if(fields.end_date<fields.start_date) return showSprintError('To must be on or after From.');
+  const clash=state.ganttSprints.find(sp=>sp.id!==id&&sp.start_date<=fields.end_date&&sp.end_date>=fields.start_date);
+  if(clash) return showSprintError(`Overlaps ${clash.name} (${fmtDM(clash.start_date)} – ${fmtDM(clash.end_date)}).`);
+  sprintSaveInFlight=true;
+  try{
+    if(id==='new'){
+      const row=await insertSprintDB(fields);
+      state.ganttSprints.push(row);
+      state.ganttSprintEditingId=row.id;
+    }else{
+      const row=await updateSprintDB(id,fields);
+      state.ganttSprints=state.ganttSprints.map(sp=>sp.id===id?row:sp);
+    }
+    sprintDraft=null;
+    state.ganttSprintEditingId=null;
+    renderSprintModal();
+    renderTimelineHeader();
+    renderTimelineBody();
+    showNotification('Sprint saved','success');
+  }catch(err){
+    const msg=String(err.message||err);
+    showSprintError(msg.includes('sprints_no_overlap')?'This sprint overlaps another one.':'Could not save sprint: '+msg);
+  }finally{ sprintSaveInFlight=false; }
+}
+export function deleteSprint(){
+  const id=state.ganttSprintEditingId;
+  const sp=state.ganttSprints.find(x=>x.id===id);
+  if(!sp) return;
+  openConfirmModal(`Delete ${sp.name} (${fmtDM(sp.start_date)} – ${fmtDM(sp.end_date)})? It disappears from everyone's Timeline.`,async()=>{
+    try{
+      await deleteSprintDB(id);
+      state.ganttSprints=state.ganttSprints.filter(x=>x.id!==id);
+      state.ganttSprintEditingId=null;
+      renderSprintModal();
+      renderTimelineHeader();
+      renderTimelineBody();
+    }catch(err){showNotification('Could not delete sprint: '+(err.message||err),'error');}
+  },{title:'Delete sprint?',confirmLabel:'Delete'});
 }
 
 // ══════════════════════════════════════════════════
@@ -1351,9 +1768,21 @@ export function initGanttTracker(){
   window.submitAgendaEntryForm=submitAgendaEntryForm;
   window.viewAgendaEntryDetail=viewAgendaEntryDetail;
   window.closeAgendaEntryDetail=closeAgendaEntryDetail;
-  window.closeAlReasonModal=closeAlReasonModal;
-  window.saveAlDay=saveAlDay;
-  window.deleteAlDay=deleteAlDay;
+  window.closeMarkDayModal=closeMarkDayModal;
+  window.saveMarkDay=saveMarkDay;
+  window.clearMarkDay=clearMarkDay;
+  window.toggleMarkDayType=toggleMarkDayType;
+  window.setMarkDayNote=setMarkDayNote;
+  window.setMarkDayUntil=setMarkDayUntil;
+  window.openSprintModal=openSprintModal;
+  window.closeSprintModal=closeSprintModal;
+  window.editSprint=editSprint;
+  window.newSprintDraft=newSprintDraft;
+  window.setSprintLength=setSprintLength;
+  window.saveSprint=saveSprint;
+  window.deleteSprint=deleteSprint;
+  window.cancelSprintEdit=cancelSprintEdit;
+  window.updateSprintCalc=updateSprintCalc;
 
   document.getElementById('dtStartDate').onchange=e=>setTimelineStartDate(e.target.value);
   document.getElementById('dtWeeksInput').onchange=e=>setTimelineWeeks(e.target.value);
@@ -1388,13 +1817,21 @@ export function initGanttTracker(){
     startColumnResize(e,handle.getAttribute('data-col'));
   });
 
-  // AL date-header click — only opens the reason popup while "Mark AL" mode is active;
-  // normal header interaction (resize handles above) is unaffected otherwise
+  document.getElementById('dtSprintsBtn').onclick=()=>openSprintModal();
+
+  // date-header click — opens the Mark day modal only while "Mark day" mode is active
+  // (Shift-click extends a range from the previously clicked date); a sprint cell opens
+  // the Sprints modal for admins. Resize handles above are unaffected.
   document.getElementById('dtTimelineHead').addEventListener('click',e=>{
+    const sprintTh=e.target.closest('.dt-sprint-th[data-sprint-id]');
+    if(sprintTh&&state.currentUserRole==='admin'){ openSprintModal(sprintTh.getAttribute('data-sprint-id')); return; }
     if(!state.ganttAlMarkingMode) return;
     const th=e.target.closest('.dt-day-th');
     if(!th) return;
-    openAlReasonModal(th.getAttribute('data-date'));
+    const date=th.getAttribute('data-date');
+    if(e.shiftKey&&state.ganttMarkDayAnchor) openMarkDayModal(state.ganttMarkDayAnchor,date);
+    else openMarkDayModal(date,date);
+    state.ganttMarkDayAnchor=date;
   });
 
   document.addEventListener('click',e=>{

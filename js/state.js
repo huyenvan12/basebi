@@ -89,9 +89,13 @@ export const state = {
   ganttCalendarShowInactive: false,
   ganttDragState: null,                       // {ticketId, anchorDate, currentDate} while a drag-to-fill is in progress
   ganttPendingEntryWrite: null,               // {ticketId, startDate, endDate, overlaps} staged between type-pick and overlap-confirm
-  ganttLeaveDays: [],                         // this user's delivery_leave_days rows, bulk-loaded once
-  ganttAlMarkingMode: false,                  // true while "Mark AL" toggle is active
-  ganttAlEditingContext: null,                // {date, existingId} while the AL reason modal is open
+  ganttLeaveDays: [],                         // this user's delivery_leave_days rows (one row per date+day_type), bulk-loaded once
+  ganttHolidays: [],                          // team-wide public_holidays rows, bulk-loaded once
+  ganttSprints: [],                           // team-wide sprints rows, bulk-loaded once
+  ganttAlMarkingMode: false,                  // true while "Mark day" toggle is active
+  ganttMarkDayContext: null,                  // {dates:[...]} while the Mark day modal is open
+  ganttMarkDayAnchor: null,                   // last clicked header date in Mark day mode — Shift-click extends a range from it
+  ganttSprintEditingId: null,                 // sprint id being edited in the Sprints modal ('new' for a draft, null = none)
 
   // tasks state (log-to-task conversion + Tasks kanban)
   tasks: [],
