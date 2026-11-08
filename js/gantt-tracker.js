@@ -335,10 +335,31 @@ let ganttColumnWidths=loadColumnWidths();
 function saveColumnWidths(){
   try{ localStorage.setItem(TIMELINE_COL_STORAGE_KEY,JSON.stringify(ganttColumnWidths)); }catch(e){/* ignore */}
 }
-// left offset of a sticky column = live cumulative sum of all preceding columns' CURRENT widths
+// COLUMN VISIBILITY — each user picks which info columns to show (Project is always on).
+// Stored per browser next to the column widths; every layout helper below works on the
+// VISIBLE columns only, so hidden columns simply don't exist in the rendered table.
+const TIMELINE_COL_LABELS={project:'Project',jira:'Jira',scope:'Mon. Scope',status:'Status',note:'Note'};
+const TIMELINE_HIDDEN_COLS_KEY='gantt-timeline-hidden-cols';
+function loadHiddenCols(){
+  try{
+    const raw=JSON.parse(localStorage.getItem(TIMELINE_HIDDEN_COLS_KEY)||'[]');
+    return Array.isArray(raw)?raw.filter(k=>k!=='project'&&TIMELINE_COL_ORDER.includes(k)):[];
+  }catch(e){return [];}
+}
+let ganttHiddenCols=loadHiddenCols();
+function saveHiddenCols(){
+  try{ localStorage.setItem(TIMELINE_HIDDEN_COLS_KEY,JSON.stringify(ganttHiddenCols)); }catch(e){/* ignore */}
+}
+function visibleCols(){
+  return TIMELINE_COL_ORDER.filter(k=>!ganttHiddenCols.includes(k));
+}
+function visibleColsWidth(){
+  return visibleCols().reduce((a,k)=>a+ganttColumnWidths[k],0);
+}
+// left offset of a sticky column = live cumulative sum of all preceding VISIBLE columns' widths
 function timelineColLeft(key){
   let left=0;
-  for(const k of TIMELINE_COL_ORDER){
+  for(const k of visibleCols()){
     if(k===key) return left;
     left+=ganttColumnWidths[k];
   }
@@ -349,7 +370,7 @@ function timelineColLeft(key){
 // so they can never show a stale/mismatched state mid-drag.
 function applyColumnLayout(){
   let cum=0;
-  TIMELINE_COL_ORDER.forEach(k=>{
+  visibleCols().forEach(k=>{
     const w=ganttColumnWidths[k];
     document.querySelectorAll(`.sticky-col[data-col="${k}"]`).forEach(el=>{
       el.style.width=w+'px';
@@ -361,7 +382,7 @@ function applyColumnLayout(){
   if(!table) return;
   const colgroup=table.querySelector('colgroup');
   if(colgroup){
-    TIMELINE_COL_ORDER.forEach((k,i)=>{
+    visibleCols().forEach((k,i)=>{
       const col=colgroup.children[i];
       if(col) col.style.width=ganttColumnWidths[k]+'px';
     });
@@ -394,17 +415,39 @@ function startColumnResize(e,key){
 
 export function isTicketActive(t){ return !INACTIVE_STATUSES.includes(t.status); }
 
+// LEGEND — collapsed by default to one line of codes (hover a code for its name); the
+// "Legend" toggle expands the full list. Open/closed is remembered per browser.
+const LEGEND_OPEN_KEY='gantt-legend-open';
+function isLegendOpen(){ try{ return localStorage.getItem(LEGEND_OPEN_KEY)==='1'; }catch(e){ return false; } }
+export function toggleTimelineLegend(){
+  try{ localStorage.setItem(LEGEND_OPEN_KEY,isLegendOpen()?'0':'1'); }catch(e){/* ignore */}
+  renderTimelineLegend();
+}
 export function renderTimelineLegend(){
   const el=document.getElementById('dtLegendRow');
   if(!el) return;
+  const open=isLegendOpen();
   const special=[
     ['dt-mark-pill-off','AL','Annual leave'],['dt-mark-pill-off','½AM / ½PM','Half day'],
     ['dt-mark-pill-off','HOL','Public holiday'],['dt-mark-pill-wfh','WFH','Work from home'],
     ['dt-mark-pill-rd','RD','BRD read day']
   ];
-  el.innerHTML=state.ganttTaskTypes.map(tt=>
-    `<span class="dt-legend-chip"><span class="dt-legend-swatch" style="background:${esc(tt.color)}"></span><span><b>${esc(tt.code)}</b> — ${esc(tt.label)}</span></span>`
-  ).join('')+`<div class="dt-legend-special"><span class="dt-legend-special-label">SPECIAL DAYS</span>${
+  const toggle=`<button class="dt-legend-toggle" aria-expanded="${open}" onclick="toggleTimelineLegend()"><svg class="dt-legend-chevron${open?' open':''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>Legend</button>`;
+  if(!open){
+    el.classList.add('dt-legend-collapsed');
+    el.innerHTML=`<div class="dt-legend-head">${toggle}<div class="dt-legend-mini-list">${
+      state.ganttTaskTypes.map(tt=>`<span class="dt-legend-mini" title="${esc(tt.code)} — ${esc(tt.label)}"><span class="dt-legend-swatch" style="background:${esc(tt.color)}"></span>${esc(tt.code)}</span>`).join('')
+    }<span class="dt-legend-mini-sep"></span>${
+      special.map(([cls,code,label])=>`<span class="dt-mark-pill ${cls}" title="${esc(label)}">${esc(code)}</span>`).join('')
+    }</div></div>`;
+    return;
+  }
+  el.classList.remove('dt-legend-collapsed');
+  el.innerHTML=`<div class="dt-legend-head">${toggle}<span class="dt-legend-hint">Collapse to show codes only — hover a code for its name</span></div><div class="dt-legend-grid">${
+    state.ganttTaskTypes.map(tt=>
+      `<span class="dt-legend-chip"><span class="dt-legend-swatch" style="background:${esc(tt.color)}"></span><span><b>${esc(tt.code)}</b> — ${esc(tt.label)}</span></span>`
+    ).join('')
+  }</div><div class="dt-legend-special"><span class="dt-legend-special-label">SPECIAL DAYS</span>${
     special.map(([cls,code,label])=>`<span class="dt-legend-chip"><span class="dt-mark-pill ${cls}">${esc(code)}</span>${esc(label)}</span>`).join('')
   }</div>`;
 }
@@ -417,14 +460,13 @@ function renderTimelineColgroup(dayCount){
   if(!table) return;
   let colgroup=table.querySelector('colgroup');
   if(!colgroup){colgroup=document.createElement('colgroup');table.insertBefore(colgroup,table.firstChild);}
-  const stickyCols=TIMELINE_COL_ORDER.map(k=>`<col style="width:${ganttColumnWidths[k]}px">`).join('');
+  const stickyCols=visibleCols().map(k=>`<col style="width:${ganttColumnWidths[k]}px">`).join('');
   const dayCols=Array.from({length:dayCount},()=>`<col style="width:${TIMELINE_DAY_COL_WIDTH}px">`).join('');
   colgroup.innerHTML=stickyCols+dayCols;
   // table-layout:fixed with width:auto still shrinks the table to fit its scrollable
   // container instead of honoring the colgroup — pin the table's own width to the sum of
   // declared column widths so .dt-timeline-wrap's overflow:auto scrolls instead of squeezing.
-  const stickyTotal=TIMELINE_COL_ORDER.reduce((a,k)=>a+ganttColumnWidths[k],0);
-  table.style.width=(stickyTotal+dayCount*TIMELINE_DAY_COL_WIDTH)+'px';
+  table.style.width=(visibleColsWidth()+dayCount*TIMELINE_DAY_COL_WIDTH)+'px';
 }
 
 export function renderTimelineHeader(){
@@ -439,7 +481,7 @@ export function renderTimelineHeader(){
 
   const stickyTh=(key,label)=>`<th class="sticky-col" data-col="${key}" style="left:${timelineColLeft(key)}px;width:${ganttColumnWidths[key]}px" rowspan="4">${esc(label)}<span class="dt-col-resize-handle" data-col="${key}" title="Drag to resize"></span></th>`;
 
-  const monthRow=`<tr class="dt-head-month">${stickyTh('project','Project')}${stickyTh('jira','Jira')}${stickyTh('scope','Mon. Scope')}${stickyTh('status','Status')}${stickyTh('note','Note')}${
+  const monthRow=`<tr class="dt-head-month">${visibleCols().map(k=>stickyTh(k,TIMELINE_COL_LABELS[k])).join('')}${
     monthGroups.map(mg=>`<th colspan="${mg.weekGroups.reduce((n,wg)=>n+wg.cols.length,0)}" class="dt-month-th">${esc(mg.monthLabel)}</th>`).join('')
   }</tr>`;
 
@@ -544,15 +586,22 @@ function renderTicketRow(ticket,cols,dayMeta){
     ? `<a href="${esc(ticket.jira_url)}" target="_blank" rel="noopener">${esc(ticket.jira_key||'link')}</a>`
     : esc(ticket.jira_key||'');
 
-  return `<tr class="dt-ticket-row" data-ticket-id="${esc(ticket.id)}">
-    <td class="sticky-col" data-col="project" style="width:${ganttColumnWidths.project}px;left:${timelineColLeft('project')}px" title="${esc(ticket.project_name)}">
-      <span class="dt-ticket-swatch" style="background:${color}"></span>${esc(ticket.project_name)}
-      <button class="dt-ticket-edit-btn icon-btn-sm" onclick="openTicketModal('${escJs(ticket.id)}')" title="Edit ticket">✎</button>
-    </td>
-    <td class="sticky-col" data-col="jira" style="width:${ganttColumnWidths.jira}px;left:${timelineColLeft('jira')}px" title="${esc(ticket.jira_key||'')}">${jiraCell}</td>
-    <td class="sticky-col" data-col="scope" style="width:${ganttColumnWidths.scope}px;left:${timelineColLeft('scope')}px" title="${esc(ticket.mon_scope||'')}">${esc(ticket.mon_scope||'')}</td>
-    <td class="sticky-col dt-status-cell" data-col="status" style="width:${ganttColumnWidths.status}px;left:${timelineColLeft('status')}px"><span class="dt-status-badge dt-status-${esc(ticket.status.replace(/\s+/g,''))}">${esc(ticket.status)}</span></td>
-    <td class="sticky-col sticky-col-shadow dt-note-cell" data-col="note" style="width:${ganttColumnWidths.note}px;left:${timelineColLeft('note')}px" title="${esc(ticket.note||'')}">${esc(ticket.note||'')}</td>
+  const vis=visibleCols();
+  const lastVis=vis[vis.length-1];
+  const cellAttrs=(k,extraCls='')=>`class="sticky-col${extraCls}${k===lastVis?' sticky-col-shadow':''}" data-col="${k}" style="width:${ganttColumnWidths[k]}px;left:${timelineColLeft(k)}px"`;
+  const infoCells={
+    // project name opens the ticket drawer (replaces the old per-row pencil button)
+    project:`<td ${cellAttrs('project',' dt-project-cell')} title="${esc(ticket.project_name)}"><span class="dt-ticket-swatch" style="background:${color}"></span><button class="dt-ticket-name" onclick="openTicketModal('${escJs(ticket.id)}')">${esc(ticket.project_name)}</button><svg class="dt-ticket-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></td>`,
+    jira:`<td ${cellAttrs('jira')} title="${esc(ticket.jira_key||'')}">${jiraCell}</td>`,
+    scope:`<td ${cellAttrs('scope')} title="${esc(ticket.mon_scope||'')}">${esc(ticket.mon_scope||'')}</td>`,
+    // status badge opens an in-place status dropdown
+    status:`<td ${cellAttrs('status',' dt-status-cell')}><button class="dt-status-badge dt-status-btn dt-status-${esc(ticket.status.replace(/\s+/g,''))}" data-menu-trigger="status" onclick="event.stopPropagation();openStatusMenu('${escJs(ticket.id)}',this)" title="Change status">${esc(ticket.status)}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></td>`,
+    // note: double-click to edit inline (see startNoteEdit)
+    note:`<td ${cellAttrs('note',' dt-note-cell')} data-ticket-id="${esc(ticket.id)}" title="${esc(ticket.note?ticket.note+'\n':'')}Double-click to edit">${esc(ticket.note||'')}</td>`
+  };
+  const active=state.ganttEditingTicketId===ticket.id;
+  return `<tr class="dt-ticket-row${active?' dt-row-active':''}" data-ticket-id="${esc(ticket.id)}">
+    ${vis.map(k=>infoCells[k]).join('')}
     ${dayCells}
   </tr>`;
 }
@@ -572,25 +621,46 @@ export function renderTimelineBody(){
   });
   let html=active.map(t=>renderTicketRow(t,cols,dayMeta)).join('');
   if(inactive.length){
-    const colCount=5+cols.length;
+    const colCount=visibleCols().length+cols.length;
     html+=`<tr class="dt-inactive-divider" onclick="toggleGanttInactive()"><td colspan="${colCount}">${state.ganttInactiveExpanded?'▾':'▸'} Inactive (${inactive.length})</td></tr>`;
     if(state.ganttInactiveExpanded){
       html+=inactive.map(t=>renderTicketRow(t,cols,dayMeta)).join('');
     }
   }
-  body.innerHTML=html||`<tr><td colspan="${5+cols.length}" class="empty-list">No tickets yet</td></tr>`;
+  body.innerHTML=html||`<tr><td colspan="${visibleCols().length+cols.length}" class="empty-list">No tickets yet</td></tr>`;
   renderAgenda();
 }
 
 export function renderTimelineControls(){
   const startEl=document.getElementById('dtStartDate');
-  const weeksEl=document.getElementById('dtWeeksInput');
   if(startEl) startEl.value=state.ganttTimelineStartDate;
-  if(weeksEl) weeksEl.value=state.ganttTimelineWeeks;
+  const countEl=document.getElementById('dtColumnsCount');
+  if(countEl) countEl.textContent=`${visibleCols().length}/${TIMELINE_COL_ORDER.length}`;
+}
+
+// No weeks box any more: the Timeline shows as many whole weeks as fit the available width
+// (minimum 2). Re-fitted on window resize and whenever columns are shown/hidden. While the
+// timeline is hidden (width 0) the last value is kept.
+const TIMELINE_MIN_WEEKS=2;
+function fitTimelineWeeks(){
+  const wrap=document.getElementById('dtTimelineWrap');
+  if(!wrap||!wrap.clientWidth) return;
+  const avail=wrap.clientWidth-visibleColsWidth()-4;
+  state.ganttTimelineWeeks=Math.max(TIMELINE_MIN_WEEKS,Math.floor(avail/(5*TIMELINE_DAY_COL_WIDTH)));
+}
+let fitResizeTimer=null;
+function onTimelineResize(){
+  clearTimeout(fitResizeTimer);
+  fitResizeTimer=setTimeout(()=>{
+    const before=state.ganttTimelineWeeks;
+    fitTimelineWeeks();
+    if(state.ganttTimelineWeeks!==before&&state.ganttActiveView==='timeline'){ renderTimelineHeader(); renderTimelineBody(); }
+  },150);
 }
 
 export function renderTimeline(){
   if(!state.ganttTimelineStartDate) state.ganttTimelineStartDate=mondayOf(today());
+  fitTimelineWeeks();
   renderTimelineControls();
   renderTimelineLegend();
   renderTimelineHeader();
@@ -608,11 +678,6 @@ export function shiftTimelineWeek(delta){
 export function setTimelineStartDate(dateStr){
   if(!dateStr) return;
   state.ganttTimelineStartDate=mondayOf(dateStr);
-  renderTimeline();
-}
-export function setTimelineWeeks(n){
-  const num=Math.max(1,Math.min(12,parseInt(n,10)||6));
-  state.ganttTimelineWeeks=num;
   renderTimeline();
 }
 
@@ -903,6 +968,8 @@ export function toggleAlMarkingMode(){
   // UX cue (unrelated to the button's own active state): tints the grid and swaps the
   // day-cell cursor so it's obvious a click marks a day rather than opening a ticket.
   document.getElementById('dtTimelineWrap').classList.toggle('al-mode-active',state.ganttAlMarkingMode);
+  const hint=document.getElementById('dtMarkModeHint');
+  if(hint) hint.style.display=state.ganttAlMarkingMode?'':'none';
 }
 let markDaySaveInFlight=false;
 let markDraft=null; // {from, until, selected:{type:true}, notes:{type:text}}
@@ -1238,10 +1305,34 @@ function hideProjectError(){
   const el=document.getElementById('dt-project-error');
   el.textContent='';el.style.display='none';
 }
+// The ticket editor is a right-side drawer (not a blocking modal): the timeline stays usable,
+// the open ticket's row is highlighted, and clicking another project name switches tickets.
+function highlightActiveTicketRow(){
+  document.querySelectorAll('#dtTimelineBody .dt-ticket-row').forEach(r=>r.classList.toggle('dt-row-active',r.getAttribute('data-ticket-id')===state.ganttEditingTicketId));
+}
+function renderStatusChips(){
+  const sel=document.getElementById('dt-status');
+  const wrap=document.getElementById('dtStatusChips');
+  if(!sel||!wrap) return;
+  wrap.innerHTML=TICKET_STATUSES.map(st=>`<button type="button" class="dt-status-chip dt-status-${st.replace(/\s+/g,'')}${sel.value===st?' active':''}" onclick="pickTicketStatusChip('${st}')">${esc(st)}</button>`).join('');
+}
+export function pickTicketStatusChip(st){
+  document.getElementById('dt-status').value=st;
+  renderStatusChips();
+}
+function ticketEntrySummary(id){
+  const es=state.ganttEntries.filter(e=>e.ticket_id===id);
+  if(!es.length) return 'No entries yet';
+  const start=es.reduce((m,e)=>e.start_date<m?e.start_date:m,es[0].start_date);
+  const end=es.reduce((m,e)=>e.end_date>m?e.end_date:m,es[0].end_date);
+  return `${es.length} ${es.length===1?'entry':'entries'} · ${fmtDM(start)}${start!==end?` – ${fmtDM(end)}`:''}`;
+}
 export function openTicketModal(id){
   state.ganttEditingTicketId=id||null;
   const t=id?state.ganttTickets.find(t=>t.id===id):null;
-  document.getElementById('dtTicketModalTitle').textContent=t?'Edit Ticket':'New Ticket';
+  document.getElementById('dtTicketModalTitle').textContent=t?t.project_name:'New ticket';
+  document.getElementById('dtTicketDrawerMeta').textContent=t?ticketEntrySummary(t.id):'Fill in the details, then Save';
+  document.getElementById('dtTicketDrawerSwatch').style.background=t?ticketColor(t):'var(--text-dim)';
   document.getElementById('dt-project').value=t?t.project_name:'';
   document.getElementById('dt-jira-key').value=t?(t.jira_key||''):'';
   document.getElementById('dt-jira-url').value=t?(t.jira_url||''):'';
@@ -1250,11 +1341,16 @@ export function openTicketModal(id){
   document.getElementById('dt-note').value=t?(t.note||''):'';
   document.getElementById('dtTicketDeleteBtn').style.display=t?'':'none';
   hideProjectError();
+  renderStatusChips();
+  closeMenuPopover();
   document.getElementById('dtTicketModalOverlay').classList.add('open');
+  highlightActiveTicketRow();
+  if(!t) setTimeout(()=>document.getElementById('dt-project').focus(),50);
 }
 export function closeTicketModal(){
   document.getElementById('dtTicketModalOverlay').classList.remove('open');
   state.ganttEditingTicketId=null;
+  highlightActiveTicketRow();
 }
 export async function saveTicket(){
   const project_name=document.getElementById('dt-project').value.trim();
@@ -1281,18 +1377,142 @@ export async function saveTicket(){
     renderTimelineBody();
   }catch(err){showNotification('Could not save ticket: '+(err.message||err),'error');}
 }
-export async function deleteTicket(){
-  const id=state.ganttEditingTicketId;
+export async function deleteTicket(idArg){
+  const id=(typeof idArg==='string'&&idArg)||state.ganttEditingTicketId;
   if(!id) return;
   openConfirmModal('Delete this ticket and all its scheduled entries? This cannot be undone.',async()=>{
     try{
       await deleteTicketDB(id);
       state.ganttTickets=state.ganttTickets.filter(t=>t.id!==id);
       state.ganttEntries=state.ganttEntries.filter(e=>e.ticket_id!==id);
-      closeTicketModal();
+      if(state.ganttEditingTicketId===id) closeTicketModal();
       renderTimelineBody();
     }catch(err){showNotification('Could not delete ticket: '+(err.message||err),'error');}
   },{title:'Delete ticket?',confirmLabel:'Delete'});
+}
+
+// ══════════════════════════════════════════════════
+// SHARED MENU POPOVER (#dtMenuPopover) — Columns menu, admin ⚙ menu, inline status dropdown
+// and the row right-click menu. One open at a time; closes on outside click / Esc.
+// ══════════════════════════════════════════════════
+const TICKET_STATUSES=['Not Started','In Progress','Delayed','Done','Cancelled'];
+let menuKind=null,menuAnchor=null;
+function openMenuPopover(kind,html,anchor){
+  const pop=document.getElementById('dtMenuPopover');
+  if(!pop) return;
+  closeTypePicker();
+  pop.innerHTML=html;
+  pop.style.display='block';
+  menuKind=kind; menuAnchor=anchor.el||null;
+  const vw=window.innerWidth,vh=window.innerHeight,w=pop.offsetWidth,h=pop.offsetHeight;
+  let x,y;
+  if(anchor.el){
+    const r=anchor.el.getBoundingClientRect();
+    x=anchor.alignRight?r.right-w:r.left; y=r.bottom+4;
+    if(y+h>vh-8) y=Math.max(8,r.top-h-4);
+  }else{ x=anchor.x; y=anchor.y; }
+  pop.style.left=Math.max(8,Math.min(x,vw-w-8))+'px';
+  pop.style.top=Math.max(8,Math.min(y,vh-h-8))+'px';
+}
+export function closeMenuPopover(){
+  const pop=document.getElementById('dtMenuPopover');
+  if(pop){ pop.style.display='none'; pop.innerHTML=''; }
+  menuKind=null; menuAnchor=null;
+}
+function toggleMenuFor(kind,anchorEl,build){
+  if(menuKind===kind&&menuAnchor===anchorEl){ closeMenuPopover(); return; }
+  openMenuPopover(kind,build(),{el:anchorEl,alignRight:kind==='settings'});
+}
+
+// Columns menu
+function columnsMenuHtml(){
+  return `<div class="dt-menu-label">SHOW COLUMNS · ONLY FOR YOU</div>${
+    TIMELINE_COL_ORDER.map(k=>{
+      const locked=k==='project', on=!ganttHiddenCols.includes(k);
+      return `<label class="dt-menu-item dt-menu-check${locked?' disabled':''}"><input type="checkbox" ${on?'checked':''} ${locked?'disabled':''} onchange="toggleTimelineColumn('${k}')">${esc(TIMELINE_COL_LABELS[k])}${locked?'<span class="dt-menu-hint">always on</span>':''}</label>`;
+    }).join('')
+  }<div class="dt-menu-sep"></div><button class="dt-menu-item" onclick="resetTimelineColumns()">Reset to default</button>`;
+}
+export function openColumnsMenu(btn){ toggleMenuFor('columns',btn,columnsMenuHtml); }
+function afterColumnChange(){
+  saveHiddenCols();
+  renderTimeline();
+  const pop=document.getElementById('dtMenuPopover');
+  if(menuKind==='columns'&&pop) pop.innerHTML=columnsMenuHtml();
+}
+export function toggleTimelineColumn(key){
+  if(key==='project') return;
+  ganttHiddenCols=ganttHiddenCols.includes(key)?ganttHiddenCols.filter(k=>k!==key):[...ganttHiddenCols,key];
+  afterColumnChange();
+}
+export function resetTimelineColumns(){
+  ganttHiddenCols=[];
+  afterColumnChange();
+}
+
+// Admin ⚙ menu
+export function openSettingsMenu(btn){
+  if(state.currentUserRole!=='admin') return;
+  toggleMenuFor('settings',btn,()=>`<div class="dt-menu-label">TIMELINE SETTINGS · ADMIN</div>
+    <button class="dt-menu-item" id="dtManageTypesBtn" onclick="closeMenuPopover();openTaskTypeModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg>Manage task types</button>
+    <button class="dt-menu-item" id="dtSprintsBtn" onclick="closeMenuPopover();openSprintModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528"/></svg>Sprints</button>`);
+}
+
+// Inline status dropdown (status badge in the table)
+export function openStatusMenu(ticketId,btn){
+  const t=state.ganttTickets.find(x=>x.id===ticketId);
+  if(!t) return;
+  toggleMenuFor('status',btn,()=>TICKET_STATUSES.map(st=>
+    `<button class="dt-menu-item${st===t.status?' active':''}" onclick="setTicketStatus('${escJs(ticketId)}','${st}')"><span class="dt-status-badge dt-status-${st.replace(/\s+/g,'')}">${esc(st)}</span>${st===t.status?'<span class="dt-menu-check-mark">✓</span>':''}</button>`
+  ).join(''));
+}
+export async function setTicketStatus(ticketId,status){
+  closeMenuPopover();
+  const t=state.ganttTickets.find(x=>x.id===ticketId);
+  if(!t||t.status===status) return;
+  try{
+    await updateTicketDB(ticketId,{status});
+    t.status=status;
+    if(state.ganttEditingTicketId===ticketId){ document.getElementById('dt-status').value=status; renderStatusChips(); }
+    renderTimelineBody();
+  }catch(err){showNotification('Could not update status: '+(err.message||err),'error');}
+}
+
+// Inline note edit — double-click the Note cell; Enter / blur saves, Esc cancels
+let noteEditDone=false;
+export function startNoteEdit(td){
+  const id=td.getAttribute('data-ticket-id');
+  const t=state.ganttTickets.find(x=>x.id===id);
+  if(!t||td.querySelector('input')) return;
+  noteEditDone=false;
+  td.innerHTML=`<input class="dt-note-input" aria-label="Note" value="${esc(t.note||'')}">`;
+  const input=td.querySelector('input');
+  input.focus(); input.select();
+  const finish=async(save)=>{
+    if(noteEditDone) return;
+    noteEditDone=true;
+    const val=input.value.trim()||null;
+    if(save&&val!==(t.note||null)){
+      try{ await updateTicketDB(id,{note:val}); t.note=val; if(state.ganttEditingTicketId===id) document.getElementById('dt-note').value=val||''; }
+      catch(err){ showNotification('Could not save note: '+(err.message||err),'error'); }
+    }
+    renderTimelineBody();
+  };
+  input.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){ e.preventDefault(); finish(true); }
+    else if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); finish(false); }
+  });
+  input.addEventListener('blur',()=>finish(true));
+}
+
+// Row right-click menu (info columns only — day cells keep their drag/assign behaviour)
+export function openRowMenu(ticketId,x,y){
+  const t=state.ganttTickets.find(v=>v.id===ticketId);
+  if(!t) return;
+  openMenuPopover('row',`<div class="dt-menu-label">${esc(t.project_name)}</div>
+    <button class="dt-menu-item" onclick="closeMenuPopover();openTicketModal('${escJs(ticketId)}')">Open</button>
+    <div class="dt-menu-sep"></div>
+    <button class="dt-menu-item dt-menu-danger" onclick="closeMenuPopover();deleteTicket('${escJs(ticketId)}')">Delete</button>`,{x,y});
 }
 
 // ══════════════════════════════════════════════════
@@ -1802,13 +2022,22 @@ export function initGanttTracker(){
   window.deleteSprint=deleteSprint;
   window.cancelSprintEdit=cancelSprintEdit;
   window.updateSprintCalc=updateSprintCalc;
+  window.toggleTimelineLegend=toggleTimelineLegend;
+  window.closeMenuPopover=closeMenuPopover;
+  window.toggleTimelineColumn=toggleTimelineColumn;
+  window.resetTimelineColumns=resetTimelineColumns;
+  window.openStatusMenu=openStatusMenu;
+  window.setTicketStatus=setTicketStatus;
+  window.pickTicketStatusChip=pickTicketStatusChip;
 
   document.getElementById('dtStartDate').onchange=e=>setTimelineStartDate(e.target.value);
-  document.getElementById('dtWeeksInput').onchange=e=>setTimelineWeeks(e.target.value);
   document.getElementById('dtPrevWeekBtn').onclick=()=>shiftTimelineWeek(-1);
   document.getElementById('dtNextWeekBtn').onclick=()=>shiftTimelineWeek(1);
   document.getElementById('dtAddTicketBtn').onclick=()=>openTicketModal();
-  document.getElementById('dtManageTypesBtn').onclick=openTaskTypeModal;
+  document.getElementById('dtTodayBtn').onclick=()=>setTimelineStartDate(today());
+  document.getElementById('dtColumnsBtn').onclick=e=>{e.stopPropagation();openColumnsMenu(e.currentTarget);};
+  document.getElementById('dtSettingsBtn').onclick=e=>{e.stopPropagation();openSettingsMenu(e.currentTarget);};
+  document.getElementById('dtMarkModeDoneBtn').onclick=()=>{ if(state.ganttAlMarkingMode) toggleAlMarkingMode(); };
   document.getElementById('dtMarkAlBtn').onclick=toggleAlMarkingMode;
 
   // ticket modal, task-type modal, and overlap-confirm modal's Cancel/Save/Delete/close
@@ -1836,7 +2065,31 @@ export function initGanttTracker(){
     startColumnResize(e,handle.getAttribute('data-col'));
   });
 
-  document.getElementById('dtSprintsBtn').onclick=()=>openSprintModal();
+  // body interactions: double-click a Note cell to edit inline; right-click an info cell for
+  // the row menu (day cells keep their own pointer-driven drag/assign behaviour)
+  const tbody=document.getElementById('dtTimelineBody');
+  tbody.addEventListener('dblclick',e=>{
+    const td=e.target.closest('.dt-note-cell');
+    if(td) startNoteEdit(td);
+  });
+  tbody.addEventListener('contextmenu',e=>{
+    const cell=e.target.closest('.dt-ticket-row .sticky-col');
+    if(!cell) return;
+    e.preventDefault();
+    openRowMenu(cell.parentElement.getAttribute('data-ticket-id'),e.clientX,e.clientY);
+  });
+  window.addEventListener('resize',onTimelineResize);
+  window.addEventListener('scroll',closeMenuPopover,true);
+  // Esc: close an open menu first, then the Mark day modal, then leave Mark day mode
+  document.addEventListener('keydown',e=>{
+    if(e.key!=='Escape') return;
+    if(menuKind){ closeMenuPopover(); return; }
+    const markModal=document.getElementById('dtAlModalOverlay');
+    if(markModal&&markModal.classList.contains('open')){ closeMarkDayModal(); return; }
+    if(document.querySelector('.modal-overlay.open')) return;
+    if(document.getElementById('dtTicketModalOverlay').classList.contains('open')){ closeTicketModal(); return; }
+    if(state.ganttAlMarkingMode) toggleAlMarkingMode();
+  });
 
   // date-header click — opens the Mark day modal only while "Mark day" mode is active
   // (Shift-click extends a range from the previously clicked date); a sprint cell opens
@@ -1861,6 +2114,7 @@ export function initGanttTracker(){
     // armPopoverOpenGuard()/consumeOutsideClickSuppression() above.
     if(consumeOutsideClickSuppression()) return;
     if(!e.target.closest('#dtTypePickerPopover')&&!e.target.closest('.dt-day-cell')) closeTypePicker();
+    if(!e.target.closest('#dtMenuPopover')&&!e.target.closest('[data-menu-trigger]')&&!e.target.closest('#dtColumnsBtn')&&!e.target.closest('#dtSettingsBtn')) closeMenuPopover();
     if(!e.target.closest('#dtCalPopover')&&!e.target.closest('.dt-cal-bar')&&!e.target.closest('.dt-cal-overflow-chip')) closeCalPopover();
   });
 }

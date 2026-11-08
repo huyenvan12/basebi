@@ -1029,7 +1029,8 @@ table.monitor-report-table{table-layout:fixed;width:100%;min-width:0}
 .dt-subview.active{display:flex}
 
 .dt-controls-row{display:flex;align-items:center;gap:8px;padding:10px 0;flex-shrink:0;flex-wrap:wrap}
-.dt-legend-row{display:grid;grid-template-columns:repeat(5,1fr);gap:6px 16px;padding:10px 12px;margin-top:10px;flex-shrink:0;background:var(--surface2);border:1px solid var(--border);border-radius:8px}
+.dt-legend-row{display:flex;flex-direction:column;gap:8px;padding:8px 12px;margin-top:10px;flex-shrink:0;background:var(--surface2);border:1px solid var(--border);border-radius:8px}
+.dt-legend-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px 16px;padding-left:22px}
 .dt-legend-chip{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text-muted);min-width:0}
 .dt-legend-chip>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dt-legend-swatch{width:10px;height:10px;border-radius:3px;display:inline-block;flex-shrink:0}
@@ -1050,8 +1051,10 @@ table.monitor-report-table{table-layout:fixed;width:100%;min-width:0}
 .dt-col-resize-handle{position:absolute;top:0;right:0;width:6px;height:100%;cursor:col-resize;z-index:5}
 .dt-col-resize-handle:hover,.dt-col-resize-handle:active{background:var(--accent)}
 .dt-ticket-row:hover td{background:var(--surface2)}
-.dt-ticket-row.dt-row-active td{background:var(--folder-active);border-left:2px solid var(--accent)}
-.dt-ticket-row.dt-row-active td:first-child{padding-left:10px}
+/* row whose ticket is open in the drawer: tinted, with a single accent bar on the first cell
+   (day cells keep their own borders, incl. the sprint-start line) */
+.dt-ticket-row.dt-row-active td{background:var(--folder-active)}
+.dt-ticket-row.dt-row-active td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
 
 /* "TODAY" / "CURRENT WEEK" highlights — amber border outline only, so background/text
    colors underneath (task-type fills, header styling) are never washed out. */
@@ -1667,7 +1670,7 @@ body.is-native-app .search-screen{padding-top:calc(50px + env(safe-area-inset-to
 
 /* DELIVERY TRACKER — legend special-days row, sprint header row, entry popover info,
    Mark day modal, Sprints modal */
-.dt-legend-special{grid-column:1/-1;display:flex;align-items:center;flex-wrap:wrap;gap:6px 14px;border-top:1px solid var(--border);padding-top:8px;margin-top:2px}
+.dt-legend-special{display:flex;align-items:center;flex-wrap:wrap;gap:6px 14px;border-top:1px solid var(--border);padding:8px 0 0 22px}
 .dt-legend-special-label{font-size:9.5px;font-weight:700;letter-spacing:.6px;color:var(--amber)}
 .dt-sprint-th{font-size:10px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:var(--surface2)}
 .dt-sprint-th-empty{background:var(--surface2)}
@@ -1724,3 +1727,80 @@ body.is-native-app .search-screen{padding-top:calc(50px + env(safe-area-inset-to
 .dt-sprint-quick{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .dt-sprint-quick .btn{padding:3px 10px;font-size:11px;border-radius:10px}
 @media (max-width:768px){.dt-sprint-modal{width:94vw}.dt-sprint-editor-grid{grid-template-columns:1fr}.dt-markday-range{grid-template-columns:1fr}}
+
+/* DELIVERY TRACKER — PR 58: toolbar regroup, legend minimizer, columns menu, ticket drawer,
+   inline status / note editing, shared menu popover */
+.dt-toolbar{justify-content:space-between}
+.dt-toolbar-group{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dt-btn-with-icon{display:inline-flex;align-items:center;gap:6px}
+.dt-nav-group{display:flex;align-items:center;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.dt-nav-btn{display:inline-flex;align-items:center;justify-content:center;height:30px;min-width:30px;padding:0 6px;border:none;background:transparent;color:var(--text-muted);font-family:inherit;font-size:12px;font-weight:500;cursor:pointer}
+.dt-nav-btn:hover{background:var(--surface2);color:var(--text)}
+.dt-nav-btn .dt-btn-icon{width:16px;height:16px}
+.dt-nav-today{padding:0 12px;color:var(--text);border-left:1px solid var(--border);border-right:1px solid var(--border)}
+.dt-columns-count{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--text-dim)}
+.dt-icon-only-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:30px;padding:0}
+.dt-icon-only-btn .dt-btn-icon{width:16px;height:16px}
+.dt-markmode-hint{display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:7px 12px;border-radius:8px;background:rgba(217,169,79,.12);border:1px solid rgba(217,169,79,.45);font-size:12px;color:var(--text);flex-shrink:0}
+.dt-markmode-hint>.dt-btn-icon{color:var(--amber)}
+.dt-markmode-hint b{font-weight:600}
+.dt-markmode-hint>span:first-of-type b:first-child{color:var(--amber)}
+.dt-markmode-esc{margin-left:auto;font-size:11px;color:var(--text-muted)}
+.dt-markmode-esc kbd{font-family:'JetBrains Mono',monospace;font-size:10.5px;border:1px solid var(--border);border-bottom-width:2px;border-radius:4px;padding:0 5px;color:var(--text)}
+.dt-markmode-done{padding:3px 12px;border-color:rgba(217,169,79,.6);color:var(--amber);font-weight:600}
+/* legend */
+.dt-legend-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.dt-legend-toggle{display:inline-flex;align-items:center;gap:5px;padding:3px 8px 3px 2px;border:none;border-radius:6px;background:transparent;color:var(--text);font-family:inherit;font-size:11px;font-weight:600;cursor:pointer}
+.dt-legend-toggle:hover{background:var(--surface)}
+.dt-legend-chevron{width:14px;height:14px;transition:transform .15s}
+.dt-legend-chevron.open{transform:rotate(90deg)}
+.dt-legend-hint{font-size:10.5px;color:var(--text-dim)}
+.dt-legend-mini-list{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px}
+.dt-legend-mini{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;color:var(--text-muted);cursor:default}
+.dt-legend-mini .dt-legend-swatch{width:9px;height:9px}
+.dt-legend-mini-sep{width:1px;height:14px;background:var(--border)}
+.dt-legend-mini-list .dt-mark-pill{cursor:default}
+/* shared menu popover */
+.dt-menu-popover{min-width:200px;max-width:280px;padding:5px;display:flex;flex-direction:column}
+.dt-menu-label{font-size:9.5px;font-weight:700;letter-spacing:.6px;color:var(--amber);padding:6px 8px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dt-menu-item{display:flex;align-items:center;gap:9px;width:100%;padding:7px 8px;border:none;border-radius:5px;background:transparent;color:var(--text);font-family:inherit;font-size:12.5px;text-align:left;cursor:pointer}
+.dt-menu-item:hover,.dt-menu-item.active{background:var(--accent-dim)}
+.dt-menu-item svg{width:14px;height:14px;flex-shrink:0}
+.dt-menu-item.disabled{color:var(--text-muted);cursor:default}
+.dt-menu-item.disabled:hover{background:transparent}
+.dt-menu-check input{width:15px;height:15px;margin:0;accent-color:var(--accent)}
+.dt-menu-hint{margin-left:auto;font-size:10px;color:var(--text-dim)}
+.dt-menu-check-mark{margin-left:auto;color:var(--accent)}
+.dt-menu-sep{height:1px;background:var(--border);margin:4px 2px}
+.dt-menu-danger{color:var(--danger)}
+.dt-menu-danger:hover{background:var(--danger-dim)}
+/* ticket rows: project name opens the drawer, status opens a dropdown, note edits inline */
+.dt-ticket-name{display:inline-block;max-width:calc(100% - 34px);vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:none;background:transparent;padding:0;color:inherit;font-family:inherit;font-size:inherit;text-align:left;cursor:pointer}
+.dt-ticket-row:hover .dt-ticket-name,.dt-ticket-row.dt-row-active .dt-ticket-name{text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--accent)}
+.dt-ticket-row.dt-row-active .dt-ticket-name{font-weight:600}
+.dt-ticket-chevron{width:13px;height:13px;vertical-align:middle;margin-left:4px;color:var(--text-dim);opacity:0;transition:opacity .12s}
+.dt-ticket-row:hover .dt-ticket-chevron{opacity:1}
+.dt-status-btn{display:inline-flex;align-items:center;gap:3px;border:none;font-family:inherit;cursor:pointer}
+.dt-status-btn svg{width:9px;height:9px;opacity:.7}
+.dt-note-cell{cursor:text}
+.dt-note-input{width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--accent);box-shadow:0 0 0 3px var(--accent-dim);border-radius:5px;padding:4px 6px;color:var(--text);font-family:inherit;font-size:12px;outline:none}
+/* ticket drawer */
+.dt-drawer{position:fixed;top:0;right:0;bottom:0;width:400px;max-width:100vw;z-index:90;display:flex;flex-direction:column;background:var(--surface);border-left:1px solid var(--border);box-shadow:-12px 0 32px rgba(0,0,0,.3);transform:translateX(105%);transition:transform .18s ease;visibility:hidden}
+.dt-drawer.open{transform:none;visibility:visible}
+.dt-drawer-head{display:flex;align-items:center;gap:10px;padding:16px 18px 12px;border-bottom:1px solid var(--border)}
+.dt-drawer-swatch{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.dt-drawer-titles{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.dt-drawer-title{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dt-drawer-meta{font-size:11px;color:var(--text-muted)}
+.dt-drawer-body{flex:1;overflow:auto;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.dt-drawer-grid{display:grid;grid-template-columns:130px minmax(0,1fr);gap:10px}
+.dt-drawer-foot{display:flex;align-items:center;gap:8px;padding:12px 18px;border-top:1px solid var(--border)}
+.dt-status-chips{display:flex;flex-wrap:wrap;gap:5px}
+.dt-status-chip{padding:4px 9px;border-radius:10px;border:1px solid var(--border);background:transparent!important;color:var(--text-muted)!important;font-family:inherit;font-size:10.5px;font-weight:600;cursor:pointer}
+.dt-status-chip.active{border-color:currentColor}
+.dt-status-chip.active.dt-status-NotStarted{background:var(--tag-bg)!important;color:var(--text-muted)!important}
+.dt-status-chip.active.dt-status-InProgress{background:var(--accent-dim)!important;color:var(--accent)!important}
+.dt-status-chip.active.dt-status-Delayed{background:var(--danger-dim)!important;color:var(--danger)!important}
+.dt-status-chip.active.dt-status-Done{background:var(--success-dim)!important;color:var(--success)!important}
+.dt-status-chip.active.dt-status-Cancelled{background:var(--tag-bg)!important;color:var(--text-dim)!important}
+@media (max-width:768px){.dt-drawer{width:100vw}.dt-toolbar{justify-content:flex-start}}

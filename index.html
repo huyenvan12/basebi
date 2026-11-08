@@ -611,15 +611,27 @@
     <!-- TIMELINE SUB-VIEW -->
     <div class="dt-subview active" id="dtTimelineSubview">
       <div class="dt-legend-row" id="dtLegendRow"></div>
-      <div class="dt-controls-row">
-        <input type="date" class="form-input" id="dtStartDate" style="width:140px">
-        <input type="number" class="form-input" id="dtWeeksInput" min="1" max="12" value="6" style="width:60px">
-        <button class="btn btn-ghost" id="dtPrevWeekBtn">‹ Prev week</button>
-        <button class="btn btn-ghost" id="dtNextWeekBtn">Next week ›</button>
-        <button class="btn btn-primary" id="dtAddTicketBtn">+ Add ticket</button>
-        <button class="btn btn-ghost" id="dtManageTypesBtn" style="display:none">⚙ Manage Task Types</button>
-        <button class="btn btn-ghost" id="dtMarkAlBtn" title="Toggle, then click a date header (Shift-click for a range)"><svg class="dt-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4" /><path d="M16 2v4" /><path d="M21 13V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8" /><path d="M3 10h18" /><path d="M16 19h6" /><path d="M19 16v6" /></svg>Mark day</button>
-        <button class="btn btn-ghost" id="dtSprintsBtn" style="display:none">⚑ Sprints</button>
+      <div class="dt-controls-row dt-toolbar">
+        <div class="dt-toolbar-group">
+          <div class="dt-nav-group">
+            <button class="dt-nav-btn" id="dtPrevWeekBtn" aria-label="Previous week" title="Previous week"><svg class="dt-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg></button>
+            <button class="dt-nav-btn dt-nav-today" id="dtTodayBtn" title="Jump to this week">Today</button>
+            <button class="dt-nav-btn" id="dtNextWeekBtn" aria-label="Next week" title="Next week"><svg class="dt-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></button>
+          </div>
+          <input type="date" class="form-input" id="dtStartDate" style="width:150px" aria-label="Start date">
+          <button class="btn btn-ghost dt-btn-with-icon" id="dtColumnsBtn" aria-haspopup="menu"><svg class="dt-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M9 3v18" /><path d="M15 3v18" /></svg>Columns<span class="dt-columns-count" id="dtColumnsCount">5/5</span></button>
+        </div>
+        <div class="dt-toolbar-group">
+          <button class="btn btn-ghost dt-btn-with-icon" id="dtMarkAlBtn" title="Toggle, then click a date header (Shift-click for a range)"><svg class="dt-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4" /><path d="M16 2v4" /><path d="M21 13V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8" /><path d="M3 10h18" /><path d="M16 19h6" /><path d="M19 16v6" /></svg>Mark day</button>
+          <button class="btn btn-primary dt-btn-with-icon" id="dtAddTicketBtn"><svg class="dt-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="M12 5v14" /></svg>Add ticket</button>
+          <button class="btn btn-ghost dt-icon-only-btn" id="dtSettingsBtn" style="display:none" aria-haspopup="menu" aria-label="Timeline settings" title="Timeline settings (admin)"><svg class="dt-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg></button>
+        </div>
+      </div>
+      <div class="dt-markmode-hint" id="dtMarkModeHint" style="display:none">
+        <svg class="dt-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4" /><path d="M16 2v4" /><path d="M21 13V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8" /><path d="M3 10h18" /><path d="M16 19h6" /><path d="M19 16v6" /></svg>
+        <span><b>Mark day mode</b> — click a date header to mark it · <b>Shift-click</b> another header for a range</span>
+        <span class="dt-markmode-esc">Press <kbd>Esc</kbd> to exit</span>
+        <button class="btn btn-ghost dt-markmode-done" id="dtMarkModeDoneBtn">Done</button>
       </div>
       <div class="dt-timeline-wrap" id="dtTimelineWrap">
         <table class="dt-timeline-table data-table-sticky-cols" id="dtTimelineTable">
@@ -1029,33 +1041,42 @@
   </div>
 </div>
 
-<!-- DELIVERY TICKET MODAL (add/edit) -->
-<div class="modal-overlay" id="dtTicketModalOverlay">
-  <div class="modal">
-    <div class="modal-title">
-      <span id="dtTicketModalTitle">Add ticket</span>
-      <button class="modal-close icon-btn" onclick="closeTicketModal()">×</button>
+<!-- DELIVERY TICKET DRAWER (add/edit) — right-side panel, non-blocking: the timeline stays
+     usable and clicking another project name switches tickets. Kept the old element ids so
+     openTicketModal()/saveTicket()/deleteTicket() keep working. -->
+<aside class="dt-drawer" id="dtTicketModalOverlay" aria-label="Ticket details">
+  <div class="dt-drawer-head">
+    <span class="dt-drawer-swatch" id="dtTicketDrawerSwatch"></span>
+    <div class="dt-drawer-titles">
+      <div class="dt-drawer-title" id="dtTicketModalTitle">New ticket</div>
+      <div class="dt-drawer-meta" id="dtTicketDrawerMeta"></div>
     </div>
+    <button class="modal-close icon-btn" onclick="closeTicketModal()" aria-label="Close">×</button>
+  </div>
+  <div class="dt-drawer-body">
     <div class="form-row">
-      <label class="form-label">Project name *</label>
+      <label class="form-label" for="dt-project">Project name *</label>
       <input class="form-input" id="dt-project" placeholder="e.g. Q3 Loyalty Campaign">
       <div id="dt-project-error" class="form-hint" style="color:#f87171;display:none"></div>
     </div>
-    <div class="form-row">
-      <label class="form-label">Jira key</label>
-      <input class="form-input" id="dt-jira-key" placeholder="e.g. MKT-1234">
+    <div class="dt-drawer-grid">
+      <div class="form-row">
+        <label class="form-label" for="dt-jira-key">Jira key</label>
+        <input class="form-input" id="dt-jira-key" placeholder="e.g. MKT-1234">
+      </div>
+      <div class="form-row">
+        <label class="form-label" for="dt-jira-url">Jira URL</label>
+        <input class="form-input" id="dt-jira-url" placeholder="https://…">
+      </div>
     </div>
     <div class="form-row">
-      <label class="form-label">Jira URL</label>
-      <input class="form-input" id="dt-jira-url" placeholder="https://…">
-    </div>
-    <div class="form-row">
-      <label class="form-label">Mon. scope</label>
+      <label class="form-label" for="dt-scope">Mon. scope</label>
       <input class="form-input" id="dt-scope" placeholder="Monitoring scope…">
     </div>
     <div class="form-row">
       <label class="form-label">Status</label>
-      <select class="form-input" id="dt-status">
+      <div class="dt-status-chips" id="dtStatusChips"></div>
+      <select class="form-input" id="dt-status" style="display:none" aria-hidden="true">
         <option>Not Started</option>
         <option>In Progress</option>
         <option>Delayed</option>
@@ -1064,16 +1085,16 @@
       </select>
     </div>
     <div class="form-row">
-      <label class="form-label">Note</label>
-      <textarea class="form-input" id="dt-note" style="min-height:60px" placeholder="Notes…"></textarea>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-danger" id="dtTicketDeleteBtn" style="display:none;margin-right:auto" onclick="deleteTicket()">Delete</button>
-      <button class="btn btn-ghost" onclick="closeTicketModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveTicket()">Save</button>
+      <label class="form-label" for="dt-note">Note</label>
+      <textarea class="form-input" id="dt-note" style="min-height:90px" placeholder="Notes…"></textarea>
     </div>
   </div>
-</div>
+  <div class="dt-drawer-foot">
+    <button class="btn btn-danger" id="dtTicketDeleteBtn" style="display:none;margin-right:auto" onclick="deleteTicket()">Delete</button>
+    <button class="btn btn-ghost" onclick="closeTicketModal()">Cancel</button>
+    <button class="btn btn-primary" onclick="saveTicket()">Save</button>
+  </div>
+</aside>
 
 <!-- MANAGE TASK TYPES MODAL (admin only) -->
 <div class="modal-overlay" id="dtTaskTypeModalOverlay">
@@ -1278,6 +1299,7 @@
 
 <!-- TYPE-PICKER POPOVER (positioned via JS) -->
 <div class="popover dt-type-picker-popover" id="dtTypePickerPopover" style="display:none"></div>
+<div class="popover dt-menu-popover" id="dtMenuPopover" role="menu" style="display:none"></div>
 
 <!-- CALENDAR TICKET / OVERFLOW POPOVER (shared, positioned via JS) -->
 <div class="popover dt-cal-popover" id="dtCalPopover" style="display:none"></div>
