@@ -413,6 +413,37 @@ function startColumnResize(e,key){
   document.addEventListener('mouseup',onUp);
 }
 
+// Double-click a column's resize handle → fit it to the widest visible content (header label
+// and every rendered row). Measures the cells' child content (text + inline elements), skipping
+// the absolutely-positioned resize handle and the hover-only "Open" hint, with name truncation
+// switched off for the duration of the measurement.
+function autoFitColumn(key){
+  const table=document.getElementById('dtTimelineTable');
+  if(!table) return;
+  table.classList.add('dt-measuring');
+  let max=0;
+  table.querySelectorAll(`.sticky-col[data-col="${CSS.escape(key)}"]`).forEach(cell=>{
+    let left=Infinity,right=-Infinity;
+    cell.childNodes.forEach(n=>{
+      if(n.nodeType===1&&(n.classList.contains('dt-col-resize-handle')||n.classList.contains('dt-ticket-open-hint'))) return;
+      let rect;
+      if(n.nodeType===3){ if(!n.textContent.trim()) return; const r=document.createRange(); r.selectNodeContents(n); rect=r.getBoundingClientRect(); }
+      else if(n.nodeType===1) rect=n.getBoundingClientRect();
+      else return;
+      if(!rect.width) return;
+      left=Math.min(left,rect.left); right=Math.max(right,rect.right);
+    });
+    if(right<=left) return;
+    const cs=getComputedStyle(cell);
+    max=Math.max(max,(right-left)+parseFloat(cs.paddingLeft)+parseFloat(cs.paddingRight)+2);
+  });
+  table.classList.remove('dt-measuring');
+  if(!max) return;
+  ganttColumnWidths[key]=Math.round(Math.max(TIMELINE_COL_MIN[key]||60,Math.min(TIMELINE_COL_MAX,max)));
+  saveColumnWidths();
+  renderTimeline();
+}
+
 export function isTicketActive(t){ return !INACTIVE_STATUSES.includes(t.status); }
 
 // LEGEND — collapsed by default to one line of codes (hover a code for its name); the
@@ -479,7 +510,7 @@ export function renderTimelineHeader(){
 
   renderTimelineColgroup(cols.length);
 
-  const stickyTh=(key,label)=>`<th class="sticky-col" data-col="${key}" style="left:${timelineColLeft(key)}px;width:${ganttColumnWidths[key]}px" rowspan="4">${esc(label)}<span class="dt-col-resize-handle" data-col="${key}" title="Drag to resize"></span></th>`;
+  const stickyTh=(key,label)=>`<th class="sticky-col" data-col="${key}" style="left:${timelineColLeft(key)}px;width:${ganttColumnWidths[key]}px" rowspan="4">${esc(label)}<span class="dt-col-resize-handle" data-col="${key}" title="Drag to resize · double-click to fit"></span></th>`;
 
   const monthRow=`<tr class="dt-head-month">${visibleCols().map(k=>stickyTh(k,TIMELINE_COL_LABELS[k])).join('')}${
     monthGroups.map(mg=>`<th colspan="${mg.weekGroups.reduce((n,wg)=>n+wg.cols.length,0)}" class="dt-month-th">${esc(mg.monthLabel)}</th>`).join('')
@@ -591,7 +622,7 @@ function renderTicketRow(ticket,cols,dayMeta){
   const cellAttrs=(k,extraCls='')=>`class="sticky-col${extraCls}${k===lastVis?' sticky-col-shadow':''}" data-col="${k}" style="width:${ganttColumnWidths[k]}px;left:${timelineColLeft(k)}px"`;
   const infoCells={
     // project name opens the ticket drawer (replaces the old per-row pencil button)
-    project:`<td ${cellAttrs('project',' dt-project-cell')} title="${esc(ticket.project_name)}"><span class="dt-ticket-swatch" style="background:${color}"></span><button class="dt-ticket-name" onclick="openTicketModal('${escJs(ticket.id)}')">${esc(ticket.project_name)}</button><svg class="dt-ticket-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></td>`,
+    project:`<td ${cellAttrs('project',' dt-project-cell')} title="${esc(ticket.project_name)}"><span class="dt-ticket-swatch" style="background:${color}"></span><button class="dt-ticket-name" onclick="openTicketModal('${escJs(ticket.id)}')">${esc(ticket.project_name)}</button><button class="dt-ticket-open-hint" tabindex="-1" onclick="openTicketModal('${escJs(ticket.id)}')" title="Open details"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/><path d="m10 15-3-3 3-3"/></svg>Open</button></td>`,
     jira:`<td ${cellAttrs('jira')} title="${esc(ticket.jira_key||'')}">${jiraCell}</td>`,
     scope:`<td ${cellAttrs('scope')} title="${esc(ticket.mon_scope||'')}">${esc(ticket.mon_scope||'')}</td>`,
     // status badge opens an in-place status dropdown
@@ -2063,6 +2094,12 @@ export function initGanttTracker(){
     const handle=e.target.closest('.dt-col-resize-handle');
     if(!handle) return;
     startColumnResize(e,handle.getAttribute('data-col'));
+  });
+  document.getElementById('dtTimelineHead').addEventListener('dblclick',e=>{
+    const handle=e.target.closest('.dt-col-resize-handle');
+    if(!handle) return;
+    e.preventDefault();
+    autoFitColumn(handle.getAttribute('data-col'));
   });
 
   // body interactions: double-click a Note cell to edit inline; right-click an info cell for

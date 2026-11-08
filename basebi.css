@@ -1775,11 +1775,19 @@ body.is-native-app .search-screen{padding-top:calc(50px + env(safe-area-inset-to
 .dt-menu-danger{color:var(--danger)}
 .dt-menu-danger:hover{background:var(--danger-dim)}
 /* ticket rows: project name opens the drawer, status opens a dropdown, note edits inline */
-.dt-ticket-name{display:inline-block;max-width:calc(100% - 34px);vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:none;background:transparent;padding:0;color:inherit;font-family:inherit;font-size:inherit;text-align:left;cursor:pointer}
+.dt-ticket-name{display:inline-block;max-width:calc(100% - 14px);vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:none;background:transparent;padding:0;color:inherit;font-family:inherit;font-size:inherit;text-align:left;cursor:pointer}
 .dt-ticket-row:hover .dt-ticket-name,.dt-ticket-row.dt-row-active .dt-ticket-name{text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--accent)}
 .dt-ticket-row.dt-row-active .dt-ticket-name{font-weight:600}
-.dt-ticket-chevron{width:13px;height:13px;vertical-align:middle;margin-left:4px;color:var(--text-dim);opacity:0;transition:opacity .12s}
-.dt-ticket-row:hover .dt-ticket-chevron{opacity:1}
+.dt-ticket-open-hint{position:absolute;right:6px;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 7px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);color:var(--text-muted);font-family:inherit;font-size:10.5px;font-weight:600;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .12s}
+.dt-ticket-open-hint svg{width:12px;height:12px}
+.dt-ticket-row:hover .dt-ticket-open-hint{opacity:1;pointer-events:auto}
+.dt-ticket-open-hint:hover{color:var(--accent);border-color:var(--accent)}
+.dt-ticket-row.dt-row-active .dt-ticket-open-hint{display:none}
+/* auto-fit measurement: show full names, ignore the hover hint */
+.dt-measuring .dt-ticket-name{max-width:none}
+.dt-measuring .dt-ticket-open-hint{display:none}
+/* Jira keys with a link: readable accent color in both themes (was the browser-default blue) */
+.dt-timeline-table td[data-col="jira"] a,.dt-timeline-table td[data-col="jira"] a:visited{color:var(--accent)}
 .dt-status-btn{display:inline-flex;align-items:center;gap:3px;border:none;font-family:inherit;cursor:pointer}
 .dt-status-btn svg{width:9px;height:9px;opacity:.7}
 .dt-note-cell{cursor:text}
