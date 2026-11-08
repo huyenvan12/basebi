@@ -570,9 +570,7 @@ export function renderTimelineBody(){
   let html=active.map(t=>renderTicketRow(t,cols,dayMeta)).join('');
   if(inactive.length){
     const colCount=5+cols.length;
-    const stickyTotal=TIMELINE_COL_ORDER.reduce((a,k)=>a+ganttColumnWidths[k],0);
-    const lines=sprintLineSpans(cols.map((c,i)=>i>0&&isSprintStartCol(c.date,cols[0].date)?stickyTotal+i*TIMELINE_DAY_COL_WIDTH:null).filter(x=>x!==null));
-    html+=`<tr class="dt-inactive-divider" onclick="toggleGanttInactive()"><td colspan="${colCount}" style="position:relative">${lines}${state.ganttInactiveExpanded?'▾':'▸'} Inactive (${inactive.length})</td></tr>`;
+    html+=`<tr class="dt-inactive-divider" onclick="toggleGanttInactive()"><td colspan="${colCount}">${state.ganttInactiveExpanded?'▾':'▸'} Inactive (${inactive.length})</td></tr>`;
     if(state.ganttInactiveExpanded){
       html+=inactive.map(t=>renderTicketRow(t,cols,dayMeta)).join('');
     }
