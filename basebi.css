@@ -1844,7 +1844,4 @@ body.is-native-app .search-screen{padding-top:calc(50px + env(safe-area-inset-to
 .dt-status-chip.active.dt-status-Cancelled{background:var(--tag-bg)!important;color:var(--text-dim)!important}
 @media (max-width:768px){.dt-drawer{width:100vw}.dt-toolbar{justify-content:flex-start}}
 .dt-cal-popover{max-width:320px}
-/* legend task types: code inside a colored block, same look as an assigned Timeline cell */
-.dt-legend-cell{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:16px;padding:0 4px;box-sizing:border-box;border-radius:3px;font-size:8.5px;font-weight:700;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.4);letter-spacing:.2px;flex-shrink:0;cursor:default}
-.dt-legend-chip .dt-legend-cell{margin-right:2px}
 #dtCalFitBtn.active{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}

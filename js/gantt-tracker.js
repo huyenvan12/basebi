@@ -471,7 +471,7 @@ export function renderTimelineLegend(){
   if(!open){
     el.classList.add('dt-legend-collapsed');
     el.innerHTML=`<div class="dt-legend-head">${toggle}<div class="dt-legend-mini-list">${
-      state.ganttTaskTypes.map(tt=>`<span class="dt-legend-cell" style="background:${esc(tt.color)}" title="${esc(tt.code)} — ${esc(tt.label)}">${esc(tt.code)}</span>`).join('')
+      state.ganttTaskTypes.map(tt=>`<span class="dt-legend-mini" title="${esc(tt.code)} — ${esc(tt.label)}"><span class="dt-legend-swatch" style="background:${esc(tt.color)}"></span>${esc(tt.code)}</span>`).join('')
     }<span class="dt-legend-mini-sep"></span>${
       special.map(([cls,code,label])=>`<span class="dt-mark-pill ${cls}" title="${esc(label)}">${esc(code)}</span>`).join('')
     }</div></div>`;
@@ -480,7 +480,7 @@ export function renderTimelineLegend(){
   el.classList.remove('dt-legend-collapsed');
   el.innerHTML=`<div class="dt-legend-head">${toggle}<span class="dt-legend-hint">Collapse to show codes only — hover a code for its name</span></div><div class="dt-legend-grid">${
     state.ganttTaskTypes.map(tt=>
-      `<span class="dt-legend-chip"><span class="dt-legend-cell" style="background:${esc(tt.color)}">${esc(tt.code)}</span><span>${esc(tt.label)}</span></span>`
+      `<span class="dt-legend-chip"><span class="dt-legend-swatch" style="background:${esc(tt.color)}"></span><span><b>${esc(tt.code)}</b> — ${esc(tt.label)}</span></span>`
     ).join('')
   }</div><div class="dt-legend-special"><span class="dt-legend-special-label">SPECIAL DAYS</span>${
     special.map(([cls,code,label])=>`<span class="dt-legend-chip"><span class="dt-mark-pill ${cls}">${esc(code)}</span>${esc(label)}</span>`).join('')
