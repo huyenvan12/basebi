@@ -491,11 +491,13 @@ export function renderTimelineHeader(){
       const cls=t==='wfh'?'dt-mark-pill-wfh':t==='read_day'?'dt-mark-pill-rd':'dt-mark-pill-off';
       pills.push(`<span class="dt-mark-pill ${cls}">${esc(DAY_TYPES[t].code)}</span>`);
     });
-    // the day row has a fixed height (room for 2 pills) so the header never grows when a
-    // marked day scrolls into view; a 3rd mark collapses to "+N" (full list in the tooltip)
-    if(pills.length>2) pills=[pills[0],`<span class="dt-mark-more">+${pills.length-1}</span>`];
+    // the day row has a fixed height with room for ONE pill so the header never grows when a
+    // marked day scrolls into view; extra marks show as a "+N" corner badge (full list in the
+    // header's tooltip)
+    const more=pills.length>1?`<span class="dt-mark-more">+${pills.length-1}</span>`:'';
+    pills=pills.slice(0,1);
     const sprintStart=i>0&&isSprintStartCol(c.date,cols[0].date);
-    return `<th class="dt-day-th${isToday?' dt-day-th-today':''}${offClass}${sprintStart?' dt-sprint-start':''}" data-date="${c.date}"${tip?` title="${esc(tip)}"`:''}>${dow}<br>${String(d.getDate()).padStart(2,'0')}${pills.length?`<span class="dt-mark-pills">${pills.join('')}</span>`:''}</th>`;
+    return `<th class="dt-day-th${isToday?' dt-day-th-today':''}${offClass}${sprintStart?' dt-sprint-start':''}" data-date="${c.date}"${tip?` title="${esc(tip)}"`:''}>${dow}<br>${String(d.getDate()).padStart(2,'0')}${pills.length?`<span class="dt-mark-pills">${pills.join('')}</span>`:''}${more}</th>`;
   }).join('')}</tr>`;
 
   head.innerHTML=monthRow+sprintRow+weekRow+dayRow;
