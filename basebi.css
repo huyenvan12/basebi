@@ -1148,7 +1148,9 @@ table.monitor-report-table{table-layout:fixed;width:100%;min-width:0}
 .dt-cal-dow-row{display:flex;background:var(--surface2);border-bottom:1px solid var(--border)}
 .dt-cal-dow{padding:6px 8px;font-size:10.5px;font-weight:600;color:var(--text-muted);border-right:1px solid var(--border);box-sizing:border-box}
 .dt-cal-dow-weekend{color:var(--text-dim)}
-.dt-cal-week-row{position:relative;height:140px;border-bottom:1px solid var(--border)}
+.dt-cal-week-row{position:relative;height:140px;border-bottom:1px solid var(--border);flex-shrink:0}
+/* the pane scrolls when the month can't fit even at the minimum cell size */
+#dtCalendarSubview{overflow-y:auto}
 .dt-cal-week-row:last-child{border-bottom:none}
 .dt-cal-cells{display:flex;height:100%}
 .dt-cal-cell{position:relative;height:100%;padding:6px 8px;box-sizing:border-box;border-right:1px solid var(--border)}

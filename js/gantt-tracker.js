@@ -1624,11 +1624,17 @@ export async function saveTaskTypes(){
 // with the date, a soft hatch + one short word for days off (AL / ½AM / ½PM / holiday name),
 // small dots for WFH / RD, then up to CAL_MAX_LANES soft ticket bars.
 // ══════════════════════════════════════════════════
-const CAL_WEEKDAY_W=140;
-const CAL_WEEKEND_W=84;
-const CAL_MAX_LANES=3;
-const CAL_LANE_H=22;
-const CAL_BARS_TOP=46;
+// Cell size adapts to the window: the month should fit the visible area without scrolling,
+// with square weekday cells between CAL_MIN_CELL and CAL_MAX_CELL (weekend columns are 60% of
+// that). Below the minimum the pane scrolls vertically.
+const CAL_MIN_CELL=96;
+const CAL_MAX_CELL=160;
+const CAL_WEEKEND_RATIO=.6;
+let CAL_WEEKDAY_W=140;
+let CAL_WEEKEND_W=84;
+let CAL_MAX_LANES=3;
+const CAL_LANE_H=21;
+const CAL_BARS_TOP=44;
 const CAL_WEEKENDS_KEY='gantt-cal-show-weekends';
 function calShowWeekends(){ try{ return localStorage.getItem(CAL_WEEKENDS_KEY)==='1'; }catch(e){ return false; } }
 export function toggleCalendarWeekends(){
@@ -1773,6 +1779,7 @@ export function renderCalendarGrid(){
   // never forces navigation to jump there
   const now=new Date();
   const todayStr=(now.getFullYear()===year&&now.getMonth()===month)?today():null;
+  fitCalendarCellSize(weeks.length,withWeekends);
   const gridWidth=weeks.length?calSpanWidth(weeks[0].days,0,weeks[0].days.length-1):5*CAL_WEEKDAY_W;
   grid.style.width=(gridWidth+2)+'px';
   const toolbar=document.querySelector('#dtCalendarSubview .dt-cal-toolbar');
@@ -1820,8 +1827,34 @@ export function renderCalendarGrid(){
       const tks=overflowByDay[idx];
       return `<div class="dt-cal-overflow-chip" style="left:${calColLeft(days,idx)}px;top:${CAL_BARS_TOP+CAL_MAX_LANES*CAL_LANE_H}px" onclick="openOverflowPopover('${esc(days[idx])}',this)">+${tks.length} more</div>`;
     }).join('');
-    return `<div class="dt-cal-week-row">${sprintLines}<div class="dt-cal-cells">${cells}</div>${bars}${overflowChips}</div>`;
+    return `<div class="dt-cal-week-row" style="height:${CAL_WEEKDAY_W}px">${sprintLines}<div class="dt-cal-cells">${cells}</div>${bars}${overflowChips}</div>`;
   }).join('');
+}
+
+// pick the cell size from the space the Calendar pane actually has (width AND height)
+function fitCalendarCellSize(rows,withWeekends){
+  const pane=document.getElementById('dtCalendarSubview');
+  const grid=document.getElementById('dtCalendarGrid');
+  let size=140;
+  if(pane&&grid&&pane.clientWidth){
+    const cs=getComputedStyle(pane);
+    const availW=pane.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight)-4;
+    // height left below the grid's top edge, minus the weekday header row and the bottom padding
+    const gridTop=grid.getBoundingClientRect().top-pane.getBoundingClientRect().top+pane.scrollTop;
+    const availH=pane.clientHeight-gridTop-30-parseFloat(cs.paddingBottom)-6;
+    const byW=availW/(5+(withWeekends?2*CAL_WEEKEND_RATIO:0));
+    const byH=rows?availH/rows:byW;
+    size=Math.floor(Math.max(CAL_MIN_CELL,Math.min(CAL_MAX_CELL,byW,byH)));
+  }
+  CAL_WEEKDAY_W=size;
+  CAL_WEEKEND_W=Math.round(size*CAL_WEEKEND_RATIO);
+  // bar lanes that fit below the date / day-off word, leaving room for the "+N more" chip
+  CAL_MAX_LANES=Math.max(1,Math.min(4,Math.floor((size-CAL_BARS_TOP-14)/CAL_LANE_H)));
+}
+let calResizeTimer=null;
+function onCalendarResize(){
+  clearTimeout(calResizeTimer);
+  calResizeTimer=setTimeout(()=>{ if(state.ganttActiveView==='calendar') renderCalendarGrid(); },150);
 }
 
 export function renderCalendar(){
@@ -2196,6 +2229,7 @@ export function initGanttTracker(){
     openRowMenu(cell.parentElement.getAttribute('data-ticket-id'),e.clientX,e.clientY);
   });
   window.addEventListener('resize',onTimelineResize);
+  window.addEventListener('resize',onCalendarResize);
   window.addEventListener('scroll',closeMenuPopover,true);
   // Esc: close an open menu first, then the Mark day modal, then leave Mark day mode
   document.addEventListener('keydown',e=>{
