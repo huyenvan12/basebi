@@ -35,6 +35,15 @@ jobs:
           attempt_limit: 3
           attempt_delay: 15000
 
+      # GitHub Pages has no SPA rewrite rule, so a hard refresh (or a
+      # discarded tab reloading) on a client-side route like
+      # /delivery-tracker returns 404. Pages serves 404.html for any
+      # missing path, so shipping the app shell as 404.html lets
+      # js/router.js read location.pathname and open the right tab.
+      # (Cloudflare Pages uses _redirects for the same thing.)
+      - name: SPA fallback (404.html = index.html)
+        run: cp index.html 404.html
+
       # Not wretry-wrapped: upload-pages-artifact is a composite action, and
       # wretry.action can only wrap JS/docker actions ("Runner 'composite'
       # does not implemented"). It's a fast local archiving step, so the
