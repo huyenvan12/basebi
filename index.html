@@ -618,7 +618,8 @@
         <button class="btn btn-ghost" id="dtNextWeekBtn">Next week ›</button>
         <button class="btn btn-primary" id="dtAddTicketBtn">+ Add ticket</button>
         <button class="btn btn-ghost" id="dtManageTypesBtn" style="display:none">⚙ Manage Task Types</button>
-        <button class="btn btn-ghost" id="dtMarkAlBtn">Mark Leave</button>
+        <button class="btn btn-ghost" id="dtMarkAlBtn" title="Toggle, then click a date header (Shift-click for a range)"><svg class="dt-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4" /><path d="M16 2v4" /><path d="M21 13V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8" /><path d="M3 10h18" /><path d="M16 19h6" /><path d="M19 16v6" /></svg>Mark day</button>
+        <button class="btn btn-ghost" id="dtSprintsBtn" style="display:none">⚑ Sprints</button>
       </div>
       <div class="dt-timeline-wrap" id="dtTimelineWrap">
         <table class="dt-timeline-table data-table-sticky-cols" id="dtTimelineTable">
@@ -1160,19 +1161,59 @@
 
 <!-- MARK AL (ANNUAL LEAVE) REASON MODAL -->
 <div class="modal-overlay" id="dtAlModalOverlay">
-  <div class="modal modal-sm">
+  <div class="modal modal-sm dt-markday-modal">
     <div class="modal-title">
-      <span id="dtAlModalTitle">Mark Leave</span>
-      <button class="modal-close icon-btn" onclick="closeAlReasonModal()">×</button>
+      <span id="dtAlModalTitle">Mark day</span>
+      <button class="modal-close icon-btn" onclick="closeMarkDayModal()">×</button>
     </div>
-    <div class="form-row">
-      <label class="form-label">Reason (optional)</label>
-      <input class="form-input" id="dtAlReasonInput" placeholder="e.g. Family trip">
+    <div class="dt-markday-range">
+      <div class="form-row"><label class="form-label">From</label><div class="dt-markday-from" id="dtMarkFromLabel"></div></div>
+      <div class="form-row"><label class="form-label" for="dtMarkUntilInput">Until</label><input type="date" class="form-input" id="dtMarkUntilInput" onchange="setMarkDayUntil(this.value)"></div>
     </div>
+    <div class="form-hint" id="dtMarkDayRangeInfo"></div>
+    <div id="dtMarkDayHoliday" style="display:none"></div>
+    <div id="dtMarkDayTypes"></div>
     <div class="modal-actions">
-      <button class="btn btn-danger" id="dtAlDeleteBtn" style="display:none;margin-right:auto" onclick="deleteAlDay()">Remove AL</button>
-      <button class="btn btn-ghost" onclick="closeAlReasonModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveAlDay()">Save</button>
+      <button class="btn btn-danger" id="dtAlDeleteBtn" style="display:none;margin-right:auto" onclick="clearMarkDay()">Clear all marks</button>
+      <button class="btn btn-ghost" onclick="closeMarkDayModal()">Cancel</button>
+      <button class="btn btn-primary" id="dtMarkDaySaveBtn" onclick="saveMarkDay()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- SPRINTS MODAL (admin-only) — team-wide sprints shown as the Timeline's Sprint header row -->
+<div class="modal-overlay" id="dtSprintModalOverlay">
+  <div class="modal dt-sprint-modal">
+    <div class="modal-title">
+      <span>Sprints <span class="dt-sprint-modal-sub">Team-wide · only admins can edit</span></span>
+      <span style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-primary" onclick="newSprintDraft()">+ Next sprint</button>
+        <button class="modal-close icon-btn" onclick="closeSprintModal()">×</button>
+      </span>
+    </div>
+    <div class="dt-sprint-list">
+      <div class="dt-sprint-list-head"><span>Name</span><span>From</span><span>To</span><span>Length</span><span>Status</span></div>
+      <div id="dtSprintList"></div>
+    </div>
+    <div class="dt-sprint-editor" id="dtSprintEditor" style="display:none">
+      <div class="dt-sprint-editor-head"><span class="dt-markday-group" id="dtSprintEditorTitle">EDIT SPRINT</span><span class="form-hint" id="dtSprintCalc"></span></div>
+      <div class="dt-sprint-editor-grid">
+        <div class="form-row"><label class="form-label" for="dtSprintName">Name</label><input class="form-input" id="dtSprintName" placeholder="Sprint 27"></div>
+        <div class="form-row"><label class="form-label" for="dtSprintFrom">From</label><input type="date" class="form-input" id="dtSprintFrom" onchange="updateSprintCalc()"></div>
+        <div class="form-row"><label class="form-label" for="dtSprintTo">To</label><input type="date" class="form-input" id="dtSprintTo" onchange="updateSprintCalc()"></div>
+      </div>
+      <div class="dt-sprint-quick"><span class="form-hint">Quick length:</span>
+        <button type="button" class="btn btn-ghost btn-xs" onclick="setSprintLength(2)">2 weeks</button>
+        <button type="button" class="btn btn-ghost btn-xs" onclick="setSprintLength(3)">3 weeks</button>
+        <span class="form-hint">sets To from From</span>
+      </div>
+      <div class="form-row"><label class="form-label" for="dtSprintGoal">Goal (optional)</label><input class="form-input" id="dtSprintGoal" placeholder="Launch Tết campaigns"></div>
+      <div class="form-hint is-error" id="dtSprintError" style="display:none"></div>
+      <div class="modal-actions">
+        <button class="btn btn-danger" id="dtSprintDeleteBtn" style="margin-right:auto" onclick="deleteSprint()">Delete sprint</button>
+        <button class="btn btn-ghost" onclick="cancelSprintEdit()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveSprint()">Save sprint</button>
+      </div>
     </div>
   </div>
 </div>

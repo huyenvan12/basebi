@@ -30,7 +30,7 @@ import { loadFeatureFlags, renderAdminHub, initAdminHub } from './admin-hub.js';
 import { initMobileShell, renderMobileShell } from './mobile-shell.js';
 import { maybeShowSaveAccountPrompt, initTokenRefreshSync } from './saved-accounts.js';
 import {
-  loadTaskTypes, loadTickets, loadEntries, loadLeaveDays, switchGanttView, initGanttTracker,
+  loadTaskTypes, loadTickets, loadEntries, loadLeaveDays, loadHolidays, loadSprints, switchGanttView, initGanttTracker,
   closeTicketModal, closeTaskTypeModal, closeOverlapModal, closeTypePicker, closeCalPopover
 } from './gantt-tracker.js';
 import {
@@ -121,6 +121,7 @@ export function switchTab(tab, { syncUrl = 'push' } = {}){
   if(tab==='admin') renderAdminHub();
   if(tab==='deliveryTracker'){
     document.getElementById('dtManageTypesBtn').style.display=state.currentUserRole==='admin'?'':'none';
+    document.getElementById('dtSprintsBtn').style.display=state.currentUserRole==='admin'?'':'none';
     switchGanttView(state.ganttActiveView, {syncUrl:'skip'});
     setHintScreen('delivery');
   }
@@ -453,6 +454,8 @@ async function initApp(){
       state.ganttTickets = await loadTickets();
       state.ganttEntries = await loadEntries();
       state.ganttLeaveDays = await loadLeaveDays();
+      state.ganttHolidays = await loadHolidays();
+      state.ganttSprints = await loadSprints();
       initGanttTracker();
     }
 
@@ -520,6 +523,7 @@ function applyNavGating(){
   document.getElementById('mobTabGantt').style.display = isFeatureVisible('gantt_tracker')?'':'none';
   document.getElementById('mobTabTestPrep').style.display = isFeatureVisible('test_prep')?'':'none';
   document.getElementById('dtManageTypesBtn').style.display = state.currentUserRole==='admin'?'':'none';
+  document.getElementById('dtSprintsBtn').style.display = state.currentUserRole==='admin'?'':'none';
   // dailyNoteBtn is otherwise only gated inside switchTab(), which never runs at bootstrap
   // unless the current tab is disallowed (see fallback below) — without this line the button
   // is left in its raw, visible-by-default HTML state until the user's first tab switch.
