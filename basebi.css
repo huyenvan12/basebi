@@ -1066,15 +1066,14 @@ table.monitor-report-table{table-layout:fixed;width:100%;min-width:0}
 .dt-day-th.dt-day-th-half-pm{background:linear-gradient(to left,var(--dt-off-tint) 50%,var(--surface2) 50%);color:var(--al-color)}
 /* special-day pills (header + legend + Mark day modal). AL / ½AM / ½PM / HOL share one look. */
 .dt-mark-pills{display:flex;flex-direction:column;align-items:center;gap:2px;margin-top:2px}
-/* fixed day-row height (fits day + date + 1 pill) so marked days never change the header height */
+/* fixed day-row height (fits day + date + 1 pill + a "+N" line) so marked days never change the header height */
 /* every header row has a fixed height so the header never changes size between weeks
    (empty sprint cells, marked days, etc.) */
 .dt-timeline-table thead tr.dt-head-month th:not(.sticky-col){height:26px;box-sizing:border-box}
 .dt-timeline-table thead tr.dt-head-sprint th{height:30px;box-sizing:border-box}
 .dt-timeline-table thead tr.dt-head-week th{height:26px;box-sizing:border-box}
-.dt-timeline-table thead tr.dt-head-day th.dt-day-th{height:50px;vertical-align:top;box-sizing:border-box}
-.dt-mark-pills .dt-mark-pill{position:relative}
-.dt-mark-more{position:absolute;top:-7px;right:-4px;min-width:9px;height:11px;padding:0 2px;box-sizing:border-box;border-radius:6px;background:var(--accent);color:#fff;font-size:7.5px;font-weight:700;line-height:11px;letter-spacing:-.2px;text-align:center;box-shadow:0 0 0 1.5px var(--surface2)}
+.dt-timeline-table thead tr.dt-head-day th.dt-day-th{height:62px;vertical-align:top;box-sizing:border-box}
+.dt-mark-more{font-size:8.5px;font-weight:700;line-height:11px;color:var(--text-muted)}
 .dt-mark-pill{display:inline-block;font-size:8px;font-weight:700;letter-spacing:.3px;line-height:12px;padding:0 4px;border-radius:10px;white-space:nowrap}
 .dt-mark-pill-off{color:var(--al-color);background:var(--dt-off-tint)}
 .dt-mark-pill-wfh{color:var(--teal);background:rgba(52,211,153,.14)}
