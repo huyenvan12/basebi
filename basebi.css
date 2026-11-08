@@ -1079,6 +1079,8 @@ table.monitor-report-table{table-layout:fixed;width:100%;min-width:0}
 /* today + AL overlap: AL styling (blue-gray) stays primary; today's amber marker shrinks to
    a thin bottom accent instead of fighting AL for the same box-shadow */
 .dt-day-th.dt-day-th-today.dt-day-th-al{box-shadow:inset 0 0 0 2px var(--al-color);border-bottom:2px solid var(--amber);color:var(--al-color)}
+#dtMarkAlBtn{display:inline-flex;align-items:center;gap:6px}
+.dt-btn-icon{width:14px;height:14px;flex-shrink:0}
 #dtMarkAlBtn.dt-al-mode-active{background:rgba(217,169,79,.15);border-color:var(--amber);color:var(--amber)}
 .dt-timeline-wrap.al-mode-active .dt-timeline-table{border:2px solid var(--amber)}
 .dt-timeline-wrap.al-mode-active .dt-day-cell:hover{cursor:crosshair}
