@@ -1406,6 +1406,7 @@ export async function saveTicket(){
     }
     closeTicketModal();
     renderTimelineBody();
+    if(state.ganttActiveView==='calendar') renderCalendar();
   }catch(err){showNotification('Could not save ticket: '+(err.message||err),'error');}
 }
 export async function deleteTicket(idArg){
@@ -1418,6 +1419,7 @@ export async function deleteTicket(idArg){
       state.ganttEntries=state.ganttEntries.filter(e=>e.ticket_id!==id);
       if(state.ganttEditingTicketId===id) closeTicketModal();
       renderTimelineBody();
+      if(state.ganttActiveView==='calendar') renderCalendar();
     }catch(err){showNotification('Could not delete ticket: '+(err.message||err),'error');}
   },{title:'Delete ticket?',confirmLabel:'Delete'});
 }
@@ -1615,10 +1617,49 @@ export async function saveTaskTypes(){
 }
 
 // ══════════════════════════════════════════════════
-// CALENDAR
+// CALENDAR — fixed-size month grid centered in the pane (weekday columns 140px, weekend
+// columns 84px when shown) so each weekday reads as a square on any monitor. Mon–Sun week
+// rows; weekends hidden by default ("Show weekends" toggle, remembered per browser).
+// Each week row: a thin sprint line on top (name once, where the sprint starts), day cells
+// with the date, a soft hatch + one short word for days off (AL / ½AM / ½PM / holiday name),
+// small dots for WFH / RD, then up to CAL_MAX_LANES soft ticket bars.
 // ══════════════════════════════════════════════════
-const CALENDAR_COL_WIDTH=140;
+const CAL_WEEKDAY_W=140;
+const CAL_WEEKEND_W=84;
 const CAL_MAX_LANES=3;
+const CAL_LANE_H=22;
+const CAL_BARS_TOP=46;
+const CAL_WEEKENDS_KEY='gantt-cal-show-weekends';
+function calShowWeekends(){ try{ return localStorage.getItem(CAL_WEEKENDS_KEY)==='1'; }catch(e){ return false; } }
+export function toggleCalendarWeekends(){
+  try{ localStorage.setItem(CAL_WEEKENDS_KEY,calShowWeekends()?'0':'1'); }catch(e){/* ignore */}
+  renderCalendar();
+}
+// Mon-based week rows covering the month; only weeks that contain a day of the month (the old
+// 5-day builder appended a whole extra week when the month ended on a weekend)
+function buildMonthWeeks(year,month,withWeekends){
+  const first=toISO(new Date(year,month,1));
+  const last=toISO(new Date(year,month+1,0));
+  const weeks=[];
+  let cur=mondayOf(first);
+  while(cur<=last&&weeks.length<7){
+    const all=[];
+    for(let i=0;i<7;i++) all.push(addDays(cur,i));
+    const days=withWeekends?all:all.slice(0,5);
+    // with weekends hidden, a week whose only in-month day is a Sat/Sun would show 5 days of
+    // the neighbouring month — skip it
+    if(days.some(d=>d>=first&&d<=last)) weeks.push({weekStart:cur,days});
+    cur=addDays(cur,7);
+  }
+  return weeks;
+}
+function calColWidth(dateStr){ return isWeekday(dateStr)?CAL_WEEKDAY_W:CAL_WEEKEND_W; }
+function calColLeft(days,idx){ let x=0; for(let i=0;i<idx;i++) x+=calColWidth(days[i]); return x; }
+function calSpanWidth(days,a,b){ let w=0; for(let i=a;i<=b;i++) w+=calColWidth(days[i]); return w; }
+function sprintShortName(name){
+  const m=String(name).match(/^sprint\s*(\d+)\s*$/i);
+  return m?`S${m[1]}`:name;
+}
 
 // overall ticket span (earliest start / latest end across ALL entries) — used only for the
 // popover's summary fields, which stay ticket-level even though the visual bars are now
@@ -1665,14 +1706,11 @@ function computeWeekSegments(weekRow,clusters,tickets){
     if(!segs) return;
     segs.forEach(seg=>{
       if(seg.maxDate<weekStart||seg.minDate>weekEnd) return;
-      const clipStart=seg.minDate>weekStart?seg.minDate:weekStart;
-      const clipEnd=seg.maxDate<weekEnd?seg.maxDate:weekEnd;
-      const startIdx=weekdayIndexInRow(clipStart,weekRow);
-      const endIdx=weekdayIndexInRow(clipEnd,weekRow);
-      if(startIdx<0||endIdx<0) return;
+      const idxs=weekRow.days.map((d,i)=>(d>=seg.minDate&&d<=seg.maxDate)?i:-1).filter(i=>i>=0);
+      if(!idxs.length) return;
       // segStart is the UNCLIPPED segment start — used for "Open in Timeline" so clicking a
       // segment that spans multiple weeks always jumps to its true start, not this week's clip
-      segments.push({ticket:t,startIdx,endIdx,segStart:seg.minDate});
+      segments.push({ticket:t,startIdx:idxs[0],endIdx:idxs[idxs.length-1],segStart:seg.minDate});
     });
   });
   return segments;
@@ -1704,21 +1742,61 @@ export function renderCalendarControls(){
   }
   const chk=document.getElementById('dtCalShowInactive');
   if(chk) chk.checked=state.ganttCalendarShowInactive;
+  const we=document.getElementById('dtCalShowWeekends');
+  if(we) we.checked=calShowWeekends();
+}
+
+function calDayCell(dateStr,month,todayStr){
+  const d=parseISO(dateStr);
+  const inMonth=d.getMonth()===month;
+  const weekend=!isWeekday(dateStr);
+  const hol=holidayFor(dateStr);
+  const types=marksForDate(dateStr).map(m=>m.day_type||'al');
+  const off=timeOffKind(dateStr);
+  const offWord=hol?hol.name:types.includes('al')?'AL':types.includes('half_am')?'½AM':types.includes('half_pm')?'½PM':'';
+  const dots=[types.includes('wfh')?'<span class="dt-cal-dot dt-cal-dot-wfh"></span>':'',types.includes('read_day')?'<span class="dt-cal-dot dt-cal-dot-rd"></span>':''].join('');
+  const tip=specialDayTooltip(dateStr);
+  const cls=['dt-cal-cell',inMonth?'':'dt-cal-cell-muted',weekend?'dt-cal-cell-weekend':'',off==='full'?'dt-cal-off-full':off==='am'?'dt-cal-off-am':off==='pm'?'dt-cal-off-pm':''].filter(Boolean).join(' ');
+  const num=dateStr===todayStr?`<span class="dt-cal-today-badge">${d.getDate()}</span>`:`<span class="dt-cal-num">${d.getDate()}</span>`;
+  return `<div class="${cls}" style="width:${calColWidth(dateStr)}px"${tip?` title="${esc(tip)}"`:''}><div class="dt-cal-cell-head">${dots}${num}</div>${offWord?`<div class="dt-cal-off-word">${esc(offWord)}</div>`:''}</div>`;
 }
 
 export function renderCalendarGrid(){
   const grid=document.getElementById('dtCalendarGrid');
   if(!grid) return;
   const {year,month}=state.ganttMonthCursor;
-  const weeks=buildCalendarWeeks(year,month);
+  const withWeekends=calShowWeekends();
+  const weeks=buildMonthWeeks(year,month,withWeekends);
   const tickets=state.ganttTickets.filter(t=>state.ganttCalendarShowInactive||isTicketActive(t));
   const clusters=computeTicketClusters(tickets,state.ganttEntries);
   // "today" badge only renders when the displayed month/year actually matches today's —
   // never forces navigation to jump there
   const now=new Date();
   const todayStr=(now.getFullYear()===year&&now.getMonth()===month)?today():null;
+  const gridWidth=weeks.length?calSpanWidth(weeks[0].days,0,weeks[0].days.length-1):5*CAL_WEEKDAY_W;
+  grid.style.width=(gridWidth+2)+'px';
+  const toolbar=document.querySelector('#dtCalendarSubview .dt-cal-toolbar');
+  if(toolbar) toolbar.style.maxWidth=(gridWidth+2)+'px';
 
-  grid.innerHTML=weeks.map(weekRow=>{
+  const dows=weeks.length?weeks[0].days:[];
+  const head=`<div class="dt-cal-dow-row">${dows.map(dstr=>`<div class="dt-cal-dow${isWeekday(dstr)?'':' dt-cal-dow-weekend'}" style="width:${calColWidth(dstr)}px">${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][parseISO(dstr).getDay()]}</div>`).join('')}</div>`;
+
+  grid.innerHTML=head+weeks.map(weekRow=>{
+    const days=weekRow.days;
+    // sprint line(s): one per sprint overlapping this week; name shown only in the week the
+    // sprint starts (or the first visible week of the month it was already running in)
+    const sprintLines=state.ganttSprints.map(sp=>{
+      const idxs=days.map((d,i)=>(d>=sp.start_date&&d<=sp.end_date)?i:-1).filter(i=>i>=0);
+      if(!idxs.length) return '';
+      const a=idxs[0],b=idxs[idxs.length-1];
+      const startsHere=sp.start_date>=days[0];
+      const isCurrent=today()>=sp.start_date&&today()<=sp.end_date;
+      const title=`${sp.name}: ${fmtDM(sp.start_date)} – ${fmtDM(sp.end_date)}${sp.goal?` · ${sp.goal}`:''}`;
+      const left=calColLeft(days,a)+(startsHere?3:0);
+      const width=calSpanWidth(days,a,b)-(startsHere?3:0)-(sp.end_date<=days[days.length-1]?3:0);
+      return `<div class="dt-cal-sprint${isCurrent?' dt-cal-sprint-current':''}" style="left:${left}px;width:${width}px" title="${esc(title)}">${startsHere?`<span class="dt-cal-sprint-name">${esc(sprintShortName(sp.name))}</span>`:''}</div>`;
+    }).join('');
+    const cells=days.map(dstr=>calDayCell(dstr,month,todayStr)).join('');
     const segments=computeWeekSegments(weekRow,clusters,tickets);
     const {visible,overflow}=assignLanes(segments);
     const overflowByDay={};
@@ -1728,29 +1806,21 @@ export function renderCalendarGrid(){
         overflowByDay[i].push(seg.ticket);
       }
     });
-    const dayLabels=weekRow.days.map(dateStr=>{
-      const d=parseISO(dateStr);
-      const inMonth=d.getMonth()===month;
-      const isToday=dateStr===todayStr;
-      return `<div class="dt-cal-day-label ${inMonth?'':'dt-cal-day-muted'}" style="width:${CALENDAR_COL_WIDTH}px">${isToday?`<span class="dt-cal-today-badge">${d.getDate()}</span>`:d.getDate()}</div>`;
-    }).join('');
     const bars=visible.map(seg=>{
       const t=seg.ticket;
-      const left=seg.startIdx*CALENDAR_COL_WIDTH;
-      const width=(seg.endIdx-seg.startIdx+1)*CALENDAR_COL_WIDTH-6;
-      const top=seg.lane*22;
+      const left=calColLeft(days,seg.startIdx)+3;
+      const width=calSpanWidth(days,seg.startIdx,seg.endIdx)-6;
+      const top=CAL_BARS_TOP+seg.lane*CAL_LANE_H;
+      const color=ticketColor(t);
       const label=t.project_name||t.jira_key;
-      return `<div class="dt-cal-bar" style="left:${left}px;width:${width}px;top:${top}px;background:${ticketColor(t)}" onclick="openTicketPopover('${escJs(t.id)}',this,'${escJs(seg.segStart)}')">${esc(label)}</div>`;
+      return `<div class="dt-cal-bar" style="left:${left}px;width:${width}px;top:${top}px;border-left-color:${color};background:${color}33" title="${esc(label)}" onclick="openTicketPopover('${escJs(t.id)}',this,'${escJs(seg.segStart)}')">${esc(label)}</div>`;
     }).join('');
     const overflowChips=Object.keys(overflowByDay).map(idxStr=>{
       const idx=Number(idxStr);
-      const tickets=overflowByDay[idx];
-      return `<div class="dt-cal-overflow-chip" style="left:${idx*CALENDAR_COL_WIDTH}px;top:${CAL_MAX_LANES*22}px" onclick="openOverflowPopover('${esc(weekRow.days[idx])}',this)">+${tickets.length} more</div>`;
+      const tks=overflowByDay[idx];
+      return `<div class="dt-cal-overflow-chip" style="left:${calColLeft(days,idx)}px;top:${CAL_BARS_TOP+CAL_MAX_LANES*CAL_LANE_H}px" onclick="openOverflowPopover('${esc(days[idx])}',this)">+${tks.length} more</div>`;
     }).join('');
-    return `<div class="dt-cal-week-row">
-      <div class="dt-cal-day-labels">${dayLabels}</div>
-      <div class="dt-cal-bars-layer">${bars}${overflowChips}</div>
-    </div>`;
+    return `<div class="dt-cal-week-row">${sprintLines}<div class="dt-cal-cells">${cells}</div>${bars}${overflowChips}</div>`;
   }).join('');
 }
 
@@ -1767,6 +1837,11 @@ export function shiftCalendarMonth(delta){
   state.ganttMonthCursor={year,month};
   renderCalendar();
 }
+export function calendarToday(){
+  const d=new Date();
+  state.ganttMonthCursor={year:d.getFullYear(),month:d.getMonth()};
+  renderCalendar();
+}
 export function toggleCalendarShowInactive(){
   state.ganttCalendarShowInactive=!state.ganttCalendarShowInactive;
   renderCalendar();
@@ -1778,7 +1853,7 @@ export function toggleCalendarShowInactive(){
 function positionPopover(pop,anchorEl){
   const rect=anchorEl.getBoundingClientRect();
   const vw=window.innerWidth,vh=window.innerHeight;
-  const w=260,h=180;
+  const w=Math.max(260,pop.offsetWidth),h=Math.max(180,pop.offsetHeight);
   pop.style.left=Math.min(rect.left,vw-w-8)+'px';
   pop.style.top=Math.min(rect.bottom+4,vh-h-8)+'px';
 }
@@ -1794,11 +1869,13 @@ export function openTicketPopover(ticketId,anchorEl,segStartDate){
   const jumpDate=segStartDate||(span?span.minDate:'');
   pop.innerHTML=`
     <div class="dt-popover-title">${esc(t.project_name)}</div>
-    ${t.jira_url?`<div><a href="${esc(t.jira_url)}" target="_blank" rel="noopener">${esc(t.jira_key||'Jira link')}</a></div>`:(t.jira_key?`<div>${esc(t.jira_key)}</div>`:'')}
-    ${span?`<div>${esc(span.minDate)} → ${esc(span.maxDate)} (${duration} weekday${duration!==1?'s':''})</div>`:''}
-    <div><span class="dt-status-badge dt-status-${esc(t.status.replace(/\s+/g,''))}">${esc(t.status)}</span></div>
-    ${t.mon_scope?`<div>Mon. scope: ${esc(t.mon_scope)}</div>`:''}
-    <button class="btn btn-ghost" style="margin-top:8px" onclick="jumpToTimeline('${escJs(t.id)}','${escJs(jumpDate)}')">Open in Timeline →</button>
+    ${t.jira_url?`<div><a class="dt-cal-jira" href="${esc(t.jira_url)}" target="_blank" rel="noopener">${esc(t.jira_key||'Jira link')}</a></div>`:(t.jira_key?`<div>${esc(t.jira_key)}</div>`:'')}
+    ${span?`<div>${esc(fmtDM(span.minDate))}${span.minDate!==span.maxDate?` – ${esc(fmtDM(span.maxDate))}`:''} · ${duration} weekday${duration!==1?'s':''}</div>`:''}
+    <div><span class="dt-status-badge dt-status-${esc(t.status.replace(/\s+/g,''))}">${esc(t.status)}</span>${t.mon_scope?` <span class="dt-cal-pop-scope">Mon. scope: ${esc(t.mon_scope)}</span>`:''}</div>
+    <div class="dt-cal-pop-actions">
+      <button class="btn btn-primary dt-btn-with-icon" onclick="closeCalPopover();openTicketModal('${escJs(t.id)}')"><svg class="dt-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/><path d="m10 15-3-3 3-3"/></svg>Open details</button>
+      <button class="btn btn-ghost" onclick="jumpToTimeline('${escJs(t.id)}','${escJs(jumpDate)}')">Open in Timeline →</button>
+    </div>
   `;
   pop.style.display='block';
   positionPopover(pop,anchorEl);
@@ -1810,7 +1887,7 @@ export function openOverflowPopover(dateStr,anchorEl){
   });
   const pop=document.getElementById('dtCalPopover');
   if(!pop) return;
-  pop.innerHTML=`<div class="dt-popover-title">${esc(dateStr)}</div>`+
+  pop.innerHTML=`<div class="dt-popover-title">${esc(fmtDayLong(dateStr))}</div>`+
     tickets.map(t=>`<div class="dt-popover-ticket-row" onclick="openTicketPopover('${escJs(t.id)}',this)"><span class="dt-legend-swatch" style="background:${ticketColor(t)}"></span>${esc(t.project_name)}</div>`).join('');
   pop.style.display='block';
   positionPopover(pop,anchorEl);
@@ -2055,6 +2132,7 @@ export function initGanttTracker(){
   window.updateSprintCalc=updateSprintCalc;
   window.toggleTimelineLegend=toggleTimelineLegend;
   window.closeMenuPopover=closeMenuPopover;
+  window.closeCalPopover=closeCalPopover;
   window.toggleTimelineColumn=toggleTimelineColumn;
   window.resetTimelineColumns=resetTimelineColumns;
   window.openStatusMenu=openStatusMenu;
@@ -2079,6 +2157,8 @@ export function initGanttTracker(){
   document.getElementById('dtCalPrevBtn').onclick=()=>shiftCalendarMonth(-1);
   document.getElementById('dtCalNextBtn').onclick=()=>shiftCalendarMonth(1);
   document.getElementById('dtCalShowInactive').onchange=toggleCalendarShowInactive;
+  document.getElementById('dtCalShowWeekends').onchange=toggleCalendarWeekends;
+  document.getElementById('dtCalTodayBtn').onclick=calendarToday;
   document.getElementById('dtAgendaAddBtn').onclick=()=>openAgendaEntryForm();
 
   // drag-to-fill: mousedown/mouseup delegated on the table, mouseover delegated (native

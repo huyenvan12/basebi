@@ -643,11 +643,19 @@
 
     <!-- CALENDAR SUB-VIEW -->
     <div class="dt-subview" id="dtCalendarSubview">
-      <div class="dt-controls-row">
-        <button class="btn btn-ghost" id="dtCalPrevBtn">‹ Prev</button>
-        <span id="dtCalMonthLabel"></span>
-        <button class="btn btn-ghost" id="dtCalNextBtn">Next ›</button>
-        <label class="checkbox-row"><input type="checkbox" id="dtCalShowInactive"> Show Inactive tickets</label>
+      <div class="dt-controls-row dt-toolbar dt-cal-toolbar">
+        <div class="dt-toolbar-group">
+          <div class="dt-nav-group">
+            <button class="dt-nav-btn" id="dtCalPrevBtn" aria-label="Previous month" title="Previous month"><svg class="dt-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg></button>
+            <button class="dt-nav-btn dt-nav-today" id="dtCalTodayBtn" title="Jump to this month">Today</button>
+            <button class="dt-nav-btn" id="dtCalNextBtn" aria-label="Next month" title="Next month"><svg class="dt-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></button>
+          </div>
+          <span class="dt-cal-month-label" id="dtCalMonthLabel"></span>
+        </div>
+        <div class="dt-toolbar-group">
+          <label class="checkbox-row"><input type="checkbox" id="dtCalShowWeekends"> Show weekends</label>
+          <label class="checkbox-row"><input type="checkbox" id="dtCalShowInactive"> Show inactive tickets</label>
+        </div>
       </div>
       <div class="dt-calendar-grid" id="dtCalendarGrid"></div>
     </div>

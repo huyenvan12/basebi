@@ -1141,15 +1141,44 @@ table.monitor-report-table{table-layout:fixed;width:100%;min-width:0}
    and centers it; fixed row height (matching column width) makes each day read as a square;
    removing flex-grow on the outer container stops it from expanding into unused vertical space. */
 /* --reading-width exception: fixed 7-column calendar shape doesn't benefit from stretching full-width */
-.dt-calendar-grid{width:702px;max-width:100%;margin:10px auto 0;overflow:auto;border:1px solid var(--border);border-radius:6px;flex-shrink:0}
-.dt-cal-week-row{position:relative;display:flex;flex-direction:column;height:140px;border-bottom:1px solid var(--border)}
-.dt-cal-day-labels{display:flex;flex-shrink:0}
-.dt-cal-day-label{padding:4px 6px;font-size:10px;color:var(--text-muted);border-right:1px solid var(--border);box-sizing:border-box}
-.dt-cal-day-muted{color:var(--text-dim)}
-.dt-cal-bars-layer{position:relative;flex:1;overflow:hidden}
-.dt-cal-bar{position:absolute;height:18px;line-height:18px;border-radius:3px;color:#fff;font-size:10px;font-weight:600;padding:0 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;text-shadow:0 1px 1px rgba(0,0,0,.3)}
-.dt-cal-overflow-chip{position:absolute;font-size:9px;color:var(--text-dim);cursor:pointer;padding:1px 6px}
+.dt-calendar-grid{width:702px;max-width:100%;margin:10px auto 0;overflow:auto;border:1px solid var(--border);border-radius:6px;flex-shrink:0;background:var(--surface)}
+/* toolbar spans exactly the grid's width (set from JS) so controls line up with the calendar */
+.dt-cal-toolbar{width:100%;margin:0 auto;box-sizing:border-box}
+.dt-cal-month-label{font-size:15px;font-weight:600;color:var(--text)}
+.dt-cal-dow-row{display:flex;background:var(--surface2);border-bottom:1px solid var(--border)}
+.dt-cal-dow{padding:6px 8px;font-size:10.5px;font-weight:600;color:var(--text-muted);border-right:1px solid var(--border);box-sizing:border-box}
+.dt-cal-dow-weekend{color:var(--text-dim)}
+.dt-cal-week-row{position:relative;height:140px;border-bottom:1px solid var(--border)}
+.dt-cal-week-row:last-child{border-bottom:none}
+.dt-cal-cells{display:flex;height:100%}
+.dt-cal-cell{position:relative;height:100%;padding:6px 8px;box-sizing:border-box;border-right:1px solid var(--border)}
+.dt-cal-cell-weekend{background:var(--bg)}
+.dt-cal-cell-muted .dt-cal-num,.dt-cal-cell-muted .dt-cal-off-word{opacity:.45}
+.dt-cal-cell-head{display:flex;align-items:center;justify-content:flex-end;gap:4px;height:18px}
+.dt-cal-num{font-size:11.5px;font-weight:600;color:var(--text)}
+.dt-cal-cell-weekend .dt-cal-num{color:var(--text-muted)}
+.dt-cal-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.dt-cal-dot-wfh{background:var(--teal)}
+.dt-cal-dot-rd{background:var(--violet)}
+.dt-cal-off-word{margin-top:2px;font-size:10px;font-weight:500;color:var(--al-color);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* days off: same soft 45° hatch as the Timeline, whole cell or left/right half */
+.dt-cal-off-full::after,.dt-cal-off-am::after,.dt-cal-off-pm::after{content:'';position:absolute;top:0;bottom:0;left:0;width:100%;pointer-events:none;background-image:repeating-linear-gradient(45deg,var(--dt-off-hatch) 0 1px,transparent 1px 7px);opacity:.6}
+.dt-cal-off-am::after{width:50%}
+.dt-cal-off-pm::after{left:50%;width:50%}
+/* sprint: thin line across the week, name once where it starts */
+.dt-cal-sprint{position:absolute;top:0;height:0;border-top:3px solid var(--border);z-index:2}
+.dt-cal-sprint-current{border-top-color:var(--accent)}
+.dt-cal-sprint-name{position:absolute;top:4px;left:5px;font-size:9.5px;font-weight:700;letter-spacing:.3px;color:var(--text-muted)}
+.dt-cal-sprint-current .dt-cal-sprint-name{color:var(--accent)}
+/* ticket bars: tinted fill + colored left edge (inline), regular weight */
+.dt-cal-bar{position:absolute;z-index:1;height:18px;line-height:18px;box-sizing:border-box;border-left:3px solid transparent;border-radius:3px;color:var(--text);font-size:10.5px;font-weight:500;padding:0 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.dt-cal-bar:hover{filter:brightness(1.15)}
+.dt-cal-overflow-chip{position:absolute;z-index:1;font-size:9px;color:var(--text-dim);cursor:pointer;padding:1px 6px}
 .dt-cal-overflow-chip:hover{color:var(--accent)}
+.dt-cal-jira,.dt-cal-jira:visited{color:var(--accent)}
+.dt-cal-pop-scope{margin-left:6px;color:var(--text-muted)}
+.dt-cal-pop-actions{display:flex;gap:6px;margin-top:8px}
+.dt-cal-pop-actions .btn{padding:5px 10px;font-size:11.5px}
 
 /* ══════════════════════════════════════════════════
    TASKS — Kanban sub-view (Delivery Tracker) + Daily Note log-to-task conversion
@@ -1812,3 +1841,4 @@ body.is-native-app .search-screen{padding-top:calc(50px + env(safe-area-inset-to
 .dt-status-chip.active.dt-status-Done{background:var(--success-dim)!important;color:var(--success)!important}
 .dt-status-chip.active.dt-status-Cancelled{background:var(--tag-bg)!important;color:var(--text-dim)!important}
 @media (max-width:768px){.dt-drawer{width:100vw}.dt-toolbar{justify-content:flex-start}}
+.dt-cal-popover{max-width:320px}
