@@ -494,10 +494,10 @@ export function renderTimelineHeader(){
     // the day row has a fixed height with room for ONE pill so the header never grows when a
     // marked day scrolls into view; extra marks show as a "+N" corner badge (full list in the
     // header's tooltip)
-    const more=pills.length>1?`<span class="dt-mark-more">+${pills.length-1}</span>`:'';
-    pills=pills.slice(0,1);
+    // "+N" sits on the top-right corner of the first pill (pill wrapper is position:relative)
+    if(pills.length>1) pills=[pills[0].replace('</span>',`<span class="dt-mark-more">+${pills.length-1}</span></span>`)];
     const sprintStart=i>0&&isSprintStartCol(c.date,cols[0].date);
-    return `<th class="dt-day-th${isToday?' dt-day-th-today':''}${offClass}${sprintStart?' dt-sprint-start':''}" data-date="${c.date}"${tip?` title="${esc(tip)}"`:''}>${dow}<br>${String(d.getDate()).padStart(2,'0')}${pills.length?`<span class="dt-mark-pills">${pills.join('')}</span>`:''}${more}</th>`;
+    return `<th class="dt-day-th${isToday?' dt-day-th-today':''}${offClass}${sprintStart?' dt-sprint-start':''}" data-date="${c.date}"${tip?` title="${esc(tip)}"`:''}>${dow}<br>${String(d.getDate()).padStart(2,'0')}${pills.length?`<span class="dt-mark-pills">${pills.join('')}</span>`:''}</th>`;
   }).join('')}</tr>`;
 
   head.innerHTML=monthRow+sprintRow+weekRow+dayRow;
