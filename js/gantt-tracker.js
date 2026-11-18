@@ -28,13 +28,17 @@ export async function loadTaskTypes(){
   if(error){console.error('loadTaskTypes failed',error);return [];}
   return data||[];
 }
+// RLS also returns teammates' shared tickets (is_shared=true). The Mine view must only ever
+// hold the current user's own tickets, so both loaders filter by owner explicitly.
 export async function loadTickets(){
-  const{data,error}=await sb.from('gantt_tickets').select('*').order('sort_order',{ascending:true});
+  const{data,error}=await sb.from('gantt_tickets').select('*').eq('owner_id',state.currentUserId).order('sort_order',{ascending:true});
   if(error){console.error('loadTickets failed',error);return [];}
   return data||[];
 }
-export async function loadEntries(){
-  const{data,error}=await sb.from('gantt_entries').select('*');
+export async function loadEntries(ticketIds){
+  const ids=ticketIds||state.ganttTickets.map(t=>t.id);
+  if(!ids.length) return [];
+  const{data,error}=await sb.from('gantt_entries').select('*').in('ticket_id',ids);
   if(error){console.error('loadEntries failed',error);return [];}
   return data||[];
 }
@@ -626,7 +630,7 @@ function renderTicketRow(ticket,cols,dayMeta){
   const cellAttrs=(k,extraCls='')=>`class="sticky-col${extraCls}${k===lastVis?' sticky-col-shadow':''}" data-col="${k}" style="width:${ganttColumnWidths[k]}px;left:${timelineColLeft(k)}px"`;
   const infoCells={
     // project name opens the ticket drawer (replaces the old per-row pencil button)
-    project:`<td ${cellAttrs('project',' dt-project-cell')} title="${esc(ticket.project_name)}"><span class="dt-ticket-swatch" style="background:${color}"></span><button class="dt-ticket-name" onclick="openTicketModal('${escJs(ticket.id)}')">${esc(ticket.project_name)}</button><button class="dt-ticket-open-hint" tabindex="-1" onclick="openTicketModal('${escJs(ticket.id)}')" title="Open details"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/><path d="m10 15-3-3 3-3"/></svg>Open</button></td>`,
+    project:`<td ${cellAttrs('project',' dt-project-cell'+(ticket.is_shared?'':' dt-is-private'))} title="${esc(ticket.project_name)}${ticket.is_shared?'':' · Private — not shared with team'}"><span class="dt-ticket-swatch" style="background:${color}"></span><button class="dt-ticket-name" onclick="openTicketModal('${escJs(ticket.id)}')">${esc(ticket.project_name)}</button>${ticket.is_shared?'':`<span class="dt-private-lock" aria-label="Private ticket"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>`}<button class="dt-ticket-open-hint" tabindex="-1" onclick="openTicketModal('${escJs(ticket.id)}')" title="Open details"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/><path d="m10 15-3-3 3-3"/></svg>Open</button></td>`,
     jira:`<td ${cellAttrs('jira')} title="${esc(ticket.jira_key||'')}">${jiraCell}</td>`,
     scope:`<td ${cellAttrs('scope')} title="${esc(ticket.mon_scope||'')}">${esc(ticket.mon_scope||'')}</td>`,
     // status badge opens an in-place status dropdown
@@ -1374,6 +1378,8 @@ export function openTicketModal(id){
   document.getElementById('dt-scope').value=t?(t.mon_scope||''):'';
   document.getElementById('dt-status').value=t?t.status:'Not Started';
   document.getElementById('dt-note').value=t?(t.note||''):'';
+  // new tickets are shared by default (DB default is_shared=true)
+  document.getElementById('dt-shared').checked=t?!!t.is_shared:true;
   document.getElementById('dtTicketDeleteBtn').style.display=t?'':'none';
   hideProjectError();
   renderStatusChips();
@@ -1398,6 +1404,7 @@ export async function saveTicket(){
     mon_scope:document.getElementById('dt-scope').value.trim()||null,
     status:document.getElementById('dt-status').value,
     note:document.getElementById('dt-note').value.trim()||null,
+    is_shared:document.getElementById('dt-shared').checked,
   };
   try{
     if(state.ganttEditingTicketId){
