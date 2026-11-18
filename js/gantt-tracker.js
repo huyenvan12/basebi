@@ -586,12 +586,15 @@ export function renderTimelineHeader(){
     const d=parseISO(c.date);
     const dow=['Su','Mo','Tu','We','Th','Fr','Sa'][c.weekday];
     const isToday=c.date===todayStr;
-    const off=timeOffKind(c.date);
+    // All team: personal marks live in each person's Days off row, so the shared header only
+    // carries team-wide layers (public holidays, team days)
+    const team=isTeamView();
+    const off=team?(holidayFor(c.date)?'full':null):timeOffKind(c.date);
     const offClass=off==='full'?' dt-day-th-al':off==='am'?' dt-day-th-half-am':off==='pm'?' dt-day-th-half-pm':'';
-    const tip=specialDayTooltip(c.date);
+    const tip=team?[holidayFor(c.date)?`Public holiday: ${holidayFor(c.date).name}`:'',...teamDaysFor(c.date).map(d=>`Team: ${TEAM_DAY_KINDS[d.kind].label}`)].filter(Boolean).join('\n'):specialDayTooltip(c.date);
     let pills=[];
     if(holidayFor(c.date)) pills.push('<span class="dt-mark-pill dt-mark-pill-off">HOL</span>');
-    marksForDate(c.date).forEach(m=>{
+    (team?[]:marksForDate(c.date)).forEach(m=>{
       const t=m.day_type||'al';
       const cls=t==='wfh'?'dt-mark-pill-wfh':'dt-mark-pill-off';
       pills.push(`<span class="dt-mark-pill ${cls}">${esc(DAY_TYPES[t].code)}</span>`);
@@ -675,6 +678,7 @@ export function renderTimelineBody(){
   const body=document.getElementById('dtTimelineBody');
   if(!body) return;
   const cols=walkWeekdayColumns(state.ganttTimelineStartDate,state.ganttTimelineWeeks);
+  if(isTeamView()){ renderTeamTimelineBody(body,cols); renderAgenda(); return; }
   const active=state.ganttTickets.filter(isTicketActive);
   const inactive=state.ganttTickets.filter(t=>!isTicketActive(t));
 
@@ -772,6 +776,7 @@ function highlightRange(ticketId,start,end){
 // document.elementFromPoint() on every 'pointermove' sidesteps that entirely — we're directly
 // querying what's under the pointer instead of relying on the browser to tell us via bubbling.
 export function handleDayPointerDown(e){
+  if(isTeamView()) return; // All team is read-only
   const cell=e.target.closest('.dt-day-cell');
   if(!cell) return;
   e.preventDefault();
@@ -1454,6 +1459,383 @@ export function deleteTeamDayRun(idList){
 }
 
 // ══════════════════════════════════════════════════
+// TEAM VIEW — "View: Mine | All team" on the Timeline. All team is strictly read-only (my own
+// rows too): it shows teammates' shared tickets (gantt_tickets.is_shared, readable via RLS),
+// grouped by person, each group with a Days off row from get_team_leave_days() (security
+// definer RPC: owner/date/type only — never the private reason). Admins pick who appears and
+// in which order (team_view_members; empty list = everyone). All team data is kept in its own
+// state (ganttTeam*) and never mixed into the Mine state.
+// ══════════════════════════════════════════════════
+const VIEW_KEY='gantt-timeline-view';
+const TEAM_COLLAPSED_KEY='gantt-team-collapsed';
+export function isTeamView(){ return state.ganttTimelineView==='team'; }
+function loadSavedView(){ try{ return localStorage.getItem(VIEW_KEY)==='team'?'team':'mine'; }catch(e){ return 'mine'; } }
+function collapsedGroups(){ try{ return JSON.parse(localStorage.getItem(TEAM_COLLAPSED_KEY)||'[]'); }catch(e){ return []; } }
+export function toggleTeamGroup(ownerId){
+  const c=collapsedGroups();
+  const next=c.includes(ownerId)?c.filter(x=>x!==ownerId):[...c,ownerId];
+  try{ localStorage.setItem(TEAM_COLLAPSED_KEY,JSON.stringify(next)); }catch(e){/* ignore */}
+  renderTimelineBody();
+}
+
+export async function loadTeamSharedTickets(){
+  const{data,error}=await sb.from('gantt_tickets').select('*').eq('is_shared',true).order('sort_order',{ascending:true});
+  if(error){console.error('loadTeamSharedTickets failed',error);return [];}
+  return data||[];
+}
+export async function loadTeamEntries(ticketIds){
+  if(!ticketIds.length) return [];
+  const{data,error}=await sb.from('gantt_entries').select('*').in('ticket_id',ticketIds);
+  if(error){console.error('loadTeamEntries failed',error);return [];}
+  return data||[];
+}
+export async function loadTeamLeaveDays(from,to){
+  const{data,error}=await sb.rpc('get_team_leave_days',{p_from:from,p_to:to});
+  if(error){console.error('get_team_leave_days failed',error);return [];}
+  return data||[];
+}
+export async function loadTeamViewMembers(){
+  const{data,error}=await sb.from('team_view_members').select('*').order('sort_order',{ascending:true});
+  if(error){console.error('loadTeamViewMembers failed',error);return [];}
+  return data||[];
+}
+
+// everyone in the org, me included (state.orgMembers excludes the current user)
+function teamPeople(){
+  const me={id:state.currentUserId,display_name:(state.profilesMap&&state.profilesMap[state.currentUserId])||'Me',isMe:true};
+  const others=(state.orgMembers||[]).map(m=>({id:m.id,display_name:m.display_name||'Unknown',isMe:false}));
+  return [me,...others];
+}
+function personName(p){ return p.isMe?`${p.display_name} (you)`:p.display_name; }
+function initials(name){
+  const parts=String(name||'?').trim().split(/\s+/);
+  return ((parts[0]||'?')[0]+(parts.length>1?parts[parts.length-1][0]:(parts[0][1]||''))).toUpperCase();
+}
+// who shows in All team, in order. Empty team_view_members = everyone (me first, then A→Z).
+function teamViewOrder(){
+  const people=teamPeople();
+  const byId=new Map(people.map(p=>[p.id,p]));
+  const list=state.ganttTeamViewMembers||[];
+  if(!list.length){
+    const [me,...rest]=people;
+    return {shown:[me,...rest.sort((a,b)=>a.display_name.localeCompare(b.display_name))],hidden:[]};
+  }
+  const shown=[...list].sort((a,b)=>a.sort_order-b.sort_order).map(r=>byId.get(r.member_id)).filter(Boolean);
+  const shownIds=new Set(shown.map(p=>p.id));
+  return {shown,hidden:people.filter(p=>!shownIds.has(p.id))};
+}
+
+let teamLoadInFlight=null;
+// loads (once) tickets/entries/members and (per visible range) days off; resolves true when
+// something new was fetched so the caller re-renders
+function ensureTeamData(from,to){
+  const needBase=!state.ganttTeamLoaded;
+  const key=`${from}|${to}`;
+  const needLeave=state.ganttTeamLeaveKey!==key;
+  if(!needBase&&!needLeave) return null;
+  if(teamLoadInFlight) return teamLoadInFlight;
+  teamLoadInFlight=(async()=>{
+    try{
+      if(needBase){
+        const tickets=await loadTeamSharedTickets();
+        state.ganttTeamTickets=tickets;
+        state.ganttTeamEntries=await loadTeamEntries(tickets.map(t=>t.id));
+        state.ganttTeamViewMembers=await loadTeamViewMembers();
+        state.ganttTeamLoaded=true;
+      }
+      if(needLeave){
+        state.ganttTeamLeave=await loadTeamLeaveDays(from,to);
+        state.ganttTeamLeaveKey=key;
+      }
+    }finally{ teamLoadInFlight=null; }
+    return true;
+  })();
+  return teamLoadInFlight;
+}
+// fresh data each time the user switches into All team
+function invalidateTeamData(){ state.ganttTeamLoaded=false; state.ganttTeamLeaveKey=null; }
+
+function personLeaveTypes(ownerId,dateStr){
+  return (state.ganttTeamLeave||[]).filter(l=>l.owner_id===ownerId&&l.leave_date===dateStr).map(l=>l.day_type||'al');
+}
+function personTimeOff(ownerId,dateStr){
+  if(holidayFor(dateStr)) return 'full';
+  const types=personLeaveTypes(ownerId,dateStr);
+  if(types.includes('al')) return 'full';
+  if(types.includes('half_am')) return 'am';
+  if(types.includes('half_pm')) return 'pm';
+  return null;
+}
+function personDayMeta(ownerId,cols){
+  return cols.map((c,i)=>{
+    const off=personTimeOff(ownerId,c.date);
+    const offClass=off==='full'?' dt-day-cell-al':off==='am'?' dt-day-cell-half-am':off==='pm'?' dt-day-cell-half-pm':'';
+    return offClass+(i>0&&isSprintStartCol(c.date,cols[0].date)?' dt-sprint-start':'');
+  });
+}
+function teamStickyCells(firstHtml,restFor){
+  const vis=visibleCols();
+  const lastVis=vis[vis.length-1];
+  return vis.map((k,idx)=>`<td class="sticky-col${k===lastVis?' sticky-col-shadow':''}" data-col="${k}" style="width:${ganttColumnWidths[k]}px;left:${timelineColLeft(k)}px">${idx===0?firstHtml:(restFor?restFor(k):'')}</td>`).join('');
+}
+function renderTeamLeaveRow(person,cols,meta){
+  const todayStr=today();
+  const days=cols.map((c,i)=>{
+    const types=personLeaveTypes(person.id,c.date);
+    const code=types.includes('al')?'AL':types.includes('half_am')?'½AM':types.includes('half_pm')?'½PM':'';
+    const wfh=types.includes('wfh');
+    const label=[code,wfh?'WFH':''].filter(Boolean);
+    const tip=[holidayFor(c.date)?`Public holiday: ${holidayFor(c.date).name}`:'',...types.map(t=>DAY_TYPES[t]?DAY_TYPES[t].label:t)].filter(Boolean).join('\n');
+    return `<td class="dt-day-cell dt-team-leave-cell${c.date===todayStr?' dt-day-cell-today':''}${meta[i]}"${tip?` title="${esc(tip)}"`:''}>${label.length?`<span class="dt-team-leave-code${wfh&&!code?' is-wfh':''}">${esc(label[0])}${label.length>1?'<sup>+1</sup>':''}</span>`:''}</td>`;
+  }).join('');
+  return `<tr class="dt-team-row dt-team-leave-row">${teamStickyCells('<span class="dt-team-leave-label">Days off</span>')}${days}</tr>`;
+}
+function renderTeamTicketRow(ticket,cols,meta){
+  const color=ticketColor(ticket);
+  const entries=state.ganttTeamEntries.filter(e=>e.ticket_id===ticket.id);
+  const todayStr=today();
+  const days=cols.map((c,i)=>{
+    const entry=entries.find(e=>c.date>=e.start_date&&c.date<=e.end_date);
+    let inner='',style='';
+    if(entry){
+      const tt=state.ganttTaskTypes.find(t=>t.id===entry.task_type_id);
+      if(tt){style=`background-color:${esc(tt.color)}`;inner=`<span class="dt-day-code">${esc(tt.code)}</span>`;}
+    }
+    return `<td class="dt-day-cell${c.date===todayStr?' dt-day-cell-today':''}${meta[i]}" style="${style}">${inner}</td>`;
+  }).join('');
+  const jira=ticket.jira_url?`<a href="${esc(ticket.jira_url)}" target="_blank" rel="noopener">${esc(ticket.jira_key||'link')}</a>`:esc(ticket.jira_key||'');
+  const first=`<span class="dt-ticket-swatch" style="background:${color}"></span><button class="dt-ticket-name" onclick="openTeamTicketDrawer('${escJs(ticket.id)}')" title="${esc(ticket.project_name)}">${esc(ticket.project_name)}</button>`;
+  const rest=k=>k==='jira'?jira:k==='scope'?esc(ticket.mon_scope||''):k==='status'?`<span class="dt-status-badge dt-status-${esc(ticket.status.replace(/\s+/g,''))}">${esc(ticket.status)}</span>`:k==='note'?`<span class="dt-team-note" title="${esc(ticket.note||'')}">${esc(ticket.note||'')}</span>`:'';
+  const active=state.ganttEditingTicketId===ticket.id;
+  return `<tr class="dt-team-row dt-team-ticket-row${isTicketActive(ticket)?'':' dt-team-inactive'}${active?' dt-row-active':''}" data-ticket-id="${esc(ticket.id)}">${teamStickyCells(first,rest)}${days}</tr>`;
+}
+function renderTeamTimelineBody(body,cols){
+  const colCount=visibleCols().length+cols.length;
+  const loading=ensureTeamData(cols[0].date,cols[cols.length-1].date);
+  if(loading){
+    if(!state.ganttTeamLoaded){
+      body.innerHTML=`<tr><td colspan="${colCount}" class="empty-list">Loading team…</td></tr>`;
+    }
+    loading.then(changed=>{ if(changed&&isTeamView()&&state.ganttActiveView==='timeline') renderTimelineBody(); });
+    if(!state.ganttTeamLoaded) return;
+  }
+  const {shown,hidden}=teamViewOrder();
+  const collapsed=collapsedGroups();
+  const from=cols[0].date,to=cols[cols.length-1].date;
+  let html='';
+  shown.forEach(person=>{
+    const tickets=state.ganttTeamTickets.filter(t=>t.owner_id===person.id);
+    const active=tickets.filter(isTicketActive), inactive=tickets.filter(t=>!isTicketActive(t));
+    // days off in the visible range: AL = 1, half day = 0.5 (per date, so AL wins over a half)
+    const offByDate={};
+    (state.ganttTeamLeave||[]).forEach(l=>{
+      if(l.owner_id!==person.id||l.leave_date<from||l.leave_date>to) return;
+      const v=l.day_type==='al'?1:(l.day_type==='half_am'||l.day_type==='half_pm')?0.5:0;
+      offByDate[l.leave_date]=Math.min(1,(offByDate[l.leave_date]||0)+v);
+    });
+    const offDays=Object.values(offByDate).reduce((a,b)=>a+b,0);
+    const isCollapsed=collapsed.includes(person.id);
+    const summary=[tickets.length?`${tickets.length} shared ${tickets.length===1?'ticket':'tickets'}`:'no shared tickets',offDays?`${offDays} ${offDays===1?'day':'days'} off in view`:''].filter(Boolean).join(' · ');
+    html+=`<tr class="dt-team-group-row"><td colspan="${colCount}"><button class="dt-team-group-toggle" aria-expanded="${!isCollapsed}" onclick="toggleTeamGroup('${escJs(person.id)}')"><svg class="dt-team-chevron${isCollapsed?'':' open'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg><span class="dt-team-avatar${person.isMe?' is-me':''}">${esc(initials(person.display_name))}</span><span class="dt-team-name">${esc(personName(person))}</span><span class="dt-team-summary">· ${esc(summary)}</span></button></td></tr>`;
+    if(isCollapsed) return;
+    const meta=personDayMeta(person.id,cols);
+    html+=renderTeamLeaveRow(person,cols,meta);
+    if(!tickets.length){
+      html+=`<tr class="dt-team-row dt-team-empty-row">${teamStickyCells('<span class="dt-team-empty">No shared tickets</span>')}<td colspan="${cols.length}"></td></tr>`;
+      return;
+    }
+    html+=active.map(t=>renderTeamTicketRow(t,cols,meta)).join('');
+    if(inactive.length){
+      html+=`<tr class="dt-inactive-divider" onclick="toggleGanttInactive()"><td colspan="${colCount}">${state.ganttInactiveExpanded?'▾':'▸'} Inactive (${inactive.length})</td></tr>`;
+      if(state.ganttInactiveExpanded) html+=inactive.map(t=>renderTeamTicketRow(t,cols,meta)).join('');
+    }
+  });
+  if(!shown.length) html+=`<tr><td colspan="${colCount}" class="empty-list">Nobody is set to show in Team view.</td></tr>`;
+  if(state.currentUserRole==='admin'&&hidden.length){
+    html+=`<tr class="dt-team-footer-row"><td colspan="${colCount}"><span class="dt-team-footer">${hidden.length} ${hidden.length===1?'member':'members'} hidden from Team view (${esc(hidden.map(p=>p.display_name).join(', '))}) · <button class="dt-link-btn" onclick="openTeamMembersModal()">Team view members</button> <span class="dt-admin-tag">ADMIN</span></span></td></tr>`;
+  }
+  body.innerHTML=html;
+}
+
+function renderViewToolbar(){
+  const team=isTeamView();
+  const label=document.getElementById('dtViewLabel');
+  if(label) label.textContent=team?'All team':'Mine';
+  const btn=document.getElementById('dtViewBtn');
+  if(btn) btn.classList.toggle('dt-view-btn-team',team);
+  ['dtMarkAlBtn','dtAddTicketBtn'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display=team?'none':''; });
+  const chip=document.getElementById('dtReadOnlyChip');
+  if(chip) chip.style.display=team?'':'none';
+  const wrap=document.getElementById('dtTimelineWrap');
+  if(wrap) wrap.classList.toggle('dt-team-mode',team);
+}
+function viewMenuHtml(){
+  const v=state.ganttTimelineView;
+  const item=(key,label,hint)=>`<button class="dt-menu-item dt-view-item${v===key?' active':''}" role="menuitemradio" aria-checked="${v===key}" onclick="setTimelineView('${key}')"><span class="dt-view-check">${v===key?'✓':''}</span><span><span class="dt-view-item-label">${label}</span><span class="dt-menu-hint">${hint}</span></span></button>`;
+  return `<div class="dt-menu-label">VIEW</div>${item('mine','Mine','Your tickets, editable')}${item('team','All team','Shared tickets of the team, read-only')}`;
+}
+export function openViewMenu(btn){ toggleMenuFor('view',btn,viewMenuHtml); }
+export function setTimelineView(v){
+  closeMenuPopover();
+  const next=v==='team'?'team':'mine';
+  if(next==='team'){
+    if(state.ganttAlMarkingMode) toggleAlMarkingMode();
+    closeTypePicker();
+    if(state.ganttEditingTicketId||document.getElementById('dtTicketModalOverlay').classList.contains('open')) closeTicketModal();
+    if(state.ganttTimelineView!=='team') invalidateTeamData();
+  }else if(state.ganttTimelineView==='team'&&document.getElementById('dtTicketModalOverlay').classList.contains('open')){
+    closeTicketModal();
+  }
+  state.ganttTimelineView=next;
+  try{ localStorage.setItem(VIEW_KEY,next); }catch(e){/* ignore */}
+  renderViewToolbar();
+  renderTimeline();
+}
+
+// read-only ticket drawer for All team rows (any owner, mine included)
+function setDrawerReadOnly(ro){
+  const drawer=document.getElementById('dtTicketModalOverlay');
+  drawer.classList.toggle('dt-drawer-readonly',ro);
+  ['dt-project','dt-jira-key','dt-jira-url','dt-scope','dt-note'].forEach(id=>{ const el=document.getElementById(id); if(el) el.readOnly=ro; });
+  const share=document.getElementById('dtShareRow'); if(share) share.style.display=ro?'none':'';
+  const save=document.getElementById('dtTicketSaveBtn'); if(save) save.style.display=ro?'none':'';
+  const cancel=document.getElementById('dtTicketCancelBtn'); if(cancel) cancel.textContent=ro?'Close':'Cancel';
+  const owner=document.getElementById('dtTicketOwnerRow'); if(owner) owner.style.display=ro?'':'none';
+}
+export function openTeamTicketDrawer(id){
+  const t=state.ganttTeamTickets.find(x=>x.id===id);
+  if(!t) return;
+  state.ganttEditingTicketId=id;
+  const es=state.ganttTeamEntries.filter(e=>e.ticket_id===id);
+  let meta='No entries yet';
+  if(es.length){
+    const start=es.reduce((m,e)=>e.start_date<m?e.start_date:m,es[0].start_date);
+    const end=es.reduce((m,e)=>e.end_date>m?e.end_date:m,es[0].end_date);
+    meta=`${es.length} ${es.length===1?'entry':'entries'} · ${fmtDM(start)}${start!==end?` – ${fmtDM(end)}`:''}`;
+  }
+  const owner=teamPeople().find(p=>p.id===t.owner_id);
+  document.getElementById('dtTicketModalTitle').textContent=t.project_name;
+  document.getElementById('dtTicketDrawerMeta').textContent=`Read-only · ${meta}`;
+  document.getElementById('dtTicketDrawerSwatch').style.background=ticketColor(t);
+  document.getElementById('dtTicketOwnerName').textContent=owner?personName(owner):'Unknown';
+  document.getElementById('dt-project').value=t.project_name;
+  document.getElementById('dt-jira-key').value=t.jira_key||'';
+  document.getElementById('dt-jira-url').value=t.jira_url||'';
+  document.getElementById('dt-scope').value=t.mon_scope||'';
+  document.getElementById('dt-status').value=t.status;
+  document.getElementById('dt-note').value=t.note||'';
+  document.getElementById('dtTicketDeleteBtn').style.display='none';
+  hideProjectError();
+  setDrawerReadOnly(true);
+  renderStatusChips();
+  closeMenuPopover();
+  document.getElementById('dtTicketModalOverlay').classList.add('open');
+  document.querySelectorAll('#dtTimelineBody .dt-team-ticket-row').forEach(r=>r.classList.toggle('dt-row-active',r.getAttribute('data-ticket-id')===id));
+}
+
+// ══════════════════════════════════════════════════
+// TEAM VIEW MEMBERS (admin) — who appears in All team, and in which order.
+// ══════════════════════════════════════════════════
+let teamMembersDraft=null; // [{id,display_name,isMe,on}]
+let teamMembersCounts={tickets:{},leave:{}};
+let teamMembersSaveInFlight=false;
+export async function openTeamMembersModal(){
+  if(state.currentUserRole!=='admin') return;
+  closeMenuPopover();
+  const overlay=document.getElementById('dtTeamMembersModalOverlay');
+  document.getElementById('dtTeamMembersList').innerHTML='<div class="empty-list" style="padding:14px">Loading…</div>';
+  overlay.classList.add('open');
+  const t=today();
+  const [members,tickets,leave]=await Promise.all([loadTeamViewMembers(),loadTeamSharedTickets(),loadTeamLeaveDays(t,addDays(t,29))]);
+  state.ganttTeamViewMembers=members;
+  teamMembersCounts={tickets:{},leave:{}};
+  tickets.forEach(x=>{ teamMembersCounts.tickets[x.owner_id]=(teamMembersCounts.tickets[x.owner_id]||0)+1; });
+  // AL = 1, half day = 0.5 per date (same rule as the group summary)
+  const offByKey={};
+  leave.forEach(l=>{
+    const v=l.day_type==='al'?1:(l.day_type==='half_am'||l.day_type==='half_pm')?0.5:0;
+    if(!v) return;
+    const k=l.owner_id+'|'+l.leave_date;
+    offByKey[k]=Math.min(1,(offByKey[k]||0)+v);
+  });
+  Object.entries(offByKey).forEach(([k,v])=>{ const id=k.split('|')[0]; teamMembersCounts.leave[id]=(teamMembersCounts.leave[id]||0)+v; });
+  const {shown,hidden}=teamViewOrder();
+  const allOn=!members.length;
+  teamMembersDraft=[...shown.map(p=>({...p,on:true})),...hidden.map(p=>({...p,on:allOn}))];
+  renderTeamMembersModal();
+}
+export function closeTeamMembersModal(){
+  document.getElementById('dtTeamMembersModalOverlay').classList.remove('open');
+  teamMembersDraft=null;
+}
+function renderTeamMembersModal(){
+  const list=document.getElementById('dtTeamMembersList');
+  if(!list||!teamMembersDraft) return;
+  list.innerHTML=teamMembersDraft.map((p,i)=>{
+    const tk=teamMembersCounts.tickets[p.id]||0, lv=teamMembersCounts.leave[p.id]||0;
+    return `<div class="dt-tvm-row${p.on?'':' is-off'}" draggable="true" data-idx="${i}">
+      <span class="dt-tvm-handle" aria-hidden="true" title="Drag to reorder">⋮⋮</span>
+      <input type="checkbox" ${p.on?'checked':''} aria-label="Show ${esc(p.display_name)} in Team view" onchange="toggleTeamMemberDraft(${i})">
+      <span class="dt-team-avatar${p.isMe?' is-me':''}">${esc(initials(p.display_name))}</span>
+      <span class="dt-tvm-name">${esc(personName(p))}</span>
+      <span class="dt-tvm-num${tk?'':' is-zero'}">${tk}</span>
+      <span class="dt-tvm-num${lv?'':' is-zero'}">${lv}</span>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('.dt-tvm-row').forEach(row=>{
+    row.addEventListener('dragstart',e=>{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',row.dataset.idx); row.classList.add('is-dragging'); });
+    row.addEventListener('dragend',()=>row.classList.remove('is-dragging'));
+    row.addEventListener('dragover',e=>{ e.preventDefault(); row.classList.add('is-drop'); });
+    row.addEventListener('dragleave',()=>row.classList.remove('is-drop'));
+    row.addEventListener('drop',e=>{
+      e.preventDefault();
+      const from=Number(e.dataTransfer.getData('text/plain')), to=Number(row.dataset.idx);
+      if(Number.isNaN(from)||from===to) return;
+      const [moved]=teamMembersDraft.splice(from,1);
+      teamMembersDraft.splice(to,0,moved);
+      renderTeamMembersModal();
+    });
+  });
+}
+export function toggleTeamMemberDraft(idx){
+  if(!teamMembersDraft||!teamMembersDraft[idx]) return;
+  teamMembersDraft[idx].on=!teamMembersDraft[idx].on;
+  renderTeamMembersModal();
+}
+async function replaceTeamViewMembers(rows){
+  const existing=(state.ganttTeamViewMembers||[]).map(r=>r.member_id);
+  if(existing.length){
+    const{error}=await sb.from('team_view_members').delete().in('member_id',existing);
+    if(error) throw error;
+  }
+  if(rows.length){
+    const{error}=await sb.from('team_view_members').insert(rows);
+    if(error) throw error;
+  }
+}
+async function commitTeamMembers(rows,msg){
+  if(teamMembersSaveInFlight) return;
+  teamMembersSaveInFlight=true;
+  try{
+    await replaceTeamViewMembers(rows);
+    state.ganttTeamViewMembers=await loadTeamViewMembers();
+    closeTeamMembersModal();
+    if(isTeamView()) renderTimelineBody();
+    showNotification(msg,'success');
+  }catch(err){ showNotification('Could not save Team view members: '+(err.message||err),'error'); }
+  finally{ teamMembersSaveInFlight=false; }
+}
+export function saveTeamMembers(){
+  if(!teamMembersDraft) return;
+  const rows=teamMembersDraft.filter(p=>p.on).map((p,i)=>({member_id:p.id,sort_order:(i+1)*10}));
+  if(!rows.length){ showNotification('Tick at least one person, or use Show all.','error'); return; }
+  commitTeamMembers(rows,'Team view members saved');
+}
+export function showAllTeamMembers(){
+  commitTeamMembers([],'Team view shows everyone');
+}
+
+// ══════════════════════════════════════════════════
 // TICKET MODAL — dual mode (add/edit), modeled on checklist-templates.js's template modal.
 // ══════════════════════════════════════════════════
 function showProjectError(msg){
@@ -1473,7 +1855,8 @@ function renderStatusChips(){
   const sel=document.getElementById('dt-status');
   const wrap=document.getElementById('dtStatusChips');
   if(!sel||!wrap) return;
-  wrap.innerHTML=TICKET_STATUSES.map(st=>`<button type="button" class="dt-status-chip dt-status-${st.replace(/\s+/g,'')}${sel.value===st?' active':''}" onclick="pickTicketStatusChip('${st}')">${esc(st)}</button>`).join('');
+  const ro=document.getElementById('dtTicketModalOverlay').classList.contains('dt-drawer-readonly');
+  wrap.innerHTML=TICKET_STATUSES.map(st=>`<button type="button" class="dt-status-chip dt-status-${st.replace(/\s+/g,'')}${sel.value===st?' active':''}"${ro?' disabled':` onclick="pickTicketStatusChip('${st}')"`}>${esc(st)}</button>`).join('');
 }
 export function pickTicketStatusChip(st){
   document.getElementById('dt-status').value=st;
@@ -1487,6 +1870,9 @@ function ticketEntrySummary(id){
   return `${es.length} ${es.length===1?'entry':'entries'} · ${fmtDM(start)}${start!==end?` – ${fmtDM(end)}`:''}`;
 }
 export function openTicketModal(id){
+  if(isTeamView()&&id){ openTeamTicketDrawer(id); return; }
+  if(isTeamView()) return; // no adding from All team
+  setDrawerReadOnly(false);
   state.ganttEditingTicketId=id||null;
   const t=id?state.ganttTickets.find(t=>t.id===id):null;
   document.getElementById('dtTicketModalTitle').textContent=t?t.project_name:'New ticket';
@@ -1512,8 +1898,10 @@ export function closeTicketModal(){
   document.getElementById('dtTicketModalOverlay').classList.remove('open');
   state.ganttEditingTicketId=null;
   highlightActiveTicketRow();
+  document.querySelectorAll('#dtTimelineBody .dt-team-ticket-row.dt-row-active').forEach(r=>r.classList.remove('dt-row-active'));
 }
 export async function saveTicket(){
+  if(document.getElementById('dtTicketModalOverlay').classList.contains('dt-drawer-readonly')) return;
   const project_name=document.getElementById('dt-project').value.trim();
   if(!project_name){showProjectError('Project name is required.');return;}
   hideProjectError();
@@ -1620,7 +2008,8 @@ export function openSettingsMenu(btn){
   toggleMenuFor('settings',btn,()=>`<div class="dt-menu-label">TIMELINE SETTINGS · ADMIN</div>
     <button class="dt-menu-item" id="dtManageTypesBtn" onclick="closeMenuPopover();openTaskTypeModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg>Manage task types</button>
     <button class="dt-menu-item" id="dtSprintsBtn" onclick="closeMenuPopover();openSprintModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528"/></svg>Sprints</button>
-    <button class="dt-menu-item" id="dtTeamDaysBtn" onclick="closeMenuPopover();openTeamDaysModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/><path d="M8 15h2M14 15h2"/></svg>Team days</button>`);
+    <button class="dt-menu-item" id="dtTeamDaysBtn" onclick="closeMenuPopover();openTeamDaysModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/><path d="M8 15h2M14 15h2"/></svg>Team days</button>
+    <button class="dt-menu-item" id="dtTeamMembersBtn" onclick="closeMenuPopover();openTeamMembersModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Team view members</button>`);
 }
 
 // Inline status dropdown (status badge in the table)
@@ -2106,6 +2495,8 @@ export function jumpToTimeline(ticketId,segStartDate){
   switchTab('deliveryTracker');
   state.ganttActiveView='timeline';
   state.ganttTimelineStartDate=mondayOf(startDate);
+  // Calendar is Mine-only, so "Open in Timeline" always lands on the editable Mine view
+  if(isTeamView()){ state.ganttTimelineView='mine'; try{ localStorage.setItem(VIEW_KEY,'mine'); }catch(e){/* ignore */} renderViewToolbar(); }
   switchGanttView('timeline');
   setTimeout(()=>{
     const row=document.querySelector(`.dt-ticket-row[data-ticket-id="${CSS.escape(String(ticketId))}"]`);
@@ -2321,6 +2712,14 @@ export function initGanttTracker(){
   window.setMarkDayUntil=setMarkDayUntil;
   window.openSprintModal=openSprintModal;
   window.openTeamDaysModal=openTeamDaysModal;
+  window.setTimelineView=setTimelineView;
+  window.toggleTeamGroup=toggleTeamGroup;
+  window.openTeamTicketDrawer=openTeamTicketDrawer;
+  window.openTeamMembersModal=openTeamMembersModal;
+  window.closeTeamMembersModal=closeTeamMembersModal;
+  window.toggleTeamMemberDraft=toggleTeamMemberDraft;
+  window.saveTeamMembers=saveTeamMembers;
+  window.showAllTeamMembers=showAllTeamMembers;
   window.closeTeamDaysModal=closeTeamDaysModal;
   window.saveTeamDays=saveTeamDays;
   window.deleteTeamDayRun=deleteTeamDayRun;
@@ -2347,6 +2746,9 @@ export function initGanttTracker(){
   document.getElementById('dtAddTicketBtn').onclick=()=>openTicketModal();
   document.getElementById('dtTodayBtn').onclick=()=>setTimelineStartDate(today());
   document.getElementById('dtColumnsBtn').onclick=e=>{e.stopPropagation();openColumnsMenu(e.currentTarget);};
+  document.getElementById('dtViewBtn').onclick=e=>{e.stopPropagation();openViewMenu(e.currentTarget);};
+  state.ganttTimelineView=loadSavedView();
+  renderViewToolbar();
   document.getElementById('dtSettingsBtn').onclick=e=>{e.stopPropagation();openSettingsMenu(e.currentTarget);};
   document.getElementById('dtMarkModeDoneBtn').onclick=()=>{ if(state.ganttAlMarkingMode) toggleAlMarkingMode(); };
   document.getElementById('dtMarkAlBtn').onclick=toggleAlMarkingMode;
@@ -2389,10 +2791,12 @@ export function initGanttTracker(){
   // the row menu (day cells keep their own pointer-driven drag/assign behaviour)
   const tbody=document.getElementById('dtTimelineBody');
   tbody.addEventListener('dblclick',e=>{
+    if(isTeamView()) return;
     const td=e.target.closest('.dt-note-cell');
     if(td) startNoteEdit(td);
   });
   tbody.addEventListener('contextmenu',e=>{
+    if(isTeamView()) return;
     const cell=e.target.closest('.dt-ticket-row .sticky-col');
     if(!cell) return;
     e.preventDefault();
@@ -2418,7 +2822,7 @@ export function initGanttTracker(){
   document.getElementById('dtTimelineHead').addEventListener('click',e=>{
     const sprintTh=e.target.closest('.dt-sprint-th[data-sprint-id]');
     if(sprintTh&&state.currentUserRole==='admin'){ openSprintModal(sprintTh.getAttribute('data-sprint-id')); return; }
-    if(!state.ganttAlMarkingMode) return;
+    if(!state.ganttAlMarkingMode||isTeamView()) return;
     const th=e.target.closest('.dt-day-th');
     if(!th) return;
     const date=th.getAttribute('data-date');
@@ -2435,7 +2839,7 @@ export function initGanttTracker(){
     // armPopoverOpenGuard()/consumeOutsideClickSuppression() above.
     if(consumeOutsideClickSuppression()) return;
     if(!e.target.closest('#dtTypePickerPopover')&&!e.target.closest('.dt-day-cell')) closeTypePicker();
-    if(!e.target.closest('#dtMenuPopover')&&!e.target.closest('[data-menu-trigger]')&&!e.target.closest('#dtColumnsBtn')&&!e.target.closest('#dtSettingsBtn')) closeMenuPopover();
+    if(!e.target.closest('#dtMenuPopover')&&!e.target.closest('[data-menu-trigger]')&&!e.target.closest('#dtColumnsBtn')&&!e.target.closest('#dtViewBtn')&&!e.target.closest('#dtSettingsBtn')) closeMenuPopover();
     if(!e.target.closest('#dtCalPopover')&&!e.target.closest('.dt-cal-bar')&&!e.target.closest('.dt-cal-overflow-chip')) closeCalPopover();
   });
 }

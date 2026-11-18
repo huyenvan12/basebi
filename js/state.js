@@ -93,6 +93,11 @@ export const state = {
   ganttHolidays: [],                          // team-wide public_holidays rows, bulk-loaded once
   ganttSprints: [],                           // team-wide sprints rows, bulk-loaded once
   ganttTeamDays: [],                          // team-wide team_days rows (kind read_day, …), bulk-loaded once
+  ganttTimelineView: 'mine',                  // 'mine' | 'team' (All team, read-only) — persisted in localStorage
+  ganttTeamTickets: [], ganttTeamEntries: [],  // All team: shared tickets of the org + their entries (never mixed into ganttTickets)
+  ganttTeamLeave: [], ganttTeamLeaveKey: null, // All team: get_team_leave_days rows for the visible range ('from|to')
+  ganttTeamViewMembers: [],                    // team_view_members rows (empty = everyone shows)
+  ganttTeamLoaded: false,
   ganttAlMarkingMode: false,                  // true while "Mark day" toggle is active
   ganttMarkDayContext: null,                  // {dates:[...]} while the Mark day modal is open
   ganttMarkDayAnchor: null,                   // last clicked header date in Mark day mode — Shift-click extends a range from it
