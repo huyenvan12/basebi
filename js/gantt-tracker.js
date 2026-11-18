@@ -1596,12 +1596,17 @@ export function renderTaskTypeEditor(){
       <button type="button" class="btn btn-danger tpl-item-remove" onclick="removeTaskTypeRow(${idx})" title="Remove type">✕</button>
     </div>`).join('');
 }
+let savingTaskTypes=false;
 export async function saveTaskTypes(){
+  if(savingTaskTypes) return;
   const items=state.ganttTaskTypeEditItems;
   if(items.some(tt=>!tt.code||!tt.code.trim()||!tt.label||!tt.label.trim())){
     showTaskTypeError('Every task type needs a code and a label.');return;
   }
   hideTaskTypeError();
+  savingTaskTypes=true;
+  const btn=document.getElementById('dtTaskTypeSaveBtn');
+  if(btn){btn.disabled=true;btn.textContent='Saving…';}
   try{
     const existingIds=state.ganttTaskTypes.map(t=>t.id);
     const keptIds=items.filter(t=>t.id).map(t=>t.id);
@@ -1618,6 +1623,10 @@ export async function saveTaskTypes(){
     renderTimelineHeader();
     renderTimelineBody();
   }catch(err){showNotification('Could not save task types: '+(err.message||err),'error');}
+  finally{
+    savingTaskTypes=false;
+    if(btn){btn.disabled=false;btn.textContent='Save';}
+  }
 }
 
 // ══════════════════════════════════════════════════
