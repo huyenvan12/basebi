@@ -620,8 +620,11 @@
           </div>
           <input type="date" class="form-input" id="dtStartDate" style="width:150px" aria-label="Start date">
           <button class="btn btn-ghost dt-btn-with-icon" id="dtColumnsBtn" aria-haspopup="menu"><svg class="dt-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M9 3v18" /><path d="M15 3v18" /></svg>Columns<span class="dt-columns-count" id="dtColumnsCount">5/5</span></button>
+          <span class="dt-toolbar-sep" aria-hidden="true"></span>
+          <button class="btn btn-ghost dt-btn-with-icon dt-view-btn" id="dtViewBtn" aria-haspopup="menu" data-menu-trigger="view" title="Switch between your tickets and the whole team"><svg class="dt-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>View: <span id="dtViewLabel">Mine</span><svg class="dt-btn-icon dt-view-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
         </div>
         <div class="dt-toolbar-group">
+          <span class="dt-readonly-chip" id="dtReadOnlyChip" style="display:none"><svg class="dt-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Read-only · switch to Mine to edit</span>
           <button class="btn btn-ghost dt-btn-with-icon" id="dtMarkAlBtn" title="Toggle, then click a date header (Shift-click for a range)"><svg class="dt-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4" /><path d="M16 2v4" /><path d="M21 13V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8" /><path d="M3 10h18" /><path d="M16 19h6" /><path d="M19 16v6" /></svg>Mark day</button>
           <button class="btn btn-primary dt-btn-with-icon" id="dtAddTicketBtn"><svg class="dt-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="M12 5v14" /></svg>Add ticket</button>
           <button class="btn btn-ghost dt-icon-only-btn" id="dtSettingsBtn" style="display:none" aria-haspopup="menu" aria-label="Timeline settings" title="Timeline settings (admin)"><svg class="dt-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg></button>
@@ -1063,6 +1066,7 @@
     <button class="modal-close icon-btn" onclick="closeTicketModal()" aria-label="Close">×</button>
   </div>
   <div class="dt-drawer-body">
+    <div class="dt-owner-row" id="dtTicketOwnerRow" style="display:none"><span class="form-label">Owner</span><span id="dtTicketOwnerName"></span></div>
     <div class="form-row">
       <label class="form-label" for="dt-project">Project name *</label>
       <input class="form-input" id="dt-project" placeholder="e.g. Q3 Loyalty Campaign">
@@ -1097,7 +1101,7 @@
       <label class="form-label" for="dt-note">Note</label>
       <textarea class="form-input" id="dt-note" style="min-height:90px" placeholder="Notes…"></textarea>
     </div>
-    <label class="dt-share-row" for="dt-shared">
+    <label class="dt-share-row" id="dtShareRow" for="dt-shared">
       <span class="dt-share-text">
         <span class="dt-share-title">Share with team</span>
         <span class="dt-share-hint">Teammates can see this ticket, read-only.</span>
@@ -1107,8 +1111,8 @@
   </div>
   <div class="dt-drawer-foot">
     <button class="btn btn-danger" id="dtTicketDeleteBtn" style="display:none;margin-right:auto" onclick="deleteTicket()">Delete</button>
-    <button class="btn btn-ghost" onclick="closeTicketModal()">Cancel</button>
-    <button class="btn btn-primary" onclick="saveTicket()">Save</button>
+    <button class="btn btn-ghost" id="dtTicketCancelBtn" onclick="closeTicketModal()">Cancel</button>
+    <button class="btn btn-primary" id="dtTicketSaveBtn" onclick="saveTicket()">Save</button>
   </div>
 </aside>
 
@@ -1276,6 +1280,24 @@
         <button class="btn btn-ghost" onclick="closeTeamDaysModal()">Close</button>
         <button class="btn btn-primary" onclick="saveTeamDays()">Add</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- TEAM VIEW MEMBERS MODAL (admin) — who appears in Timeline › View: All team, and in which order -->
+<div class="modal-overlay" id="dtTeamMembersModalOverlay">
+  <div class="modal dt-tvm-modal">
+    <div class="modal-title">
+      <span>Team view members <span class="dt-sprint-modal-sub">Team-wide · only admins can edit</span></span>
+      <button class="modal-close icon-btn" onclick="closeTeamMembersModal()" aria-label="Close">×</button>
+    </div>
+    <p class="form-hint" style="margin:0 0 10px">Ticked people appear in View: All team, in this order. Drag ⋮⋮ to reorder. Nobody saved = everyone shows.</p>
+    <div class="dt-tvm-head"><span></span><span></span><span></span><span>Member</span><span>Shared tickets</span><span>Days off · next 30d</span></div>
+    <div class="dt-tvm-list" id="dtTeamMembersList"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" style="margin-right:auto" onclick="showAllTeamMembers()">Show all</button>
+      <button class="btn btn-ghost" onclick="closeTeamMembersModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTeamMembers()">Save</button>
     </div>
   </div>
 </div>
