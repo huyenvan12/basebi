@@ -95,7 +95,8 @@ export const state = {
   ganttTeamDays: [],                          // team-wide team_days rows (kind read_day, …), bulk-loaded once
   ganttTimelineView: 'mine',                  // 'mine' | 'team' (All team, read-only) — persisted in localStorage
   ganttTeamTickets: [], ganttTeamEntries: [],  // All team: shared tickets of the org + their entries (never mixed into ganttTickets)
-  ganttTeamLeave: [], ganttTeamLeaveKey: null, // All team: get_team_leave_days rows for the visible range ('from|to')
+  ganttTeamLeave: [],                          // All team: get_team_leave_days rows for the visible range
+  ganttTeamKey: null, ganttTeamStale: false,   // All team cache: range ('from|to') of the last fetch + refresh-in-background flag
   ganttTeamViewMembers: [],                    // team_view_members rows (empty = everyone shows)
   ganttTeamLoaded: false,
   ganttAlMarkingMode: false,                  // true while "Mark day" toggle is active

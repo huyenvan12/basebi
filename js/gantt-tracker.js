@@ -1500,16 +1500,26 @@ export function toggleTeamGroup(ownerId){
   renderTimelineBody();
 }
 
+// All team only shows ACTIVE shared tickets (Done / Cancelled stay in their owner's Mine view)
+const INACTIVE_IN_LIST=`(${INACTIVE_STATUSES.map(st=>`"${st}"`).join(',')})`;
 export async function loadTeamSharedTickets(){
-  const{data,error}=await sb.from('gantt_tickets').select('*').eq('is_shared',true).order('sort_order',{ascending:true});
+  const{data,error}=await sb.from('gantt_tickets').select('*').eq('is_shared',true).not('status','in',INACTIVE_IN_LIST).order('sort_order',{ascending:true});
   if(error){console.error('loadTeamSharedTickets failed',error);return [];}
   return data||[];
 }
-export async function loadTeamEntries(ticketIds){
-  if(!ticketIds.length) return [];
-  const{data,error}=await sb.from('gantt_entries').select('*').in('ticket_id',ticketIds);
-  if(error){console.error('loadTeamEntries failed',error);return [];}
-  return data||[];
+// one request: active shared tickets + only their entries that overlap the visible range
+export async function loadTeamTicketsWithEntries(from,to){
+  const{data,error}=await sb.from('gantt_tickets')
+    .select('*, gantt_entries(*)')
+    .eq('is_shared',true)
+    .not('status','in',INACTIVE_IN_LIST)
+    .lte('gantt_entries.start_date',to)
+    .gte('gantt_entries.end_date',from)
+    .order('sort_order',{ascending:true});
+  if(error){console.error('loadTeamTicketsWithEntries failed',error);return null;}
+  const tickets=[],entries=[];
+  (data||[]).forEach(row=>{ const {gantt_entries:es,...t}=row; tickets.push(t); (es||[]).forEach(e=>entries.push(e)); });
+  return {tickets,entries};
 }
 export async function loadTeamLeaveDays(from,to){
   const{data,error}=await sb.rpc('get_team_leave_days',{p_from:from,p_to:to});
@@ -1547,35 +1557,41 @@ function teamViewOrder(){
   return {shown,hidden:people.filter(p=>!shownIds.has(p.id))};
 }
 
-let teamLoadInFlight=null;
-// loads (once) tickets/entries/members and (per visible range) days off; resolves true when
-// something new was fetched so the caller re-renders
+// Loading strategy (keeps All team snappy):
+// - one round trip: tickets+entries (embedded, range-filtered), Team view members and days off
+//   are fetched in parallel
+// - stale-while-revalidate: whatever was loaded last renders immediately; switching into All team
+//   only marks the data stale and refreshes it in the background
+// - prefetch: shortly after the Delivery Tracker starts, the current range is loaded quietly
+let teamLoadInFlight=null, teamLoadKey=null;
 function ensureTeamData(from,to){
-  const needBase=!state.ganttTeamLoaded;
   const key=`${from}|${to}`;
-  const needLeave=state.ganttTeamLeaveKey!==key;
-  if(!needBase&&!needLeave) return null;
-  if(teamLoadInFlight) return teamLoadInFlight;
+  const need=!state.ganttTeamLoaded||state.ganttTeamKey!==key||state.ganttTeamStale;
+  if(!need) return null;
+  if(teamLoadInFlight) return teamLoadInFlight; // a re-render after it resolves picks up any newer range
+  teamLoadKey=key;
   teamLoadInFlight=(async()=>{
     try{
-      if(needBase){
-        const tickets=await loadTeamSharedTickets();
-        state.ganttTeamTickets=tickets;
-        state.ganttTeamEntries=await loadTeamEntries(tickets.map(t=>t.id));
-        state.ganttTeamViewMembers=await loadTeamViewMembers();
-        state.ganttTeamLoaded=true;
-      }
-      if(needLeave){
-        state.ganttTeamLeave=await loadTeamLeaveDays(from,to);
-        state.ganttTeamLeaveKey=key;
-      }
+      const [bundle,members,leave]=await Promise.all([loadTeamTicketsWithEntries(from,to),loadTeamViewMembers(),loadTeamLeaveDays(from,to)]);
+      if(bundle){ state.ganttTeamTickets=bundle.tickets; state.ganttTeamEntries=bundle.entries; }
+      state.ganttTeamViewMembers=members;
+      state.ganttTeamLeave=leave;
+      state.ganttTeamKey=teamLoadKey;
+      state.ganttTeamStale=false;
+      state.ganttTeamLoaded=true;
     }finally{ teamLoadInFlight=null; }
     return true;
   })();
   return teamLoadInFlight;
 }
-// fresh data each time the user switches into All team
-function invalidateTeamData(){ state.ganttTeamLoaded=false; state.ganttTeamLeaveKey=null; }
+// switching into All team: keep showing what we have, refresh in the background
+function markTeamDataStale(){ state.ganttTeamStale=true; }
+function prefetchTeamData(){
+  if(state.ganttTeamLoaded||teamLoadInFlight) return;
+  if(!state.ganttTimelineStartDate) state.ganttTimelineStartDate=mondayOf(today());
+  const cols=walkWeekdayColumns(state.ganttTimelineStartDate,state.ganttTimelineWeeks||TIMELINE_MIN_WEEKS);
+  if(cols.length) ensureTeamData(cols[0].date,cols[cols.length-1].date);
+}
 
 function personLeaveTypes(ownerId,dateStr){
   return (state.ganttTeamLeave||[]).filter(l=>l.owner_id===ownerId&&l.leave_date===dateStr).map(l=>l.day_type||'al');
@@ -1632,24 +1648,23 @@ function renderTeamTicketRow(ticket,cols,meta){
   const first=`<span class="dt-ticket-swatch" style="background:${color}"></span><button class="dt-ticket-name" onclick="openTeamTicketDrawer('${escJs(ticket.id)}')" title="${esc(ticket.project_name)}">${esc(ticket.project_name)}</button>`;
   const rest=k=>k==='jira'?jira:k==='scope'?esc(ticket.mon_scope||''):k==='status'?`<span class="dt-status-badge dt-status-${esc(ticket.status.replace(/\s+/g,''))}">${esc(ticket.status)}</span>`:k==='note'?`<span class="dt-team-note" title="${esc(ticket.note||'')}">${esc(ticket.note||'')}</span>`:'';
   const active=state.ganttEditingTicketId===ticket.id;
-  return `<tr class="dt-team-row dt-team-ticket-row${isTicketActive(ticket)?'':' dt-team-inactive'}${active?' dt-row-active':''}" data-ticket-id="${esc(ticket.id)}">${teamStickyCells(first,rest)}${days}</tr>`;
+  return `<tr class="dt-team-row dt-team-ticket-row${active?' dt-row-active':''}" data-ticket-id="${esc(ticket.id)}">${teamStickyCells(first,rest)}${days}</tr>`;
 }
 function renderTeamTimelineBody(body,cols){
   const colCount=visibleCols().length+cols.length;
   const loading=ensureTeamData(cols[0].date,cols[cols.length-1].date);
   if(loading){
+    loading.then(changed=>{ if(changed&&isTeamView()&&state.ganttActiveView==='timeline') renderTimelineBody(); });
     if(!state.ganttTeamLoaded){
       body.innerHTML=`<tr><td colspan="${colCount}" class="empty-list">Loading team…</td></tr>`;
+      return;
     }
-    loading.then(changed=>{ if(changed&&isTeamView()&&state.ganttActiveView==='timeline') renderTimelineBody(); });
-    if(!state.ganttTeamLoaded) return;
   }
   const {shown,hidden}=teamViewOrder();
   const collapsed=collapsedGroups();
   let html='';
   shown.forEach(person=>{
     const tickets=state.ganttTeamTickets.filter(t=>t.owner_id===person.id);
-    const active=tickets.filter(isTicketActive), inactive=tickets.filter(t=>!isTicketActive(t));
     const isCollapsed=collapsed.includes(person.id);
     const summary=tickets.length?`${tickets.length} shared ${tickets.length===1?'ticket':'tickets'}`:'no shared tickets';
     const meta=personDayMeta(person.id,cols);
@@ -1659,11 +1674,7 @@ function renderTeamTimelineBody(body,cols){
       html+=`<tr class="dt-team-row dt-team-empty-row">${teamStickyCells('<span class="dt-team-empty">No shared tickets</span>')}<td colspan="${cols.length}"></td></tr>`;
       return;
     }
-    html+=active.map(t=>renderTeamTicketRow(t,cols,meta)).join('');
-    if(inactive.length){
-      html+=`<tr class="dt-inactive-divider" onclick="toggleGanttInactive()"><td colspan="${colCount}">${state.ganttInactiveExpanded?'▾':'▸'} Inactive (${inactive.length})</td></tr>`;
-      if(state.ganttInactiveExpanded) html+=inactive.map(t=>renderTeamTicketRow(t,cols,meta)).join('');
-    }
+    html+=tickets.map(t=>renderTeamTicketRow(t,cols,meta)).join('');
   });
   if(!shown.length) html+=`<tr><td colspan="${colCount}" class="empty-list">Nobody is set to show in Team view.</td></tr>`;
   if(state.currentUserRole==='admin'&&hidden.length){
@@ -1698,7 +1709,7 @@ export function setTimelineView(v){
     if(state.ganttAlMarkingMode) toggleAlMarkingMode();
     closeTypePicker();
     if(state.ganttEditingTicketId||document.getElementById('dtTicketModalOverlay').classList.contains('open')) closeTicketModal();
-    if(state.ganttTimelineView!=='team') invalidateTeamData();
+    if(state.ganttTimelineView!=='team') markTeamDataStale();
   }else if(state.ganttTimelineView==='team'&&document.getElementById('dtTicketModalOverlay').classList.contains('open')){
     closeTicketModal();
   }
@@ -2764,6 +2775,8 @@ export function initGanttTracker(){
   document.getElementById('dtTodayBtn').onclick=()=>setTimelineStartDate(today());
   document.getElementById('dtColumnsBtn').onclick=e=>{e.stopPropagation();openColumnsMenu(e.currentTarget);};
   document.getElementById('dtViewBtn').onclick=e=>{e.stopPropagation();openViewMenu(e.currentTarget);};
+  // quietly warm up All team data so the first switch is instant
+  setTimeout(prefetchTeamData,2500);
   state.ganttTimelineView=loadSavedView();
   renderViewToolbar();
   document.getElementById('dtSettingsBtn').onclick=e=>{e.stopPropagation();openSettingsMenu(e.currentTarget);};
