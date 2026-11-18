@@ -30,7 +30,7 @@ import { loadFeatureFlags, renderAdminHub, initAdminHub } from './admin-hub.js';
 import { initMobileShell, renderMobileShell } from './mobile-shell.js';
 import { maybeShowSaveAccountPrompt, initTokenRefreshSync } from './saved-accounts.js';
 import {
-  loadTaskTypes, loadTickets, loadEntries, loadLeaveDays, loadHolidays, loadSprints, switchGanttView, initGanttTracker,
+  loadTaskTypes, loadTickets, loadEntries, loadLeaveDays, loadHolidays, loadSprints, loadTeamDays, switchGanttView, initGanttTracker,
   closeTicketModal, closeTaskTypeModal, closeOverlapModal, closeTypePicker, closeCalPopover
 } from './gantt-tracker.js';
 import {
@@ -455,6 +455,7 @@ async function initApp(){
       state.ganttLeaveDays = await loadLeaveDays();
       state.ganttHolidays = await loadHolidays();
       state.ganttSprints = await loadSprints();
+      state.ganttTeamDays = await loadTeamDays();
       initGanttTracker();
     }
 

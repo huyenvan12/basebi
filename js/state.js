@@ -92,6 +92,7 @@ export const state = {
   ganttLeaveDays: [],                         // this user's delivery_leave_days rows (one row per date+day_type), bulk-loaded once
   ganttHolidays: [],                          // team-wide public_holidays rows, bulk-loaded once
   ganttSprints: [],                           // team-wide sprints rows, bulk-loaded once
+  ganttTeamDays: [],                          // team-wide team_days rows (kind read_day, …), bulk-loaded once
   ganttAlMarkingMode: false,                  // true while "Mark day" toggle is active
   ganttMarkDayContext: null,                  // {dates:[...]} while the Mark day modal is open
   ganttMarkDayAnchor: null,                   // last clicked header date in Mark day mode — Shift-click extends a range from it
