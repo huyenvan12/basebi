@@ -542,7 +542,9 @@ export function renderTimelineHeader(){
 
   renderTimelineColgroup(cols.length);
 
-  const stickyTh=(key,label)=>`<th class="sticky-col" data-col="${key}" style="left:${timelineColLeft(key)}px;width:${ganttColumnWidths[key]}px" rowspan="4">${esc(label)}<span class="dt-col-resize-handle" data-col="${key}" title="Drag to resize · double-click to fit"></span></th>`;
+  // All team: the Project header cell also holds Collapse all / Expand all for the person groups
+  const collapseAll=isTeamView()?`<button class="dt-collapse-all-btn" id="dtCollapseAllBtn" type="button" onclick="toggleAllTeamGroups()"></button>`:'';
+  const stickyTh=(key,label)=>`<th class="sticky-col${key==='project'&&collapseAll?' dt-th-with-action':''}" data-col="${key}" style="left:${timelineColLeft(key)}px;width:${ganttColumnWidths[key]}px" rowspan="4">${esc(label)}${key==='project'?collapseAll:''}<span class="dt-col-resize-handle" data-col="${key}" title="Drag to resize · double-click to fit"></span></th>`;
 
   const monthRow=`<tr class="dt-head-month">${visibleCols().map(k=>stickyTh(k,TIMELINE_COL_LABELS[k])).join('')}${
     monthGroups.map(mg=>`<th colspan="${mg.weekGroups.reduce((n,wg)=>n+wg.cols.length,0)}" class="dt-month-th">${esc(mg.monthLabel)}</th>`).join('')
@@ -1471,6 +1473,26 @@ const TEAM_COLLAPSED_KEY='gantt-team-collapsed';
 export function isTeamView(){ return state.ganttTimelineView==='team'; }
 function loadSavedView(){ try{ return localStorage.getItem(VIEW_KEY)==='team'?'team':'mine'; }catch(e){ return 'mine'; } }
 function collapsedGroups(){ try{ return JSON.parse(localStorage.getItem(TEAM_COLLAPSED_KEY)||'[]'); }catch(e){ return []; } }
+// Collapse all when any shown group is open, otherwise Expand all
+export function toggleAllTeamGroups(){
+  const ids=teamViewOrder().shown.map(p=>p.id);
+  const c=collapsedGroups();
+  const anyOpen=ids.some(id=>!c.includes(id));
+  const next=anyOpen?Array.from(new Set([...c,...ids])):c.filter(id=>!ids.includes(id));
+  try{ localStorage.setItem(TEAM_COLLAPSED_KEY,JSON.stringify(next)); }catch(e){/* ignore */}
+  renderTimelineBody();
+}
+function updateCollapseAllBtn(){
+  const btn=document.getElementById('dtCollapseAllBtn');
+  if(!btn) return;
+  const ids=teamViewOrder().shown.map(p=>p.id);
+  const c=collapsedGroups();
+  const anyOpen=ids.some(id=>!c.includes(id));
+  btn.style.display=ids.length?'':'none';
+  btn.setAttribute('aria-label',anyOpen?'Collapse all people':'Expand all people');
+  btn.title=anyOpen?'Collapse all people':'Expand all people';
+  btn.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${anyOpen?'<path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/>':'<path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/>'}</svg>${anyOpen?'Collapse all':'Expand all'}`;
+}
 export function toggleTeamGroup(ownerId){
   const c=collapsedGroups();
   const next=c.includes(ownerId)?c.filter(x=>x!==ownerId):[...c,ownerId];
@@ -1648,6 +1670,7 @@ function renderTeamTimelineBody(body,cols){
     html+=`<tr class="dt-team-footer-row"><td colspan="${colCount}"><span class="dt-team-footer">${hidden.length} ${hidden.length===1?'member':'members'} hidden from Team view (${esc(hidden.map(p=>p.display_name).join(', '))}) · <button class="dt-link-btn" onclick="openTeamMembersModal()">Team view members</button> <span class="dt-admin-tag">ADMIN</span></span></td></tr>`;
   }
   body.innerHTML=html;
+  updateCollapseAllBtn();
 }
 
 function renderViewToolbar(){
@@ -2707,6 +2730,7 @@ export function initGanttTracker(){
   window.openTeamDaysModal=openTeamDaysModal;
   window.setTimelineView=setTimelineView;
   window.toggleTeamGroup=toggleTeamGroup;
+  window.toggleAllTeamGroups=toggleAllTeamGroups;
   window.openTeamTicketDrawer=openTeamTicketDrawer;
   window.openTeamMembersModal=openTeamMembersModal;
   window.closeTeamMembersModal=closeTeamMembersModal;

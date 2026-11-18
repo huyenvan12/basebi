@@ -1928,3 +1928,9 @@ body.is-native-app .search-screen{padding-top:calc(50px + env(safe-area-inset-to
 .dt-tvm-handle{color:var(--text-muted);cursor:grab;letter-spacing:-2px;user-select:none}
 .dt-tvm-num{font-family:var(--mono,'JetBrains Mono',monospace);font-size:11.5px}
 .dt-tvm-num.is-zero{color:var(--text-muted)}
+
+/* All team: Collapse all / Expand all inside the Project header cell */
+.dt-timeline-table thead th.dt-th-with-action{vertical-align:bottom}
+.dt-collapse-all-btn{display:flex;align-items:center;gap:4px;margin-top:6px;height:22px;padding:0 8px;border:1px solid var(--border);border-radius:11px;background:var(--surface);color:var(--text-muted);font-family:inherit;font-size:10.5px;font-weight:600;cursor:pointer;white-space:nowrap}
+.dt-collapse-all-btn svg{width:12px;height:12px}
+.dt-collapse-all-btn:hover{color:var(--accent);border-color:var(--accent)}
