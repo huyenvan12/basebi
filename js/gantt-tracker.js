@@ -129,6 +129,24 @@ export async function deleteSprintDB(id){
   const{error}=await sb.from('sprints').delete().eq('id',id);
   if(error) throw error;
 }
+// team_days — org-wide special days that apply to everyone (kind 'read_day' for now).
+// RLS: members read, admins write. One row per weekday.
+export async function loadTeamDays(){
+  const{data,error}=await sb.from('team_days').select('*').order('day_date',{ascending:true});
+  if(error){console.error('loadTeamDays failed',error);return [];}
+  return data||[];
+}
+export async function insertTeamDaysDB(rows){
+  if(!rows.length) return [];
+  const{data,error}=await sb.from('team_days').insert(rows).select();
+  if(error) throw error;
+  return data||[];
+}
+export async function deleteTeamDaysDB(ids){
+  if(!ids.length) return;
+  const{error}=await sb.from('team_days').delete().in('id',ids);
+  if(error) throw error;
+}
 
 // ══════════════════════════════════════════════════
 // DATE-MATH UTILITIES — pure, local Y/M/D arithmetic (new Date(y,m,d)/getFullYear/getMonth/
@@ -241,13 +259,18 @@ export const DAY_TYPES={
   al:      {code:'AL',  label:'Annual leave',        hint:'Whole day off',                 group:'off',  ph:'Reason (optional) — e.g. Family trip'},
   half_am: {code:'½AM', label:'Half day — morning',  hint:'Left half of the column',       group:'off',  ph:'Reason (optional)'},
   half_pm: {code:'½PM', label:'Half day — afternoon',hint:'Right half of the column',      group:'off',  ph:'Reason (optional)'},
-  wfh:     {code:'WFH', label:'Work from home',      hint:'Header badge only — assign tasks as usual', group:'work', ph:'Note (optional)'},
-  read_day:{code:'RD',  label:'BRD read day',        hint:'Header badge only — assign tasks as usual', group:'work', ph:'Which BRD? (optional)'}
+  wfh:     {code:'WFH', label:'Work from home',      hint:'Header badge only — assign tasks as usual', group:'work', ph:'Note (optional)'}
 };
-const DAY_TYPE_ORDER=['al','half_am','half_pm','wfh','read_day'];
+const DAY_TYPE_ORDER=['al','half_am','half_pm','wfh'];
+// BRD read day (RD) is no longer a personal mark — it lives in team_days. Any leftover
+// personal read_day row is ignored so it can never render twice.
 export function marksForDate(dateStr){
-  return state.ganttLeaveDays.filter(l=>l.leave_date===dateStr)
+  return state.ganttLeaveDays.filter(l=>l.leave_date===dateStr&&DAY_TYPES[l.day_type||'al'])
     .sort((a,b)=>DAY_TYPE_ORDER.indexOf(a.day_type||'al')-DAY_TYPE_ORDER.indexOf(b.day_type||'al'));
+}
+export const TEAM_DAY_KINDS={ read_day:{code:'RD',label:'BRD read day'} };
+export function teamDaysFor(dateStr){
+  return state.ganttTeamDays.filter(d=>d.day_date===dateStr&&TEAM_DAY_KINDS[d.kind]);
 }
 export function holidayFor(dateStr){
   return state.ganttHolidays.find(h=>h.holiday_date===dateStr)||null;
@@ -265,6 +288,7 @@ function specialDayTooltip(dateStr){
   const parts=[];
   const hol=holidayFor(dateStr);
   if(hol) parts.push(`Public holiday: ${hol.name}`);
+  teamDaysFor(dateStr).forEach(d=>parts.push(`Team: ${TEAM_DAY_KINDS[d.kind].label}`));
   marksForDate(dateStr).forEach(m=>{
     const t=DAY_TYPES[m.day_type||'al'];
     parts.push(t.code+(m.reason?` — ${m.reason}`:''));
@@ -465,7 +489,7 @@ export function renderTimelineLegend(){
   const special=[
     ['dt-mark-pill-off','AL','Annual leave'],['dt-mark-pill-off','½AM / ½PM','Half day'],
     ['dt-mark-pill-off','HOL','Public holiday'],['dt-mark-pill-wfh','WFH','Work from home'],
-    ['dt-mark-pill-rd','RD','BRD read day']
+    ['dt-mark-pill-rd','RD','BRD read day (team)']
   ];
   const toggle=`<button class="dt-legend-toggle" aria-expanded="${open}" onclick="toggleTimelineLegend()"><svg class="dt-legend-chevron${open?' open':''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>Legend</button>`;
   if(!open){
@@ -514,7 +538,7 @@ export function renderTimelineHeader(){
 
   renderTimelineColgroup(cols.length);
 
-  const stickyTh=(key,label)=>`<th class="sticky-col" data-col="${key}" style="left:${timelineColLeft(key)}px;width:${ganttColumnWidths[key]}px" rowspan="4">${esc(label)}<span class="dt-col-resize-handle" data-col="${key}" title="Drag to resize · double-click to fit"></span></th>`;
+  const stickyTh=(key,label)=>`<th class="sticky-col" data-col="${key}" style="left:${timelineColLeft(key)}px;width:${ganttColumnWidths[key]}px" rowspan="5">${esc(label)}<span class="dt-col-resize-handle" data-col="${key}" title="Drag to resize · double-click to fit"></span></th>`;
 
   const monthRow=`<tr class="dt-head-month">${visibleCols().map(k=>stickyTh(k,TIMELINE_COL_LABELS[k])).join('')}${
     monthGroups.map(mg=>`<th colspan="${mg.weekGroups.reduce((n,wg)=>n+wg.cols.length,0)}" class="dt-month-th">${esc(mg.monthLabel)}</th>`).join('')
@@ -544,6 +568,26 @@ export function renderTimelineHeader(){
     return `<th colspan="${sg.n}" class="dt-sprint-th${isCurrent?' dt-sprint-th-current':''}${startsHere?' dt-sprint-start':''}${isAdmin?' dt-sprint-th-editable':''}" data-sprint-id="${esc(sp.id)}" title="${esc(title)}"><span class="dt-sprint-name">${before?'‹ ':''}${esc(sp.name)}${after?' ›':''}</span>${sub}</th>`;
   }).join('')}</tr>`;
 
+  // TEAM DAYS row — team-wide days (team_days) under the sprint row. Consecutive visible days of
+  // the same kind merge into one labelled cell; other days stay single cells so the sprint-start
+  // line keeps running through this row.
+  const teamSegs=[];
+  cols.forEach((c,i)=>{
+    const kind=(teamDaysFor(c.date)[0]||{}).kind||null;
+    const last=teamSegs[teamSegs.length-1];
+    if(kind&&last&&last.kind===kind) last.cols.push({c,i});
+    else teamSegs.push({kind,cols:[{c,i}]});
+  });
+  const teamRow=`<tr class="dt-head-team">${teamSegs.map(sg=>{
+    const first=sg.cols[0];
+    const startCls=first.i>0&&isSprintStartCol(first.c.date,cols[0].date)?' dt-sprint-start':'';
+    if(!sg.kind) return `<th class="dt-team-th dt-team-th-empty${startCls}"></th>`;
+    const k=TEAM_DAY_KINDS[sg.kind];
+    const offsets=sg.cols.map(({c},k2)=>k2>0&&isSprintStartCol(c.date,cols[0].date)?k2*TIMELINE_DAY_COL_WIDTH:null).filter(x=>x!==null);
+    const range=sg.cols.length>1?`${fmtDM(first.c.date)} – ${fmtDM(sg.cols[sg.cols.length-1].c.date)}`:fmtDM(first.c.date);
+    return `<th colspan="${sg.cols.length}" class="dt-team-th dt-team-th-${esc(sg.kind)}${startCls}" title="${esc(`${k.label} (team): ${range}`)}">${sprintLineSpans(offsets)}<span class="dt-mark-pill dt-mark-pill-rd">${esc(k.code)}</span></th>`;
+  }).join('')}</tr>`;
+
   // "current week" highlight — only when today's date actually falls within one of the
   // currently visible week groups; never forces navigation to jump there
   // the week row sits between the sprint row and the day row, so the sprint-start line is
@@ -565,7 +609,7 @@ export function renderTimelineHeader(){
     if(holidayFor(c.date)) pills.push('<span class="dt-mark-pill dt-mark-pill-off">HOL</span>');
     marksForDate(c.date).forEach(m=>{
       const t=m.day_type||'al';
-      const cls=t==='wfh'?'dt-mark-pill-wfh':t==='read_day'?'dt-mark-pill-rd':'dt-mark-pill-off';
+      const cls=t==='wfh'?'dt-mark-pill-wfh':'dt-mark-pill-off';
       pills.push(`<span class="dt-mark-pill ${cls}">${esc(DAY_TYPES[t].code)}</span>`);
     });
     // the day row has a fixed height with room for ONE pill so the header never grows when a
@@ -578,7 +622,7 @@ export function renderTimelineHeader(){
     return `<th class="dt-day-th${isToday?' dt-day-th-today':''}${offClass}${sprintStart?' dt-sprint-start':''}" data-date="${c.date}"${tip?` title="${esc(tip)}"`:''}>${dow}<br>${String(d.getDate()).padStart(2,'0')}${pills.length?`<span class="dt-mark-pills">${pills.join('')}</span>`:''}</th>`;
   }).join('')}</tr>`;
 
-  head.innerHTML=monthRow+sprintRow+weekRow+dayRow;
+  head.innerHTML=monthRow+sprintRow+teamRow+weekRow+dayRow;
   // stack the sticky header rows: each row sticks just below the rows above it (all rows
   // used to share top:0, which only worked while nothing scrolled vertically)
   head.querySelectorAll('tr').forEach(tr=>{
@@ -1073,7 +1117,7 @@ function renderMarkDayModal(){
   const leftover=holidays.flatMap(d=>marksForDate(d));
   if(onlyHolidays&&holidays.length){
     const hol=holidayFor(holidays[0]);
-    const leftoverNote=leftover.length?`<div class="dt-markday-holiday-left">You still have ${leftover.map(m=>`<span class="dt-mark-pill ${m.day_type==='wfh'?'dt-mark-pill-wfh':m.day_type==='read_day'?'dt-mark-pill-rd':'dt-mark-pill-off'}">${esc(DAY_TYPES[m.day_type||'al'].code)}</span>`).join(' ')} marked here from before — use <b>Clear all marks</b> to remove ${leftover.length===1?'it':'them'}.</div>`:'';
+    const leftoverNote=leftover.length?`<div class="dt-markday-holiday-left">You still have ${leftover.map(m=>`<span class="dt-mark-pill ${m.day_type==='wfh'?'dt-mark-pill-wfh':'dt-mark-pill-off'}">${esc(DAY_TYPES[m.day_type||'al'].code)}</span>`).join(' ')} marked here from before — use <b>Clear all marks</b> to remove ${leftover.length===1?'it':'them'}.</div>`:'';
     holBox.innerHTML=`<div class="dt-markday-holiday"><span class="dt-mark-pill dt-mark-pill-off">HOL</span><div><b>${esc(hol.name)}</b><div class="dt-markday-holiday-sub">Team-wide public holiday, managed by admin. Personal marks aren't needed on this day.</div>${leftoverNote}</div></div>`;
     holBox.style.display='';
   }else{ holBox.innerHTML=''; holBox.style.display='none'; }
@@ -1083,7 +1127,7 @@ function renderMarkDayModal(){
     const def=DAY_TYPES[t], on=!!selected[t];
     const reason=markTypeBlockedReason(t,selected);
     const disabled=!on&&!!reason;
-    const pillCls=t==='wfh'?'dt-mark-pill-wfh':t==='read_day'?'dt-mark-pill-rd':'dt-mark-pill-off';
+    const pillCls=t==='wfh'?'dt-mark-pill-wfh':'dt-mark-pill-off';
     return `<div class="dt-markday-row${on?' dt-markday-row-on':''}${disabled?' dt-markday-row-disabled':''}">
       <label class="dt-markday-label">
         <input type="checkbox" ${on?'checked':''} ${disabled?'disabled':''} onchange="toggleMarkDayType('${t}')">
@@ -1094,7 +1138,7 @@ function renderMarkDayModal(){
     </div>`;
   };
   typesEl.style.display=onlyHolidays?'none':'';
-  typesEl.innerHTML=onlyHolidays?'':`<div class="dt-markday-group">TIME OFF</div>${['al','half_am','half_pm'].map(row).join('')}<div class="dt-markday-group">WORK MODE · tasks assign as usual</div>${['wfh','read_day'].map(row).join('')}`;
+  typesEl.innerHTML=onlyHolidays?'':`<div class="dt-markday-group">TIME OFF</div>${['al','half_am','half_pm'].map(row).join('')}<div class="dt-markday-group">WORK MODE · tasks assign as usual</div>${['wfh'].map(row).join('')}`;
 
   const hasExisting=dates.some(d=>marksForDate(d).length);
   document.getElementById('dtAlDeleteBtn').style.display=hasExisting?'':'none';
@@ -1330,6 +1374,100 @@ export function deleteSprint(){
 }
 
 // ══════════════════════════════════════════════════
+// TEAM DAYS — team-wide special days (team_days), admin-managed from the ⚙ menu. Stored one
+// row per weekday; the list groups consecutive weekdays of the same kind into one range.
+// ══════════════════════════════════════════════════
+let teamDaysSaveInFlight=false;
+function teamDayRuns(){
+  const sorted=[...state.ganttTeamDays].filter(d=>TEAM_DAY_KINDS[d.kind]).sort((a,b)=>a.day_date<b.day_date?-1:a.day_date>b.day_date?1:0);
+  const runs=[];
+  sorted.forEach(d=>{
+    const last=runs[runs.length-1];
+    if(last&&last.kind===d.kind&&nextBusinessDay(last.end)===d.day_date){ last.end=d.day_date; last.ids.push(d.id); }
+    else runs.push({kind:d.kind,start:d.day_date,end:d.day_date,ids:[d.id]});
+  });
+  return runs;
+}
+function showTeamDaysError(msg){
+  const el=document.getElementById('dtTeamDaysError');
+  if(!el) return;
+  el.textContent=msg||''; el.style.display=msg?'':'none';
+}
+function renderTeamDaysModal(){
+  const list=document.getElementById('dtTeamDaysList');
+  if(!list) return;
+  const t=today();
+  const runs=teamDayRuns();
+  list.innerHTML=runs.length?runs.map(r=>{
+    const k=TEAM_DAY_KINDS[r.kind];
+    const dl=d=>`${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][parseISO(d).getDay()]} ${fmtDM(d)}`;
+    const range=r.start===r.end?`${dl(r.start)}/${parseISO(r.start).getFullYear()}`:`${dl(r.start)} – ${dl(r.end)}/${parseISO(r.end).getFullYear()}`;
+    const n=r.ids.length;
+    return `<div class="dt-team-days-row${r.end<t?' is-past':''}">
+      <span class="dt-team-days-date">${esc(range)}</span>
+      <span class="dt-team-days-len">${n} ${n===1?'day':'days'}</span>
+      <span><span class="dt-mark-pill dt-mark-pill-rd">${esc(k.code)}</span> <span class="dt-team-days-kind">${esc(k.label)}</span></span>
+      <button class="icon-btn dt-team-days-del" aria-label="Delete ${esc(range)}" title="Delete" onclick="deleteTeamDayRun('${escJs(r.ids.join(','))}')">×</button>
+    </div>`;
+  }).join(''):'<div class="empty-list" style="padding:14px">No team days yet.</div>';
+}
+export function openTeamDaysModal(){
+  if(state.currentUserRole!=='admin') return;
+  const t=today();
+  const start=isWeekday(t)?t:nextBusinessDay(t);
+  document.getElementById('dtTeamDayFrom').value=start;
+  document.getElementById('dtTeamDayUntil').value='';
+  document.getElementById('dtTeamDayKind').value='read_day';
+  showTeamDaysError('');
+  renderTeamDaysModal();
+  document.getElementById('dtTeamDaysModalOverlay').classList.add('open');
+}
+export function closeTeamDaysModal(){
+  document.getElementById('dtTeamDaysModalOverlay').classList.remove('open');
+}
+function afterTeamDaysChange(){
+  renderTeamDaysModal();
+  renderTimelineHeader();
+  renderTimelineBody();
+  if(state.ganttActiveView==='calendar') renderCalendar();
+}
+export async function saveTeamDays(){
+  if(teamDaysSaveInFlight) return;
+  const from=document.getElementById('dtTeamDayFrom').value;
+  const until=document.getElementById('dtTeamDayUntil').value||from;
+  const kind=document.getElementById('dtTeamDayKind').value;
+  if(!from){ showTeamDaysError('Pick a date.'); return; }
+  if(until<from){ showTeamDaysError('Until must be on or after From.'); return; }
+  if(!TEAM_DAY_KINDS[kind]){ showTeamDaysError('Pick a kind.'); return; }
+  const days=weekdaysBetween(from,until);
+  if(!days.length){ showTeamDaysError('That range has no weekdays.'); return; }
+  const existing=new Set(state.ganttTeamDays.filter(d=>d.kind===kind).map(d=>d.day_date));
+  const rows=days.filter(d=>!existing.has(d)).map(d=>({day_date:d,kind}));
+  if(!rows.length){ showTeamDaysError('Those days are already marked.'); return; }
+  showTeamDaysError('');
+  teamDaysSaveInFlight=true;
+  try{
+    const inserted=await insertTeamDaysDB(rows);
+    state.ganttTeamDays.push(...inserted);
+    document.getElementById('dtTeamDayUntil').value='';
+    afterTeamDaysChange();
+    showNotification(`${inserted.length} team ${inserted.length===1?'day':'days'} added`,'success');
+  }catch(err){ showTeamDaysError('Could not save: '+(err.message||err)); }
+  finally{ teamDaysSaveInFlight=false; }
+}
+export function deleteTeamDayRun(idList){
+  const ids=String(idList||'').split(',').filter(Boolean);
+  if(!ids.length) return;
+  openConfirmModal(`Delete ${ids.length===1?'this team day':`these ${ids.length} team days`}? ${ids.length===1?'It disappears':'They disappear'} from everyone's Timeline and Calendar.`,async()=>{
+    try{
+      await deleteTeamDaysDB(ids);
+      state.ganttTeamDays=state.ganttTeamDays.filter(d=>!ids.includes(d.id));
+      afterTeamDaysChange();
+    }catch(err){ showNotification('Could not delete: '+(err.message||err),'error'); }
+  },{title:'Delete team day?',confirmLabel:'Delete'});
+}
+
+// ══════════════════════════════════════════════════
 // TICKET MODAL — dual mode (add/edit), modeled on checklist-templates.js's template modal.
 // ══════════════════════════════════════════════════
 function showProjectError(msg){
@@ -1492,7 +1630,8 @@ export function openSettingsMenu(btn){
   if(state.currentUserRole!=='admin') return;
   toggleMenuFor('settings',btn,()=>`<div class="dt-menu-label">TIMELINE SETTINGS · ADMIN</div>
     <button class="dt-menu-item" id="dtManageTypesBtn" onclick="closeMenuPopover();openTaskTypeModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg>Manage task types</button>
-    <button class="dt-menu-item" id="dtSprintsBtn" onclick="closeMenuPopover();openSprintModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528"/></svg>Sprints</button>`);
+    <button class="dt-menu-item" id="dtSprintsBtn" onclick="closeMenuPopover();openSprintModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528"/></svg>Sprints</button>
+    <button class="dt-menu-item" id="dtTeamDaysBtn" onclick="closeMenuPopover();openTeamDaysModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/><path d="M8 15h2M14 15h2"/></svg>Team days</button>`);
 }
 
 // Inline status dropdown (status badge in the table)
@@ -1794,7 +1933,7 @@ function calDayCell(dateStr,month,todayStr){
   const types=marksForDate(dateStr).map(m=>m.day_type||'al');
   const off=timeOffKind(dateStr);
   const offWord=hol?hol.name:types.includes('al')?'AL':types.includes('half_am')?'½AM':types.includes('half_pm')?'½PM':'';
-  const dots=[types.includes('wfh')?'<span class="dt-cal-dot dt-cal-dot-wfh"></span>':'',types.includes('read_day')?'<span class="dt-cal-dot dt-cal-dot-rd"></span>':''].join('');
+  const dots=[types.includes('wfh')?'<span class="dt-cal-dot dt-cal-dot-wfh"></span>':'',teamDaysFor(dateStr).some(d=>d.kind==='read_day')?'<span class="dt-cal-dot dt-cal-dot-rd"></span>':''].join('');
   const tip=specialDayTooltip(dateStr);
   const cls=['dt-cal-cell',inMonth?'':'dt-cal-cell-muted',weekend?'dt-cal-cell-weekend':'',off==='full'?'dt-cal-off-full':off==='am'?'dt-cal-off-am':off==='pm'?'dt-cal-off-pm':''].filter(Boolean).join(' ');
   const num=dateStr===todayStr?`<span class="dt-cal-today-badge">${d.getDate()}</span>`:`<span class="dt-cal-num">${d.getDate()}</span>`;
@@ -2192,6 +2331,10 @@ export function initGanttTracker(){
   window.setMarkDayNote=setMarkDayNote;
   window.setMarkDayUntil=setMarkDayUntil;
   window.openSprintModal=openSprintModal;
+  window.openTeamDaysModal=openTeamDaysModal;
+  window.closeTeamDaysModal=closeTeamDaysModal;
+  window.saveTeamDays=saveTeamDays;
+  window.deleteTeamDayRun=deleteTeamDayRun;
   window.closeSprintModal=closeSprintModal;
   window.editSprint=editSprint;
   window.newSprintDraft=newSprintDraft;

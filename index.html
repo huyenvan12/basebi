@@ -1248,6 +1248,31 @@
   </div>
 </div>
 
+<!-- TEAM DAYS MODAL (admin) — team-wide special days (team_days); one row per weekday -->
+<div class="modal-overlay" id="dtTeamDaysModalOverlay">
+  <div class="modal dt-team-days-modal">
+    <div class="modal-title">
+      <span>Team days <span class="dt-sprint-modal-sub">Team-wide · only admins can edit</span></span>
+      <button class="modal-close icon-btn" onclick="closeTeamDaysModal()" aria-label="Close">×</button>
+    </div>
+    <p class="form-hint" style="margin:0 0 10px">Days that apply to the whole team. They show in the Team days row under Sprint and as a dot in Calendar.</p>
+    <div class="dt-team-days-list" id="dtTeamDaysList"></div>
+    <div class="dt-team-days-add">
+      <span class="dt-markday-group">ADD TEAM DAY</span>
+      <div class="dt-team-days-grid">
+        <div class="form-row"><label class="form-label" for="dtTeamDayFrom">From</label><input type="date" class="form-input" id="dtTeamDayFrom"></div>
+        <div class="form-row"><label class="form-label" for="dtTeamDayUntil">Until (optional)</label><input type="date" class="form-input" id="dtTeamDayUntil"></div>
+        <div class="form-row"><label class="form-label" for="dtTeamDayKind">Kind</label><select class="form-input" id="dtTeamDayKind"><option value="read_day">RD · BRD read day</option></select></div>
+      </div>
+      <div class="form-hint is-error" id="dtTeamDaysError" style="display:none"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeTeamDaysModal()">Close</button>
+        <button class="btn btn-primary" onclick="saveTeamDays()">Add</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- AGENDA ADD-ENTRY MODAL (mobile-web only — "+ Add entry" is the only mobile write path into
      gantt_entries; existing entries are read-only on mobile, see #dtAgendaEntryDetailOverlay) -->
 <div class="modal-overlay" id="dtAgendaEntryModalOverlay">
