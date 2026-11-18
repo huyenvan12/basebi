@@ -538,7 +538,7 @@ export function renderTimelineHeader(){
 
   renderTimelineColgroup(cols.length);
 
-  const stickyTh=(key,label)=>`<th class="sticky-col" data-col="${key}" style="left:${timelineColLeft(key)}px;width:${ganttColumnWidths[key]}px" rowspan="5">${esc(label)}<span class="dt-col-resize-handle" data-col="${key}" title="Drag to resize · double-click to fit"></span></th>`;
+  const stickyTh=(key,label)=>`<th class="sticky-col" data-col="${key}" style="left:${timelineColLeft(key)}px;width:${ganttColumnWidths[key]}px" rowspan="4">${esc(label)}<span class="dt-col-resize-handle" data-col="${key}" title="Drag to resize · double-click to fit"></span></th>`;
 
   const monthRow=`<tr class="dt-head-month">${visibleCols().map(k=>stickyTh(k,TIMELINE_COL_LABELS[k])).join('')}${
     monthGroups.map(mg=>`<th colspan="${mg.weekGroups.reduce((n,wg)=>n+wg.cols.length,0)}" class="dt-month-th">${esc(mg.monthLabel)}</th>`).join('')
@@ -568,26 +568,6 @@ export function renderTimelineHeader(){
     return `<th colspan="${sg.n}" class="dt-sprint-th${isCurrent?' dt-sprint-th-current':''}${startsHere?' dt-sprint-start':''}${isAdmin?' dt-sprint-th-editable':''}" data-sprint-id="${esc(sp.id)}" title="${esc(title)}"><span class="dt-sprint-name">${before?'‹ ':''}${esc(sp.name)}${after?' ›':''}</span>${sub}</th>`;
   }).join('')}</tr>`;
 
-  // TEAM DAYS row — team-wide days (team_days) under the sprint row. Consecutive visible days of
-  // the same kind merge into one labelled cell; other days stay single cells so the sprint-start
-  // line keeps running through this row.
-  const teamSegs=[];
-  cols.forEach((c,i)=>{
-    const kind=(teamDaysFor(c.date)[0]||{}).kind||null;
-    const last=teamSegs[teamSegs.length-1];
-    if(kind&&last&&last.kind===kind) last.cols.push({c,i});
-    else teamSegs.push({kind,cols:[{c,i}]});
-  });
-  const teamRow=`<tr class="dt-head-team">${teamSegs.map(sg=>{
-    const first=sg.cols[0];
-    const startCls=first.i>0&&isSprintStartCol(first.c.date,cols[0].date)?' dt-sprint-start':'';
-    if(!sg.kind) return `<th class="dt-team-th dt-team-th-empty${startCls}"></th>`;
-    const k=TEAM_DAY_KINDS[sg.kind];
-    const offsets=sg.cols.map(({c},k2)=>k2>0&&isSprintStartCol(c.date,cols[0].date)?k2*TIMELINE_DAY_COL_WIDTH:null).filter(x=>x!==null);
-    const range=sg.cols.length>1?`${fmtDM(first.c.date)} – ${fmtDM(sg.cols[sg.cols.length-1].c.date)}`:fmtDM(first.c.date);
-    return `<th colspan="${sg.cols.length}" class="dt-team-th dt-team-th-${esc(sg.kind)}${startCls}" title="${esc(`${k.label} (team): ${range}`)}">${sprintLineSpans(offsets)}<span class="dt-mark-pill dt-mark-pill-rd">${esc(k.code)}</span></th>`;
-  }).join('')}</tr>`;
-
   // "current week" highlight — only when today's date actually falls within one of the
   // currently visible week groups; never forces navigation to jump there
   // the week row sits between the sprint row and the day row, so the sprint-start line is
@@ -612,6 +592,8 @@ export function renderTimelineHeader(){
       const cls=t==='wfh'?'dt-mark-pill-wfh':'dt-mark-pill-off';
       pills.push(`<span class="dt-mark-pill ${cls}">${esc(DAY_TYPES[t].code)}</span>`);
     });
+    // team-wide days (team_days) sit in the same pill slot as personal marks
+    teamDaysFor(c.date).forEach(d=>pills.push(`<span class="dt-mark-pill dt-mark-pill-rd" title="${esc(TEAM_DAY_KINDS[d.kind].label)} (team)">${esc(TEAM_DAY_KINDS[d.kind].code)}</span>`));
     // the day row has a fixed height with room for ONE pill so the header never grows when a
     // marked day scrolls into view; extra marks show as a "+N" corner badge (full list in the
     // header's tooltip)
@@ -622,7 +604,7 @@ export function renderTimelineHeader(){
     return `<th class="dt-day-th${isToday?' dt-day-th-today':''}${offClass}${sprintStart?' dt-sprint-start':''}" data-date="${c.date}"${tip?` title="${esc(tip)}"`:''}>${dow}<br>${String(d.getDate()).padStart(2,'0')}${pills.length?`<span class="dt-mark-pills">${pills.join('')}</span>`:''}</th>`;
   }).join('')}</tr>`;
 
-  head.innerHTML=monthRow+sprintRow+teamRow+weekRow+dayRow;
+  head.innerHTML=monthRow+sprintRow+weekRow+dayRow;
   // stack the sticky header rows: each row sticks just below the rows above it (all rows
   // used to share top:0, which only worked while nothing scrolled vertically)
   head.querySelectorAll('tr').forEach(tr=>{
