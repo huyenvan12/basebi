@@ -1578,17 +1578,20 @@ function teamStickyCells(firstHtml,restFor){
   const lastVis=vis[vis.length-1];
   return vis.map((k,idx)=>`<td class="sticky-col${k===lastVis?' sticky-col-shadow':''}" data-col="${k}" style="width:${ganttColumnWidths[k]}px;left:${timelineColLeft(k)}px">${idx===0?firstHtml:(restFor?restFor(k):'')}</td>`).join('');
 }
-function renderTeamLeaveRow(person,cols,meta){
+// Person group row = name + their availability across the visible days: AL / ½AM / ½PM / WFH
+// badges (one badge + "+N", full list in the tooltip) with the same time-off hatch as the
+// ticket rows below it. Stays visible when the group is collapsed.
+function availabilityCells(person,cols,meta){
   const todayStr=today();
-  const days=cols.map((c,i)=>{
-    const types=personLeaveTypes(person.id,c.date);
-    const code=types.includes('al')?'AL':types.includes('half_am')?'½AM':types.includes('half_pm')?'½PM':'';
-    const wfh=types.includes('wfh');
-    const label=[code,wfh?'WFH':''].filter(Boolean);
-    const tip=[holidayFor(c.date)?`Public holiday: ${holidayFor(c.date).name}`:'',...types.map(t=>DAY_TYPES[t]?DAY_TYPES[t].label:t)].filter(Boolean).join('\n');
-    return `<td class="dt-day-cell dt-team-leave-cell${c.date===todayStr?' dt-day-cell-today':''}${meta[i]}"${tip?` title="${esc(tip)}"`:''}>${label.length?`<span class="dt-team-leave-code${wfh&&!code?' is-wfh':''}">${esc(label[0])}${label.length>1?'<sup>+1</sup>':''}</span>`:''}</td>`;
+  const order=['al','half_am','half_pm','wfh'];
+  return cols.map((c,i)=>{
+    const types=personLeaveTypes(person.id,c.date).filter(t=>DAY_TYPES[t]).sort((a,b)=>order.indexOf(a)-order.indexOf(b));
+    const hol=holidayFor(c.date);
+    const tip=[hol?`Public holiday: ${hol.name}`:'',...types.map(t=>DAY_TYPES[t].label)].filter(Boolean).join('\n');
+    const pills=types.map(t=>`<span class="dt-mark-pill ${t==='wfh'?'dt-mark-pill-wfh':'dt-mark-pill-off'}">${esc(DAY_TYPES[t].code)}</span>`);
+    const shown=pills.length>1?pills[0]+`<span class="dt-mark-more">+${pills.length-1}</span>`:(pills[0]||'');
+    return `<td class="dt-day-cell dt-team-avail-cell${c.date===todayStr?' dt-day-cell-today':''}${meta[i]}"${tip?` title="${esc(tip)}"`:''}>${shown}</td>`;
   }).join('');
-  return `<tr class="dt-team-row dt-team-leave-row">${teamStickyCells('<span class="dt-team-leave-label">Days off</span>')}${days}</tr>`;
 }
 function renderTeamTicketRow(ticket,cols,meta){
   const color=ticketColor(ticket);
@@ -1621,25 +1624,15 @@ function renderTeamTimelineBody(body,cols){
   }
   const {shown,hidden}=teamViewOrder();
   const collapsed=collapsedGroups();
-  const from=cols[0].date,to=cols[cols.length-1].date;
   let html='';
   shown.forEach(person=>{
     const tickets=state.ganttTeamTickets.filter(t=>t.owner_id===person.id);
     const active=tickets.filter(isTicketActive), inactive=tickets.filter(t=>!isTicketActive(t));
-    // days off in the visible range: AL = 1, half day = 0.5 (per date, so AL wins over a half)
-    const offByDate={};
-    (state.ganttTeamLeave||[]).forEach(l=>{
-      if(l.owner_id!==person.id||l.leave_date<from||l.leave_date>to) return;
-      const v=l.day_type==='al'?1:(l.day_type==='half_am'||l.day_type==='half_pm')?0.5:0;
-      offByDate[l.leave_date]=Math.min(1,(offByDate[l.leave_date]||0)+v);
-    });
-    const offDays=Object.values(offByDate).reduce((a,b)=>a+b,0);
     const isCollapsed=collapsed.includes(person.id);
-    const summary=[tickets.length?`${tickets.length} shared ${tickets.length===1?'ticket':'tickets'}`:'no shared tickets',offDays?`${offDays} ${offDays===1?'day':'days'} off in view`:''].filter(Boolean).join(' · ');
-    html+=`<tr class="dt-team-group-row"><td colspan="${colCount}"><button class="dt-team-group-toggle" aria-expanded="${!isCollapsed}" onclick="toggleTeamGroup('${escJs(person.id)}')"><svg class="dt-team-chevron${isCollapsed?'':' open'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg><span class="dt-team-avatar${person.isMe?' is-me':''}">${esc(initials(person.display_name))}</span><span class="dt-team-name">${esc(personName(person))}</span><span class="dt-team-summary">· ${esc(summary)}</span></button></td></tr>`;
-    if(isCollapsed) return;
+    const summary=tickets.length?`${tickets.length} shared ${tickets.length===1?'ticket':'tickets'}`:'no shared tickets';
     const meta=personDayMeta(person.id,cols);
-    html+=renderTeamLeaveRow(person,cols,meta);
+    html+=`<tr class="dt-team-group-row" data-owner-id="${esc(person.id)}"><td class="sticky-col sticky-col-shadow dt-team-group-cell" colspan="${visibleCols().length}" style="left:0;width:${visibleColsWidth()}px;max-width:${visibleColsWidth()}px"><button class="dt-team-group-toggle" aria-expanded="${!isCollapsed}" onclick="toggleTeamGroup('${escJs(person.id)}')"><svg class="dt-team-chevron${isCollapsed?'':' open'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg><span class="dt-team-avatar${person.isMe?' is-me':''}">${esc(initials(person.display_name))}</span><span class="dt-team-name">${esc(personName(person))}</span><span class="dt-team-summary">· ${esc(summary)}</span></button></td>${availabilityCells(person,cols,meta)}</tr>`;
+    if(isCollapsed) return;
     if(!tickets.length){
       html+=`<tr class="dt-team-row dt-team-empty-row">${teamStickyCells('<span class="dt-team-empty">No shared tickets</span>')}<td colspan="${cols.length}"></td></tr>`;
       return;

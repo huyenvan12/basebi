@@ -1884,19 +1884,18 @@ body.is-native-app .search-screen{padding-top:calc(50px + env(safe-area-inset-to
 .dt-view-item .dt-menu-hint{display:block;margin-left:0}
 .dt-team-mode .dt-day-cell{cursor:default}
 .dt-team-mode .dt-day-cell:hover{outline:none}
-.dt-team-group-row td{padding:0!important;background:var(--surface2);border-top:1px solid var(--border)}
-.dt-team-group-toggle{position:sticky;left:0;display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 10px;border:none;background:transparent;color:var(--text);font-family:inherit;font-size:12px;cursor:pointer;white-space:nowrap}
+.dt-team-group-row td{background:var(--surface2);border-top:1px solid var(--border)}
+.dt-timeline-table .dt-team-group-row td.dt-team-group-cell{padding:0!important;background:var(--surface2);overflow:hidden}
+.dt-timeline-table .dt-team-group-row td.dt-team-avail-cell{background-color:var(--surface2);height:34px;vertical-align:middle;padding:0!important}
+.dt-team-avail-cell .dt-mark-pill{font-size:8.5px}
+.dt-team-avail-cell .dt-mark-more{display:block;font-size:8.5px;line-height:10px;color:var(--text-muted)}
+.dt-team-group-toggle{display:inline-flex;max-width:100%;overflow:hidden;align-items:center;gap:8px;height:32px;padding:0 10px;border:none;background:transparent;color:var(--text);font-family:inherit;font-size:12px;cursor:pointer;white-space:nowrap}
 .dt-team-chevron{width:14px;height:14px;color:var(--text-muted);transition:transform .12s}
 .dt-team-chevron.open{transform:rotate(90deg)}
 .dt-team-avatar{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9.5px;font-weight:700;background:var(--surface);border:1px solid var(--border);color:var(--text-muted)}
 .dt-team-avatar.is-me{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
 .dt-team-name{font-weight:600}
 .dt-team-summary{color:var(--text-muted);font-size:11px}
-.dt-timeline-table .dt-team-leave-row td.sticky-col,.dt-timeline-table .dt-team-leave-row td.dt-day-cell{background-color:var(--bg)}
-.dt-team-leave-label{padding-left:22px;font-style:italic;color:var(--text-muted);font-size:11.5px}
-.dt-team-leave-code{font-size:8.5px;font-weight:700;color:var(--al-color);letter-spacing:.2px}
-.dt-team-leave-code.is-wfh{color:var(--teal)}
-.dt-team-leave-code sup{font-size:7px;margin-left:1px;color:var(--text-muted)}
 .dt-team-ticket-row .sticky-col[data-col="project"]{padding-left:30px}
 .dt-team-row .sticky-col{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dt-team-note{color:var(--text-muted)}
