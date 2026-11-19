@@ -74,8 +74,14 @@ export function hideAccessDenied(){
 }
 
 export function applyRoute(pathname){
+  // home ('/', e.g. right after login) lands on Delivery Tracker; users without access to it
+  // fall back to Notes, then to the first allowed tab (applyNavGating's fallback list)
   if(pathname==='/'){
-    switchTab('notes', {syncUrl:'skip'});
+    if(switchTab('deliveryTracker', {syncUrl:'skip'})){
+      writeUrl('/delivery-tracker', 'replace');
+    } else {
+      switchTab('notes', {syncUrl:'skip'});
+    }
     hideAccessDenied();
     return;
   }
