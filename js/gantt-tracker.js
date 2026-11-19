@@ -30,8 +30,14 @@ export async function loadTaskTypes(){
 }
 // RLS also returns teammates' shared tickets (is_shared=true). The Mine view must only ever
 // hold the current user's own tickets, so both loaders filter by owner explicitly.
+// Ticket order (Ticket Shuffle): sort_order ascending, ties newest first. New tickets get
+// sort_order = (smallest of the owner's) − 10 so they land on top; drag-to-reorder renumbers.
+export function compareTickets(a,b){
+  return (a.sort_order||0)-(b.sort_order||0) || String(b.created_at||'').localeCompare(String(a.created_at||''));
+}
+export function sortTickets(list){ return list.sort(compareTickets); }
 export async function loadTickets(){
-  const{data,error}=await sb.from('gantt_tickets').select('*').eq('owner_id',state.currentUserId).order('sort_order',{ascending:true});
+  const{data,error}=await sb.from('gantt_tickets').select('*').eq('owner_id',state.currentUserId).order('sort_order',{ascending:true}).order('created_at',{ascending:false});
   if(error){console.error('loadTickets failed',error);return [];}
   return data||[];
 }
@@ -322,17 +328,22 @@ function sprintWeeksLabel(sp){
 }
 
 // ══════════════════════════════════════════════════
-// COLOR — deterministic hash of ticket id into a fixed palette. Never persisted.
+// COLOR — gantt_tickets.color (#rrggbb, picked in the drawer) wins; NULL = "Auto", a
+// deterministic hash of the ticket id into the fixed palette.
 // ══════════════════════════════════════════════════
-const TICKET_PALETTE=['#4f6fd9','#df8a4e','#5aa06c','#b0698f','#c9a24a','#d9695f','#7d838c','#91008D','#3fa7a0','#8a8f98'];
+export const TICKET_PALETTE=['#4f6fd9','#df8a4e','#5aa06c','#b0698f','#c9a24a','#d9695f','#7d838c','#91008D','#3fa7a0','#8a8f98'];
 export function hashToIndex(id,len){
   let hash=0;
   const str=String(id);
   for(let i=0;i<str.length;i++){hash=(hash*31+str.charCodeAt(i))>>>0;}
   return hash%len;
 }
-export function ticketColor(ticket){
+const HEX_COLOR=/^#[0-9A-Fa-f]{6}$/;
+export function autoTicketColor(ticket){
   return TICKET_PALETTE[hashToIndex(ticket.id,TICKET_PALETTE.length)];
+}
+export function ticketColor(ticket){
+  return ticket.color&&HEX_COLOR.test(ticket.color)?ticket.color:autoTicketColor(ticket);
 }
 
 // ══════════════════════════════════════════════════
@@ -633,7 +644,7 @@ function isSprintStartCol(dateStr,firstColDate){
   return state.ganttSprints.some(sp=>sp.start_date===dateStr||(sp.start_date<dateStr&&sp.start_date>addDays(dateStr,-3)&&!isWeekday(sp.start_date)));
 }
 
-function renderTicketRow(ticket,cols,dayMeta){
+function renderTicketRow(ticket,cols,dayMeta,draggableRow=false){
   const color=ticketColor(ticket);
   const entries=state.ganttEntries.filter(e=>e.ticket_id===ticket.id);
   const todayStr=today();
@@ -661,7 +672,7 @@ function renderTicketRow(ticket,cols,dayMeta){
   const cellAttrs=(k,extraCls='')=>`class="sticky-col${extraCls}${k===lastVis?' sticky-col-shadow':''}" data-col="${k}" style="width:${ganttColumnWidths[k]}px;left:${timelineColLeft(k)}px"`;
   const infoCells={
     // project name opens the ticket drawer (replaces the old per-row pencil button)
-    project:`<td ${cellAttrs('project',' dt-project-cell'+(ticket.is_shared?'':' dt-is-private'))} title="${esc(ticket.project_name)}${ticket.is_shared?'':' · Private — not shared with team'}"><span class="dt-ticket-swatch" style="background:${color}"></span><button class="dt-ticket-name" onclick="openTicketModal('${escJs(ticket.id)}')">${esc(ticket.project_name)}</button>${ticket.is_shared?'':`<span class="dt-private-lock" aria-label="Private ticket"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>`}<button class="dt-ticket-open-hint" tabindex="-1" onclick="openTicketModal('${escJs(ticket.id)}')" title="Open details"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/><path d="m10 15-3-3 3-3"/></svg>Open</button></td>`,
+    project:`<td ${cellAttrs('project',' dt-project-cell'+(ticket.is_shared?'':' dt-is-private'))} title="${esc(ticket.project_name)}${ticket.is_shared?'':' · Private — not shared with team'}">${draggableRow?`<span class="dt-row-handle" draggable="true" data-ticket-id="${esc(ticket.id)}" title="Drag to reorder" aria-hidden="true">⋮⋮</span>`:''}<span class="dt-ticket-swatch" style="background:${color}"></span><button class="dt-ticket-name" onclick="openTicketModal('${escJs(ticket.id)}')">${esc(ticket.project_name)}</button>${ticket.is_shared?'':`<span class="dt-private-lock" aria-label="Private ticket"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>`}<button class="dt-ticket-open-hint" tabindex="-1" onclick="openTicketModal('${escJs(ticket.id)}')" title="Open details"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/><path d="m10 15-3-3 3-3"/></svg>Open</button></td>`,
     jira:`<td ${cellAttrs('jira')} title="${esc(ticket.jira_key||'')}">${jiraCell}</td>`,
     scope:`<td ${cellAttrs('scope')} title="${esc(ticket.mon_scope||'')}">${esc(ticket.mon_scope||'')}</td>`,
     // status badge opens an in-place status dropdown
@@ -690,7 +701,7 @@ export function renderTimelineBody(){
     const offClass=off==='full'?' dt-day-cell-al':off==='am'?' dt-day-cell-half-am':off==='pm'?' dt-day-cell-half-pm':'';
     return offClass+(i>0&&isSprintStartCol(c.date,cols[0].date)?' dt-sprint-start':'');
   });
-  let html=active.map(t=>renderTicketRow(t,cols,dayMeta)).join('');
+  let html=active.map(t=>renderTicketRow(t,cols,dayMeta,active.length>1)).join('');
   if(inactive.length){
     const colCount=visibleCols().length+cols.length;
     html+=`<tr class="dt-inactive-divider" onclick="toggleGanttInactive()"><td colspan="${colCount}">${state.ganttInactiveExpanded?'▾':'▸'} Inactive (${inactive.length})</td></tr>`;
@@ -750,6 +761,89 @@ export function setTimelineStartDate(dateStr){
   if(!dateStr) return;
   state.ganttTimelineStartDate=mondayOf(dateStr);
   renderTimeline();
+}
+
+// ══════════════════════════════════════════════════
+// TICKET SHUFFLE — drag the ⋮⋮ handle (Mine view, active tickets only) to reorder.
+// Native HTML5 drag starts only from the handle, so drag-to-fill on day cells is untouched.
+// Drop renumbers the active list as 10, 20, 30… and writes only the rows whose value changed.
+// ══════════════════════════════════════════════════
+let rowDrag=null; // {id}
+function clearDropMarks(){
+  document.querySelectorAll('#dtTimelineBody .dt-drop-before,#dtTimelineBody .dt-drop-after').forEach(r=>r.classList.remove('dt-drop-before','dt-drop-after'));
+}
+function dropTargetRow(e){
+  if(!rowDrag) return null;
+  const tr=e.target.closest&&e.target.closest('tr.dt-ticket-row');
+  if(!tr) return null;
+  const id=tr.getAttribute('data-ticket-id');
+  const t=state.ganttTickets.find(x=>x.id===id);
+  if(!t||!isTicketActive(t)) return null;
+  const r=tr.getBoundingClientRect();
+  return {tr,id,after:e.clientY>r.top+r.height/2};
+}
+function handleRowDragStart(e){
+  const h=e.target.closest&&e.target.closest('.dt-row-handle');
+  if(!h||isTeamView()) return;
+  rowDrag={id:h.getAttribute('data-ticket-id')};
+  e.dataTransfer.effectAllowed='move';
+  try{ e.dataTransfer.setData('text/plain',rowDrag.id); }catch(err){/* ignore */}
+  const tr=h.closest('tr');
+  if(tr){
+    // drag image = the project cell (the whole wide row would be unreadable)
+    const cell=tr.querySelector('.dt-project-cell');
+    if(cell&&e.dataTransfer.setDragImage) e.dataTransfer.setDragImage(cell,12,cell.offsetHeight/2);
+    requestAnimationFrame(()=>tr.classList.add('dt-row-dragging'));
+  }
+  closeMenuPopover();
+}
+function handleRowDragOver(e){
+  const tgt=dropTargetRow(e);
+  clearDropMarks();
+  if(!tgt) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+  if(tgt.id!==rowDrag.id) tgt.tr.classList.add(tgt.after?'dt-drop-after':'dt-drop-before');
+}
+function handleRowDrop(e){
+  const tgt=dropTargetRow(e);
+  if(!tgt) return;
+  e.preventDefault();
+  const fromId=rowDrag.id;
+  clearDropMarks();
+  if(tgt.id===fromId) return;
+  moveTicket(fromId,tgt.id,tgt.after);
+}
+function handleRowDragEnd(){
+  rowDrag=null;
+  clearDropMarks();
+  document.querySelectorAll('#dtTimelineBody .dt-row-dragging').forEach(r=>r.classList.remove('dt-row-dragging'));
+}
+export async function moveTicket(fromId,targetId,after){
+  const active=state.ganttTickets.filter(isTicketActive);
+  const from=active.findIndex(t=>t.id===fromId);
+  if(from<0) return;
+  const [moved]=active.splice(from,1);
+  let to=active.findIndex(t=>t.id===targetId);
+  if(to<0) return;
+  if(after) to++;
+  active.splice(to,0,moved);
+  const prev=new Map(state.ganttTickets.map(t=>[t.id,t.sort_order]));
+  const changed=[];
+  active.forEach((t,i)=>{ const v=(i+1)*10; if(t.sort_order!==v){ t.sort_order=v; changed.push(t); } });
+  if(!changed.length) return;
+  sortTickets(state.ganttTickets);
+  renderTimelineBody(); // optimistic
+  try{
+    const results=await Promise.all(changed.map(t=>sb.from('gantt_tickets').update({sort_order:t.sort_order}).eq('id',t.id)));
+    const failed=results.find(r=>r.error);
+    if(failed) throw failed.error;
+  }catch(err){
+    state.ganttTickets.forEach(t=>{ if(prev.has(t.id)) t.sort_order=prev.get(t.id); });
+    sortTickets(state.ganttTickets);
+    renderTimelineBody();
+    showNotification('Could not save the new order: '+(err.message||err),'error');
+  }
 }
 
 // ══════════════════════════════════════════════════
@@ -1503,7 +1597,7 @@ export function toggleTeamGroup(ownerId){
 // All team only shows ACTIVE shared tickets (Done / Cancelled stay in their owner's Mine view)
 const INACTIVE_IN_LIST=`(${INACTIVE_STATUSES.map(st=>`"${st}"`).join(',')})`;
 export async function loadTeamSharedTickets(){
-  const{data,error}=await sb.from('gantt_tickets').select('*').eq('is_shared',true).not('status','in',INACTIVE_IN_LIST).order('sort_order',{ascending:true});
+  const{data,error}=await sb.from('gantt_tickets').select('*').eq('is_shared',true).not('status','in',INACTIVE_IN_LIST).order('sort_order',{ascending:true}).order('created_at',{ascending:false});
   if(error){console.error('loadTeamSharedTickets failed',error);return [];}
   return data||[];
 }
@@ -1515,7 +1609,8 @@ export async function loadTeamTicketsWithEntries(from,to){
     .not('status','in',INACTIVE_IN_LIST)
     .lte('gantt_entries.start_date',to)
     .gte('gantt_entries.end_date',from)
-    .order('sort_order',{ascending:true});
+    .order('sort_order',{ascending:true})
+    .order('created_at',{ascending:false});
   if(error){console.error('loadTeamTicketsWithEntries failed',error);return null;}
   const tickets=[],entries=[];
   (data||[]).forEach(row=>{ const {gantt_entries:es,...t}=row; tickets.push(t); (es||[]).forEach(e=>entries.push(e)); });
@@ -1754,6 +1849,8 @@ export function openTeamTicketDrawer(id){
   document.getElementById('dtTicketDeleteBtn').style.display='none';
   hideProjectError();
   setDrawerReadOnly(true);
+  drawerColor=t.color||null;
+  renderColorSwatches();
   renderStatusChips();
   closeMenuPopover();
   document.getElementById('dtTicketModalOverlay').classList.add('open');
@@ -1878,6 +1975,33 @@ function hideProjectError(){
 function highlightActiveTicketRow(){
   document.querySelectorAll('#dtTimelineBody .dt-ticket-row').forEach(r=>r.classList.toggle('dt-row-active',r.getAttribute('data-ticket-id')===state.ganttEditingTicketId));
 }
+// drawer Color row: "Auto" (hash color, stored as NULL) + the 10 palette colors.
+// drawerColor holds the pending choice until Save; null = Auto.
+let drawerColor=null;
+function drawerTicket(){
+  const id=state.ganttEditingTicketId;
+  if(!id) return null;
+  return (isTeamView()?state.ganttTeamTickets:state.ganttTickets).find(t=>t.id===id)||null;
+}
+function renderColorSwatches(){
+  const wrap=document.getElementById('dtColorSwatches');
+  if(!wrap) return;
+  const ro=document.getElementById('dtTicketModalOverlay').classList.contains('dt-drawer-readonly');
+  const t=drawerTicket();
+  const autoColor=t?autoTicketColor(t):'var(--text-dim)';
+  const cur=drawerColor&&HEX_COLOR.test(drawerColor)?drawerColor.toLowerCase():null;
+  const btn=(val,color,label,extra='')=>{
+    const on=(val===null&&cur===null)||(val!==null&&cur===val.toLowerCase());
+    return `<button type="button" class="dt-color-swatch${extra}${on?' active':''}" role="radio" aria-checked="${on}" aria-label="${esc(label)}" title="${esc(label)}" style="--sw:${color}"${ro?' disabled':` onclick="pickTicketColor(${val===null?'null':`'${val}'`})"`}>${val===null?'<span>Auto</span>':''}</button>`;
+  };
+  wrap.innerHTML=btn(null,autoColor,'Auto — color from the ticket id',' dt-color-auto')+TICKET_PALETTE.map(c=>btn(c,c,c)).join('');
+  const sw=document.getElementById('dtTicketDrawerSwatch');
+  if(sw) sw.style.background=cur||autoColor;
+}
+export function pickTicketColor(c){
+  drawerColor=c&&HEX_COLOR.test(c)?c:null;
+  renderColorSwatches();
+}
 function renderStatusChips(){
   const sel=document.getElementById('dt-status');
   const wrap=document.getElementById('dtStatusChips');
@@ -1915,6 +2039,8 @@ export function openTicketModal(id){
   document.getElementById('dt-shared').checked=t?!!t.is_shared:true;
   document.getElementById('dtTicketDeleteBtn').style.display=t?'':'none';
   hideProjectError();
+  drawerColor=t?(t.color||null):null;
+  renderColorSwatches();
   renderStatusChips();
   closeMenuPopover();
   document.getElementById('dtTicketModalOverlay').classList.add('open');
@@ -1940,6 +2066,7 @@ export async function saveTicket(){
     status:document.getElementById('dt-status').value,
     note:document.getElementById('dt-note').value.trim()||null,
     is_shared:document.getElementById('dt-shared').checked,
+    color:drawerColor,
   };
   try{
     if(state.ganttEditingTicketId){
@@ -1947,8 +2074,12 @@ export async function saveTicket(){
       const t=state.ganttTickets.find(t=>t.id===state.ganttEditingTicketId);
       if(t) Object.assign(t,fields);
     }else{
+      // new tickets go on top: one step (10) above the smallest sort_order this user has
+      const minOrder=state.ganttTickets.reduce((m,t)=>Math.min(m,t.sort_order||0),Infinity);
+      fields.sort_order=(Number.isFinite(minOrder)?minOrder:10)-10;
       const row=await insertTicketDB(fields);
       state.ganttTickets.push(row);
+      sortTickets(state.ganttTickets);
     }
     closeTicketModal();
     renderTimelineBody();
@@ -2767,6 +2898,7 @@ export function initGanttTracker(){
   window.openStatusMenu=openStatusMenu;
   window.setTicketStatus=setTicketStatus;
   window.pickTicketStatusChip=pickTicketStatusChip;
+  window.pickTicketColor=pickTicketColor;
 
   document.getElementById('dtStartDate').onchange=e=>setTimelineStartDate(e.target.value);
   document.getElementById('dtPrevWeekBtn').onclick=()=>shiftTimelineWeek(-1);
@@ -2820,6 +2952,10 @@ export function initGanttTracker(){
   // body interactions: double-click a Note cell to edit inline; right-click an info cell for
   // the row menu (day cells keep their own pointer-driven drag/assign behaviour)
   const tbody=document.getElementById('dtTimelineBody');
+  tbody.addEventListener('dragstart',handleRowDragStart);
+  tbody.addEventListener('dragover',handleRowDragOver);
+  tbody.addEventListener('drop',handleRowDrop);
+  tbody.addEventListener('dragend',handleRowDragEnd);
   tbody.addEventListener('dblclick',e=>{
     if(isTeamView()) return;
     const td=e.target.closest('.dt-note-cell');
