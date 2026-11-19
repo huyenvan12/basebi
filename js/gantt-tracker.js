@@ -5,7 +5,7 @@
 // Ticket color is a deterministic client-side hash of the ticket id — never stored in DB.
 // ══════════════════════════════════════════════════
 import { state } from './state.js';
-import { esc, escJs, showNotification } from './ui-helpers.js';
+import { esc, escJs, safeUrl, showNotification } from './ui-helpers.js';
 import { sb } from './supabase-client.js';
 import { today } from './daily-note.js';
 // Narrow, intentional circular import (same pattern as daily-note.js -> main.js): switchTab
@@ -663,8 +663,8 @@ function renderTicketRow(ticket,cols,dayMeta,draggableRow=false){
     return `<td class="dt-day-cell${todayClass}${dayMeta[i]}" data-ticket-id="${esc(ticket.id)}" data-date="${c.date}" style="${style}">${inner}</td>`;
   }).join('');
 
-  const jiraCell=ticket.jira_url
-    ? `<a href="${esc(ticket.jira_url)}" target="_blank" rel="noopener">${esc(ticket.jira_key||'link')}</a>`
+  const jiraCell=safeUrl(ticket.jira_url)
+    ? `<a href="${esc(safeUrl(ticket.jira_url))}" target="_blank" rel="noopener noreferrer">${esc(ticket.jira_key||'link')}</a>`
     : esc(ticket.jira_key||'');
 
   const vis=visibleCols();
@@ -1739,7 +1739,7 @@ function renderTeamTicketRow(ticket,cols,meta){
     }
     return `<td class="dt-day-cell${c.date===todayStr?' dt-day-cell-today':''}${meta[i]}" style="${style}">${inner}</td>`;
   }).join('');
-  const jira=ticket.jira_url?`<a href="${esc(ticket.jira_url)}" target="_blank" rel="noopener">${esc(ticket.jira_key||'link')}</a>`:esc(ticket.jira_key||'');
+  const jira=safeUrl(ticket.jira_url)?`<a href="${esc(safeUrl(ticket.jira_url))}" target="_blank" rel="noopener noreferrer">${esc(ticket.jira_key||'link')}</a>`:esc(ticket.jira_key||'');
   const first=`<span class="dt-ticket-swatch" style="background:${color}"></span><button class="dt-ticket-name" onclick="openTeamTicketDrawer('${escJs(ticket.id)}')" title="${esc(ticket.project_name)}">${esc(ticket.project_name)}</button>`;
   const rest=k=>k==='jira'?jira:k==='scope'?esc(ticket.mon_scope||''):k==='status'?`<span class="dt-status-badge dt-status-${esc(ticket.status.replace(/\s+/g,''))}">${esc(ticket.status)}</span>`:k==='note'?`<span class="dt-team-note" title="${esc(ticket.note||'')}">${esc(ticket.note||'')}</span>`:'';
   const active=state.ganttEditingTicketId===ticket.id;
@@ -2057,6 +2057,8 @@ export async function saveTicket(){
   if(document.getElementById('dtTicketModalOverlay').classList.contains('dt-drawer-readonly')) return;
   const project_name=document.getElementById('dt-project').value.trim();
   if(!project_name){showProjectError('Project name is required.');return;}
+  const jiraUrlRaw=document.getElementById('dt-jira-url').value.trim();
+  if(jiraUrlRaw&&!safeUrl(jiraUrlRaw)){showProjectError('Jira URL must start with http:// or https://');return;}
   hideProjectError();
   const fields={
     project_name,
@@ -2614,7 +2616,7 @@ export function openTicketPopover(ticketId,anchorEl,segStartDate){
   const jumpDate=segStartDate||(span?span.minDate:'');
   pop.innerHTML=`
     <div class="dt-popover-title">${esc(t.project_name)}</div>
-    ${t.jira_url?`<div><a class="dt-cal-jira" href="${esc(t.jira_url)}" target="_blank" rel="noopener">${esc(t.jira_key||'Jira link')}</a></div>`:(t.jira_key?`<div>${esc(t.jira_key)}</div>`:'')}
+    ${safeUrl(t.jira_url)?`<div><a class="dt-cal-jira" href="${esc(safeUrl(t.jira_url))}" target="_blank" rel="noopener noreferrer">${esc(t.jira_key||'Jira link')}</a></div>`:(t.jira_key?`<div>${esc(t.jira_key)}</div>`:'')}
     ${span?`<div>${esc(fmtDM(span.minDate))}${span.minDate!==span.maxDate?` – ${esc(fmtDM(span.maxDate))}`:''} · ${duration} weekday${duration!==1?'s':''}</div>`:''}
     <div><span class="dt-status-badge dt-status-${esc(t.status.replace(/\s+/g,''))}">${esc(t.status)}</span>${t.mon_scope?` <span class="dt-cal-pop-scope">Mon. scope: ${esc(t.mon_scope)}</span>`:''}</div>
     <div class="dt-cal-pop-actions">
