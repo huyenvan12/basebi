@@ -1935,3 +1935,24 @@ body.is-native-app .search-screen{padding-top:calc(50px + env(safe-area-inset-to
 .dt-collapse-all-btn{position:absolute;left:10px;bottom:8px;display:flex;align-items:center;gap:4px;height:22px;padding:0 8px;border:1px solid var(--border);border-radius:11px;background:var(--surface);color:var(--text-muted);font-family:inherit;font-size:10.5px;font-weight:600;cursor:pointer;white-space:nowrap}
 .dt-collapse-all-btn svg{width:12px;height:12px}
 .dt-collapse-all-btn:hover{color:var(--accent);border-color:var(--accent)}
+
+/* ── Ticket Shuffle: drag handle + drop marker on Timeline rows ── */
+.dt-row-handle{position:absolute;left:1px;top:50%;transform:translateY(-50%);width:12px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;letter-spacing:-2px;line-height:1;color:var(--text-dim);cursor:grab;user-select:none;opacity:0;transition:opacity .12s;border-radius:4px}
+.dt-ticket-row:hover .dt-row-handle{opacity:1}
+.dt-row-handle:hover{color:var(--accent);background:var(--accent-dim)}
+.dt-row-handle:active{cursor:grabbing}
+.dt-ticket-row.dt-row-dragging>td{opacity:.4}
+.dt-ticket-row.dt-drop-before>td{box-shadow:inset 0 2px 0 var(--accent)}
+.dt-ticket-row.dt-drop-after>td{box-shadow:inset 0 -2px 0 var(--accent)}
+@media (hover:none) and (pointer:coarse){.dt-row-handle{display:none}}
+
+/* ── Ticket Shuffle: Color row in the ticket drawer ── */
+.dt-color-swatches{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.dt-color-swatch{width:22px;height:22px;border-radius:50%;border:2px solid transparent;background:var(--sw);padding:0;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15);transition:transform .1s}
+.dt-color-swatch:hover:not(:disabled){transform:scale(1.1)}
+.dt-color-swatch.active{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--text)}
+.dt-color-swatch.dt-color-auto{width:auto;height:22px;border-radius:11px;padding:0 9px 0 22px;position:relative;background:var(--surface2);border:1px solid var(--border);box-shadow:none;color:var(--text-muted);font-family:inherit;font-size:10.5px;font-weight:600}
+.dt-color-swatch.dt-color-auto::before{content:"";position:absolute;left:5px;top:50%;width:12px;height:12px;margin-top:-6px;border-radius:50%;background:var(--sw)}
+.dt-color-swatch.dt-color-auto.active{border-color:var(--text);color:var(--text);box-shadow:none}
+.dt-color-swatch:disabled{cursor:default}
+.dt-drawer-readonly .dt-color-swatch:not(.active){display:none}
