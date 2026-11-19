@@ -582,7 +582,7 @@ function initMain(){
   // this line #mobActionBtn would render on mobile with no click handler until the user actually
   // switched tabs once.
   document.getElementById('mobActionBtn').onclick=()=>openNoteModal();
-  document.getElementById('routeDeniedGoNotesBtn').onclick=()=>navigate('/');
+  document.getElementById('routeDeniedGoNotesBtn').onclick=()=>navigate('/notes');
 
   document.getElementById('teamSubTabNotes').onclick=()=>switchTeamSubTab('notes');
   document.getElementById('teamSubTabChecklists').onclick=()=>switchTeamSubTab('checklists');
