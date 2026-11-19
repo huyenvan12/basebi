@@ -5,8 +5,14 @@
 import { LS_THEME } from './constants.js';
 import { state } from './state.js';
 
-export function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-export function escJs(s){ return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+// HTML-escape for text AND attribute values (quotes included — templates put user text in
+// title="…", value="…", data-…="…").
+export function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+// For a JS string literal inside an inline handler attribute: onclick="fn('${escJs(x)}')".
+// JS-escape first (\ and '), then HTML-escape so a " or & can't end the attribute early.
+export function escJs(s){ return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r?\n/g,'\\n').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+// Only http(s) links are rendered as clickable hrefs; anything else (javascript:, data:, …) is not a link.
+export function safeUrl(u){ const s=String(u==null?'':u).trim(); return /^https?:\/\//i.test(s)?s:''; }
 export function authorName(ownerId){ return state.profilesMap[ownerId]||'Unknown'; }
 
 // ══════════════════════════════════════════════════

@@ -8,7 +8,8 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>base·bi</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- pinned version + SRI hash: when upgrading, change the version AND the integrity hash together -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.1/dist/umd/supabase.js" integrity="sha384-2DeuFKyqIlpZfFmj+jl/+IbM3DwDM4vGKsvK0fI32E0ZDt24W33hB6pka4RAdbz2" crossorigin="anonymous"></script>
 <link rel="stylesheet" href="basebi.css">
 </head>
 <body>
@@ -882,8 +883,7 @@
     <div class="info-box">
       Notes, folders, and campaigns from the file are <strong>merged</strong>
       into your workspace — existing data is never deleted or overwritten.
-      Imported notes get a fresh id and are owned by you.<br><br>
-      Not sure of the format? <a href="basebi-import-template.json" download>Download sample format</a>.
+      Imported notes get a fresh id and are owned by you.
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeImportModal()">Cancel</button>

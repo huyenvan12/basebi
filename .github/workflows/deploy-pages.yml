@@ -35,14 +35,16 @@ jobs:
           attempt_limit: 3
           attempt_delay: 15000
 
-      # GitHub Pages has no SPA rewrite rule, so a hard refresh (or a
-      # discarded tab reloading) on a client-side route like
-      # /delivery-tracker returns 404. Pages serves 404.html for any
-      # missing path, so shipping the app shell as 404.html lets
-      # js/router.js read location.pathname and open the right tab.
-      # (Cloudflare Pages uses _redirects for the same thing.)
-      - name: SPA fallback (404.html = index.html)
-        run: cp index.html 404.html
+      # Publish ONLY the files the app needs. Everything else in the repo (docs, mockups,
+      # android, scripts, …) must never become a public URL on basebi.net.
+      # 404.html = index.html is the SPA fallback (GitHub Pages has no rewrite rules, so a
+      # hard refresh on /delivery-tracker would 404; js/router.js reads location.pathname).
+      - name: Build site folder (allowlist)
+        run: |
+          mkdir -p _site
+          cp -r index.html basebi.css js favicon.ico favicon-16x16.png favicon-32x32.png apple-touch-icon.png CNAME _redirects _site/
+          cp index.html _site/404.html
+          ls -R _site | head -50
 
       # Not wretry-wrapped: upload-pages-artifact is a composite action, and
       # wretry.action can only wrap JS/docker actions ("Runner 'composite'
@@ -51,7 +53,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:
-          path: .
+          path: _site
 
       - name: Deploy to GitHub Pages
         uses: Wandalen/wretry.action@v3.8.0
